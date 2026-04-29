@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="64" viewBox="0 0 220 64" role="img" aria-label="Company">
+  <rect x="2" y="10" width="44" height="44" rx="10" fill="#0f2442"/>
+  <path d="M16 40 24 22l8 18h-6l-2-5-2 5h-6Z" fill="#fff"/>
+  <text x="58" y="37" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0f2442">Company</text>
+  <text x="58" y="51" font-family="Arial, sans-serif" font-size="10" fill="#64748b">Overhaul Division</text>
+</svg>

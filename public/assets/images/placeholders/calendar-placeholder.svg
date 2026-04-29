@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="420" viewBox="0 0 780 420" role="img" aria-label="Calendar placeholder">
+  <rect width="780" height="420" rx="18" fill="#f8fafc"/>
+  <rect x="50" y="50" width="680" height="320" rx="14" fill="#fff" stroke="#cbd5e1"/>
+  <rect x="50" y="50" width="680" height="58" rx="14" fill="#1d4ed8"/>
+  <g fill="#e2e8f0">
+    <rect x="82" y="138" width="76" height="44" rx="8"/><rect x="178" y="138" width="76" height="44" rx="8"/><rect x="274" y="138" width="76" height="44" rx="8"/><rect x="370" y="138" width="76" height="44" rx="8"/><rect x="466" y="138" width="76" height="44" rx="8"/><rect x="562" y="138" width="76" height="44" rx="8"/>
+    <rect x="82" y="202" width="76" height="44" rx="8"/><rect x="178" y="202" width="76" height="44" rx="8"/><rect x="274" y="202" width="76" height="44" rx="8"/><rect x="370" y="202" width="76" height="44" rx="8"/><rect x="466" y="202" width="76" height="44" rx="8"/><rect x="562" y="202" width="76" height="44" rx="8"/>
+    <rect x="82" y="266" width="76" height="44" rx="8"/><rect x="178" y="266" width="76" height="44" rx="8"/><rect x="274" y="266" width="76" height="44" rx="8"/><rect x="370" y="266" width="76" height="44" rx="8"/><rect x="466" y="266" width="76" height="44" rx="8"/><rect x="562" y="266" width="76" height="44" rx="8"/>
+  </g>
+  <rect x="274" y="202" width="172" height="44" rx="8" fill="#bfdbfe"/>
+</svg>

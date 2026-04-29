@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360" role="img" aria-label="Gantt placeholder">
+  <rect width="820" height="360" rx="18" fill="#f8fafc"/>
+  <path d="M130 52v256M250 52v256M370 52v256M490 52v256M610 52v256M730 52v256" stroke="#e2e8f0" stroke-width="2"/>
+  <path d="M70 92h680M70 152h680M70 212h680M70 272h680" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="145" y="74" width="220" height="32" rx="8" fill="#1d4ed8"/>
+  <rect x="255" y="134" width="300" height="32" rx="8" fill="#16a34a"/>
+  <rect x="390" y="194" width="240" height="32" rx="8" fill="#f59e0b"/>
+  <rect x="500" y="254" width="190" height="32" rx="8" fill="#64748b"/>
+</svg>

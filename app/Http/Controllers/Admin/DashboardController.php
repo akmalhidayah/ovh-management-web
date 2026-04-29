@@ -52,9 +52,9 @@ class DashboardController extends Controller
         return view('admin.mom');
     }
 
-    public function dokument(): View
+    public function dokumen(): View
     {
-        return view('admin.dokument');
+        return view('admin.dokumen');
     }
 
     public function masterData(): View

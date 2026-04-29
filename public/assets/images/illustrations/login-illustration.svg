@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="460" viewBox="0 0 720 460" role="img" aria-label="Login illustration">
+  <rect width="720" height="460" rx="28" fill="#18365f"/>
+  <rect x="70" y="70" width="580" height="320" rx="20" fill="#f8fafc"/>
+  <rect x="105" y="110" width="170" height="38" rx="8" fill="#1d4ed8"/>
+  <rect x="105" y="180" width="510" height="18" rx="9" fill="#dbeafe"/>
+  <rect x="105" y="220" width="420" height="18" rx="9" fill="#e2e8f0"/>
+  <rect x="105" y="260" width="470" height="18" rx="9" fill="#e2e8f0"/>
+  <rect x="105" y="315" width="135" height="44" rx="10" fill="#16a34a"/>
+  <circle cx="560" cy="130" r="42" fill="#f59e0b"/>
+  <path d="M452 338c28-92 73-126 135-105 16 5 30 14 44 26v79H452Z" fill="#93c5fd"/>
+</svg>

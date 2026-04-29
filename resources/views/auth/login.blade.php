@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - OVH Management</title>
-    <link rel="icon" href="{{ asset('assets/images/logo/favicon.svg') }}">
+    <title>Login - Overhaull PT. Semen Tonasa</title>
+    <link rel="icon" href="{{ asset('assets/images/logo/logo-st2.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="{{ asset('assets/css/ovh-dashboard.css') }}" rel="stylesheet">
@@ -12,15 +12,15 @@
 <body class="login-body">
     <main class="login-shell">
         <section class="login-visual">
-            <img src="{{ asset('assets/images/illustrations/login-illustration.svg') }}" alt="Overhaul Management">
-            <h1>Sistem Overhaul Management</h1>
-            <p>Monitoring overhaul, procurement, schedule, commissioning, QC, equipment, MoM, dan dokumentasi dalam satu dashboard internal.</p>
+            <h1>Unit Overhaul<br>PT. Semen Tonasa</h1>
         </section>
 
         <section class="login-card">
-            <img src="{{ asset('assets/images/logo/logo-ovh.svg') }}" alt="OVH" class="login-logo">
+            <div class="login-logo-group">
+                <img src="{{ asset('assets/images/logo/logo-sig.png') }}" alt="SIG" class="login-logo">
+                <img src="{{ asset('assets/images/logo/logo-st2.png') }}" alt="Semen Tonasa" class="login-logo">
+            </div>
             <h2>Masuk</h2>
-            <p class="text-muted mb-4">Gunakan akun OVH Management.</p>
 
             @if ($errors->any())
                 <div class="alert alert-danger">{{ $errors->first() }}</div>

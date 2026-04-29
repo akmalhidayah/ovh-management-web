@@ -1,8 +1,6 @@
 @php($roleLabel = auth()->user()->usertype === 'admin' ? 'Admin' : 'User')
 
-<x-page-header title="Dashboard {{ $roleLabel }}" subtitle="Ringkasan dummy performa overhaul dan kesiapan pekerjaan.">
-    <button class="btn btn-outline-secondary"><i class="bi bi-download me-2"></i>Export</button>
-</x-page-header>
+<x-page-header title="Dashboard {{ $roleLabel }}" subtitle="Ringkasan dummy performa overhaul dan kesiapan pekerjaan."></x-page-header>
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-md-6 col-xl-4"><x-stat-card title="Total Budget" value="Rp 12,8 M" icon="bi-cash-stack" tone="primary" subtitle="Dummy tahun berjalan" /></div>

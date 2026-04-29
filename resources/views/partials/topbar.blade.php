@@ -1,16 +1,19 @@
 <header class="ovh-topbar">
     <div class="d-flex align-items-center gap-2 min-w-0">
-        <button class="btn btn-light icon-btn d-lg-none" type="button" data-sidebar-toggle aria-label="Buka sidebar">
+        <button class="btn btn-light icon-btn" type="button" data-sidebar-toggle aria-label="Toggle sidebar">
             <i class="bi bi-list"></i>
         </button>
         <div class="topbar-title min-w-0">
             <span class="text-truncate d-block">@yield('page_title', 'Dashboard')</span>
-            <small class="text-muted d-none d-sm-block">Sistem Overhaul Management</small>
+            <small class="text-muted d-none d-sm-block">Overhaull PT. Semen Tonasa</small>
         </div>
     </div>
 
     <div class="d-flex align-items-center gap-2">
-        <img src="{{ asset('assets/images/logo/logo-company.svg') }}" alt="Company" class="company-logo d-none d-sm-inline-flex">
+        <div class="topbar-logos d-none d-sm-flex">
+            <img src="{{ asset('assets/images/logo/logo-sig.png') }}" alt="SIG" class="company-logo">
+            <img src="{{ asset('assets/images/logo/logo-st2.png') }}" alt="Semen Tonasa" class="company-logo">
+        </div>
         <div class="dropdown">
             <button class="btn btn-light user-menu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</span>

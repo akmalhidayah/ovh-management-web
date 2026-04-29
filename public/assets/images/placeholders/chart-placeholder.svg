@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" role="img" aria-label="Chart placeholder">
+  <rect width="720" height="360" rx="18" fill="#f8fafc"/>
+  <path d="M70 290h580M100 70v220" stroke="#cbd5e1" stroke-width="4"/>
+  <path d="M120 250 220 210l90 20 120-95 110 45 80-90" fill="none" stroke="#1d4ed8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

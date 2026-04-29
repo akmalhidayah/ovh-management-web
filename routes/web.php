@@ -34,7 +34,8 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
     Route::get('/equipment', [AdminDashboardController::class, 'equipment'])->name('equipment');
     Route::get('/mom', [AdminDashboardController::class, 'mom'])->name('mom');
-    Route::get('/dokument', [AdminDashboardController::class, 'dokument'])->name('dokument');
+    Route::redirect('/dokument', '/admin/dokumen');
+    Route::get('/dokumen', [AdminDashboardController::class, 'dokumen'])->name('dokumen');
     Route::get('/master-data', [AdminDashboardController::class, 'masterData'])->name('master-data');
 });
 
@@ -48,5 +49,6 @@ Route::middleware(['auth', 'usertype:user'])->prefix('user')->name('user.')->gro
     Route::get('/qc', [UserDashboardController::class, 'qc'])->name('qc');
     Route::get('/equipment', [UserDashboardController::class, 'equipment'])->name('equipment');
     Route::get('/mom', [UserDashboardController::class, 'mom'])->name('mom');
-    Route::get('/dokument', [UserDashboardController::class, 'dokument'])->name('dokument');
+    Route::redirect('/dokument', '/user/dokumen');
+    Route::get('/dokumen', [UserDashboardController::class, 'dokumen'])->name('dokumen');
 });
