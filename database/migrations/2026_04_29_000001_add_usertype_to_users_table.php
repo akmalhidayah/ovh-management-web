@@ -10,12 +10,14 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('usertype')->default('user')->after('password');
+            $table->string('role')->default('qc')->after('usertype');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('role');
             $table->dropColumn('usertype');
         });
     }

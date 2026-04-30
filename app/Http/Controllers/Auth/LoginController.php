@@ -32,9 +32,7 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
-        return Auth::user()->usertype === 'admin'
-            ? redirect()->intended(route('admin.dashboard'))
-            : redirect()->intended(route('user.dashboard'));
+        return redirect()->intended(route(Auth::user()->dashboardRouteName()));
     }
 
     public function logout(Request $request): RedirectResponse

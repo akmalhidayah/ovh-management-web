@@ -1,5 +1,5 @@
 @php
-    $role = auth()->user()->usertype ?? 'user';
+    $role = (auth()->user()->usertype ?? 'inspector') === 'admin' ? 'admin' : 'inspector';
     $groups = [
         [
             'label' => 'Dashboard',

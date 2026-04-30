@@ -13,12 +13,8 @@ class CheckUserType
         $user = $request->user();
 
         if (! $user || $user->usertype !== $usertype) {
-            if ($user?->usertype === 'admin') {
-                return redirect()->route('admin.dashboard');
-            }
-
-            if ($user?->usertype === 'user') {
-                return redirect()->route('user.dashboard');
+            if ($user) {
+                return redirect()->route($user->dashboardRouteName());
             }
 
             abort(403);

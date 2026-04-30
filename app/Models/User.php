@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -21,8 +22,11 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'usertype',
+        'role',
+        'profile_photo_path',
     ];
 
     /**
@@ -46,5 +50,43 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->usertype === 'admin';
+    }
+
+    public function isOperationalUser(): bool
+    {
+        return $this->usertype === 'user';
+    }
+
+    public function dashboardRouteName(): string
+    {
+        if ($this->isAdmin()) {
+            return 'admin.dashboard';
+        }
+
+        return match ($this->role) {
+            'qc' => 'user.qc.dashboard',
+            'commissioning' => 'user.commissioning.dashboard',
+            'pgo' => 'user.pgo.dashboard',
+            'approval' => 'user.approval.dashboard',
+            default => 'login',
+        };
+    }
+
+    public function profilePhotoUrl(): ?string
+    {
+        if (! $this->profile_photo_path) {
+            return null;
+        }
+
+        if (! Storage::disk('public')->exists($this->profile_photo_path)) {
+            return null;
+        }
+
+        return asset('storage/'.$this->profile_photo_path);
     }
 }
