@@ -19,7 +19,6 @@
                 ['label' => 'Schedule', 'route' => "{$role}.schedule"],
             ],
         ],
-        ['label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
         [
             'label' => 'Inspection & Commissioning',
             'icon' => 'bi-shield-check',
@@ -29,6 +28,7 @@
                 ['label' => 'Commissioning', 'route' => "{$role}.commissioning"],
             ],
         ],
+        ['label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
         [
             'label' => 'Asset & Records',
             'icon' => 'bi-archive',
