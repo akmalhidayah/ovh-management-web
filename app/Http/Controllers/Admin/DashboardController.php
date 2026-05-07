@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\QcSubmissionPageData;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -37,9 +39,9 @@ class DashboardController extends Controller
         return view('admin.commissioning');
     }
 
-    public function qc(): View
+    public function qc(Request $request): View
     {
-        return view('admin.qc');
+        return view('admin.qc.index', QcSubmissionPageData::make($request, 'QC'));
     }
 
     public function equipment(): View

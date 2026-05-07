@@ -22,10 +22,20 @@
         [
             'label' => 'Inspection & Commissioning',
             'icon' => 'bi-shield-check',
-            'routes' => ["{$role}.qc", "{$role}.commissioning"],
+            'routes' => array_filter([
+                "{$role}.qc",
+                "{$role}.commissioning",
+                $role === 'admin' ? 'admin.qc.submissions.*' : null,
+                $role === 'admin' ? 'admin.template-form-qc.*' : null,
+                $role === 'admin' ? 'admin.template-form-commissioning.*' : null,
+            ]),
             'items' => [
                 ['label' => 'QC', 'route' => "{$role}.qc"],
                 ['label' => 'Commissioning', 'route' => "{$role}.commissioning"],
+                ...($role === 'admin' ? [
+                    ['label' => 'Template Form QC', 'route' => 'admin.template-form-qc.index', 'active' => 'admin.template-form-qc.*'],
+                    ['label' => 'Template Form Commissioning', 'route' => 'admin.template-form-commissioning.index', 'active' => 'admin.template-form-commissioning.*'],
+                ] : []),
             ],
         ],
         ['label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
@@ -88,7 +98,7 @@
                     <div class="sidebar-submenu" id="{{ $groupId }}">
                         @foreach ($item['items'] as $child)
                             @php($href = route($child['route']).(isset($child['hash']) ? '#'.$child['hash'] : ''))
-                            <a href="{{ $href }}" class="sidebar-sublink {{ request()->routeIs($child['route']) && ! isset($child['hash']) ? 'active' : '' }}">
+                            <a href="{{ $href }}" class="sidebar-sublink {{ request()->routeIs($child['active'] ?? $child['route']) && ! isset($child['hash']) ? 'active' : '' }}">
                                 {{ $child['label'] }}
                             </a>
                         @endforeach

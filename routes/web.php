@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
+use App\Http\Controllers\Admin\TemplateFormCommissioningController;
+use App\Http\Controllers\Admin\TemplateFormQcController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\User\Approval\DashboardController as ApprovalDashboardController;
 use App\Http\Controllers\User\Approval\DocumentController as ApprovalDocumentController;
@@ -51,6 +54,26 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
+    Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
+        Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
+        Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf');
+    });
+    Route::prefix('template-form-qc')->name('template-form-qc.')->group(function () {
+        Route::get('/', [TemplateFormQcController::class, 'index'])->name('index');
+        Route::get('/create', [TemplateFormQcController::class, 'create'])->name('create');
+        Route::post('/', [TemplateFormQcController::class, 'store'])->name('store');
+        Route::get('/import', [TemplateFormQcController::class, 'import'])->name('import');
+        Route::post('/import', [TemplateFormQcController::class, 'processImport'])->name('import.process');
+        Route::patch('/{template}/publish', [TemplateFormQcController::class, 'publish'])->name('publish');
+        Route::get('/{template}', [TemplateFormQcController::class, 'show'])->name('show');
+        Route::get('/{template}/edit', [TemplateFormQcController::class, 'edit'])->name('edit');
+        Route::put('/{template}', [TemplateFormQcController::class, 'update'])->name('update');
+        Route::delete('/{template}', [TemplateFormQcController::class, 'destroy'])->name('destroy');
+        Route::get('/{template}/preview', [TemplateFormQcController::class, 'preview'])->name('preview');
+        Route::post('/{template}/duplicate', [TemplateFormQcController::class, 'duplicate'])->name('duplicate');
+        Route::patch('/{template}/toggle-status', [TemplateFormQcController::class, 'toggleStatus'])->name('toggle-status');
+    });
+    Route::get('/template-form-commissioning', [TemplateFormCommissioningController::class, 'index'])->name('template-form-commissioning.index');
     Route::get('/equipment', [AdminDashboardController::class, 'equipment'])->name('equipment');
     Route::get('/mom', [AdminDashboardController::class, 'mom'])->name('mom');
     Route::redirect('/dokument', '/admin/dokumen');
@@ -63,9 +86,13 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/', fn () => redirect()->route('user.qc.dashboard'));
         Route::get('/dashboard', [QcDashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('/forms/create', [QcFormController::class, 'create'])->name('forms.create');
+        Route::post('/forms', [QcFormController::class, 'store'])->name('forms.store');
         Route::get('/drafts', [QcDraftController::class, 'index'])->name('drafts.index');
         Route::get('/history', [QcHistoryController::class, 'index'])->name('history.index');
         Route::redirect('/documents', '/user/qc/history')->name('documents.index');
+        Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show');
+        Route::get('/submissions/{submission}/pdf', [QcFormController::class, 'pdf'])->name('submissions.pdf');
+        Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy');
         Route::get('/profile', [QcProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [QcProfileController::class, 'update'])->name('profile.update');
     });

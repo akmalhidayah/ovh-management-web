@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class UserRolePagesTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_qc_pages_render_for_qc_user(): void
     {
         $user = User::factory()->make([
