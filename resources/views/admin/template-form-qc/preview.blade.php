@@ -12,7 +12,7 @@
     <div class="page-header template-preview-header">
         <div>
             <h1>{{ $template->name }}</h1>
-            <p>Preview template QC dalam mode {{ $template->layout_mode === 'excel_grid' ? 'Excel Grid' : 'Block Based' }}.</p>
+            <p>Preview template QC {{ $template->template_type ? 'dengan struktur terarah' : 'dalam mode '.($template->layout_mode === 'excel_grid' ? 'Excel Grid' : 'Block Based') }}.</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('admin.template-form-qc.index') }}" class="btn btn-outline-secondary">Kembali</a>
@@ -52,7 +52,9 @@
             </div>
         @endif
 
-        @if ($template->layout_mode === 'excel_grid')
+        @if ($template->template_type)
+            @include('admin.template-form-qc.partials.fixed-preview', ['template' => $template])
+        @elseif ($template->layout_mode === 'excel_grid')
             @include('admin.template-form-qc.partials.excel-grid-preview', ['template' => $template])
         @else
             @include('admin.template-form-qc.partials.block-based-preview', ['template' => $template])

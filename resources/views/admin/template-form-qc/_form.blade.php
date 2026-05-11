@@ -1,41 +1,25 @@
 @php
+    use App\Support\QcTemplates\FixedQcTemplate;
+
     $statusOptions = ['draft' => 'Draft', 'active' => 'Aktif', 'inactive' => 'Nonaktif'];
-    $layoutOptions = ['block_based' => 'Block Based', 'excel_grid' => 'Excel Grid'];
-    $blockOptions = [
-        'general_info' => 'Informasi Umum',
-        'checklist_table' => 'Checklist Table',
-        'measurement_table' => 'Measurement Table',
-        'note' => 'Note',
-        'attachment' => 'Attachment',
-        'approval' => 'Approval',
-    ];
+    $typeOptions = FixedQcTemplate::types();
+    $selectedType = old('template_type', $template->template_type ?: FixedQcTemplate::TYPE_GENERAL);
+    $schema = FixedQcTemplate::normalizeSchema($selectedType, old() ? [
+        'rows' => old('general_rows', []),
+        'welder_rows' => old('welding_welder_rows', []),
+        'result_rows' => old('welding_result_rows', []),
+    ] : ($template->body_schema ?? FixedQcTemplate::defaultSchema($selectedType)));
+    $generalRows = $schema['rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_GENERAL)['rows'];
+    $welderRows = $schema['welder_rows'] ?? [];
+    $resultRows = $schema['result_rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_WELDING)['result_rows'];
 
-    $existingBlocks = old('blocks');
-    if ($existingBlocks === null) {
-        $existingBlocks = $blocks->map(function ($block) {
-            $columns = $block->config['columns'] ?? [];
-
-            return [
-                'type' => $block->type,
-                'title' => $block->title,
-                'columns' => implode(', ', array_map(fn ($column) => is_array($column) ? ($column['label'] ?? $column['key'] ?? '') : $column, $columns)),
-                'fields' => $block->fields->map(fn ($field) => [
-                    'name' => $field->field_name,
-                    'label' => $field->label,
-                    'type' => $field->type,
-                ])->values()->all(),
-                'rows' => $block->tableRows->map(fn ($row) => $row->row_data ?? [])->values()->all(),
-            ];
-        })->values()->all();
+    if ($generalRows === []) {
+        $generalRows = FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_GENERAL)['rows'];
     }
 
-    $existingBlocks = array_values($existingBlocks ?: [
-        ['type' => 'general_info', 'title' => 'Informasi Umum', 'columns' => 'Label, Input', 'rows' => []],
-        ['type' => 'checklist_table', 'title' => 'Item Pengecekan', 'columns' => 'Kategori, Item Pengecekan, Standar, Status, Catatan', 'rows' => [
-            ['kategori' => '', 'item' => '', 'standar' => '', 'catatan' => ''],
-        ]],
-        ['type' => 'approval', 'title' => 'Approval', 'columns' => 'Tanggal, *1 Diisi, *2 Disetujui, *3 Disetujui', 'rows' => []],
-    ]);
+    if ($resultRows === []) {
+        $resultRows = FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_WELDING)['result_rows'];
+    }
 @endphp
 
 <form action="{{ $action }}" method="POST">
@@ -44,81 +28,27 @@
         @method($method)
     @endisset
 
-    <div class="content-card template-manual-guide">
-        <div class="manual-guide-head">
-            <div>
-                <span>Panduan Manual</span>
-                <h2>Cara Membuat Template Form QC</h2>
-                <p>Isi template dari atas ke bawah. Simpan sebagai Draft dulu, cek hasilnya lewat Preview, lalu aktifkan setelah formatnya sudah sesuai.</p>
-            </div>
-            <div class="manual-guide-badge">
-                <i class="bi bi-ui-checks-grid"></i>
-                <strong>Block Based</strong>
-            </div>
-        </div>
-
-        <div class="manual-guide-grid">
-            <div class="manual-guide-step">
-                <span>1</span>
-                <strong>Lengkapi Identitas</strong>
-                <p>Pakai kode unik, nama template yang jelas, kategori QC, versi, dan status Draft untuk proses review.</p>
-            </div>
-            <div class="manual-guide-step">
-                <span>2</span>
-                <strong>Susun Bagian</strong>
-                <p>Gunakan Informasi Umum, Checklist/Measurement, Attachment, Note, dan Approval sesuai urutan dokumen QC.</p>
-            </div>
-            <div class="manual-guide-step">
-                <span>3</span>
-                <strong>Isi Kolom & Row</strong>
-                <p>Tulis nama kolom dipisahkan koma. Untuk checklist, isi kategori, item, standar, dan catatan default.</p>
-            </div>
-            <div class="manual-guide-step">
-                <span>4</span>
-                <strong>Preview & Aktifkan</strong>
-                <p>Simpan template, buka Preview untuk cek tampilan form/PDF, lalu publish agar bisa dipakai user QC.</p>
-            </div>
-        </div>
-
-        <div class="manual-guide-notes">
-            <div>
-                <strong>Contoh kolom checklist</strong>
-                <code>Kategori, Item Pengecekan, Standar, Status, Catatan</code>
-            </div>
-            <div>
-                <strong>Contoh kolom measurement</strong>
-                <code>No, Parameter, Standar, Aktual, Unit, Keterangan</code>
-            </div>
-            <div>
-                <strong>Approval</strong>
-                <code>Tanggal, *1 Diisi, *2 Disetujui, *3 Disetujui</code>
-            </div>
-        </div>
-    </div>
-
     <div class="content-card mb-3">
         <div class="row g-3">
             <div class="col-12 col-md-4">
                 <label class="form-label">Kode Form</label>
                 <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code', $template->code) }}" placeholder="QCR-BC-001">
-                <div class="form-text">Contoh: QCR-BC-001. Harus unik agar mudah dicari.</div>
                 @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-8">
                 <label class="form-label">Nama Template</label>
                 <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $template->name) }}" required placeholder="Standard QCR Penggantian Belt Conveyor">
-                <div class="form-text">Gunakan nama pekerjaan/equipment yang spesifik, misalnya Standard QCR Penggantian Belt Conveyor.</div>
                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
                 <label class="form-label">Kategori</label>
                 <input type="text" name="category" class="form-control" value="{{ old('category', $template->category ?? 'QC') }}" placeholder="QC">
             </div>
-            <div class="col-6 col-md-4">
+            <div class="col-6 col-md-3">
                 <label class="form-label">Versi</label>
                 <input type="text" name="version" class="form-control" value="{{ old('version', $template->version ?? '1.0') }}">
             </div>
-            <div class="col-6 col-md-4">
+            <div class="col-6 col-md-3">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     @foreach ($statusOptions as $value => $label)
@@ -126,122 +56,238 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-12 col-md-4">
-                <label class="form-label">Layout Mode</label>
-                <select name="layout_mode" class="form-select" data-layout-mode>
-                    @foreach ($layoutOptions as $value => $label)
-                        <option value="{{ $value }}" @selected(old('layout_mode', $template->layout_mode === 'excel_like' ? 'block_based' : ($template->layout_mode ?? 'block_based')) === $value)>{{ $label }}</option>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Template Type / Jenis Template</label>
+                <select name="template_type" class="form-select" data-template-type>
+                    @foreach ($typeOptions as $value => $label)
+                        <option value="{{ $value }}" @selected($selectedType === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-12">
                 <label class="form-label">Deskripsi</label>
                 <textarea name="description" rows="3" class="form-control" placeholder="Ringkasan penggunaan template">{{ old('description', $template->description) }}</textarea>
-                <div class="form-text">Isi ringkasan kapan template ini digunakan dan batasan pemeriksaannya.</div>
-            </div>
-            <div class="col-12">
-                <div class="alert alert-info mb-0 {{ old('layout_mode', $template->layout_mode ?? 'block_based') === 'excel_grid' ? '' : 'd-none' }}" data-excel-grid-note>
-                    Mode Excel Grid saat ini disarankan dibuat melalui import Excel atau seed/template khusus. Editor visual grid akan dikembangkan berikutnya.
-                </div>
             </div>
         </div>
     </div>
 
-    <div class="content-card">
+    <div class="content-card mb-3">
+        <div class="card-heading">
+            <h2>Header</h2>
+            <span class="text-muted small">Terkunci</span>
+        </div>
+        <div class="qc-info-grid">
+            @foreach (FixedQcTemplate::headerFields() as $field)
+                <div class="qc-info-field">
+                    <label>{{ $field['label'] }}</label>
+                    <input type="{{ $field['type'] }}" class="form-control" disabled>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="content-card" data-general-editor>
         <div class="card-heading align-items-center">
             <div>
-                <h2>Bagian Template</h2>
-                <div class="text-muted small">Susun template memakai bagian agar format lama yang mirip Excel tetap fleksibel.</div>
+                <h2>Body QC Umum</h2>
+                <div class="text-muted small">Atur row default tabel QC Umum.</div>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" data-add-block>
-                <i class="bi bi-plus-lg me-1"></i>Tambah Bagian
+            <button type="button" class="btn btn-primary btn-sm" data-add-general-row>
+                <i class="bi bi-plus-lg me-1"></i>Tambah Row
             </button>
         </div>
 
-        <div class="template-builder" data-block-list>
-            @foreach ($existingBlocks as $blockIndex => $block)
-                @php
-                    $type = $block['type'] ?? 'note';
-                    $rows = array_values($block['rows'] ?? []);
-                    if (in_array($type, ['checklist_table', 'measurement_table'], true) && $rows === []) {
-                        $rows[] = $type === 'checklist_table'
-                            ? ['activity' => '', 'standard' => '', 'actual_type' => 'text', 'note' => '']
-                            : ['parameter' => '', 'standard' => '', 'actual' => '', 'unit' => '', 'note' => ''];
-                    }
-                @endphp
-                <div class="builder-block" data-block data-block-index="{{ $blockIndex }}">
-                    <div class="builder-block-head">
-                        <div class="row g-2 flex-grow-1">
-                            <div class="col-12 col-md-3">
-                                <label class="form-label">Jenis Bagian</label>
-                                <select name="blocks[{{ $blockIndex }}][type]" class="form-select" data-block-type>
-                                    @foreach ($blockOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected($type === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                <div class="form-text">Pilih jenis sesuai isi bagian dokumen.</div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label class="form-label">Judul Bagian</label>
-                                <input type="text" name="blocks[{{ $blockIndex }}][title]" class="form-control" value="{{ $block['title'] ?? '' }}" placeholder="Judul block">
-                                <div class="form-text">Contoh: Informasi Umum, Item Pengecekan, Lampiran Foto.</div>
-                            </div>
-                            <div class="col-12 col-md-5">
-                                <label class="form-label">Kolom Tabel</label>
-                                <input type="text" name="blocks[{{ $blockIndex }}][columns]" class="form-control" value="{{ $block['columns'] ?? '' }}" placeholder="No, Aktivitas, Standar, Aktual, Keterangan">
-                                <div class="form-text">Pisahkan nama kolom dengan koma. Urutan kolom mengikuti teks ini.</div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-block title="Hapus block">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 70px;">Urutan</th>
+                        <th>Item Pengecekan</th>
+                        <th>Standar</th>
+                        <th style="width: 180px;">Actual</th>
+                        <th colspan="2">Status</th>
+                        <th>Catatan</th>
+                        <th style="width: 90px;">Aksi</th>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <th class="fw-normal fst-italic">Mengikuti Jenis Alat</th>
+                        <th class="fw-normal fst-italic">Mengikuti Jenis Alat</th>
+                        <th class="fw-normal fst-italic">Manual</th>
+                        <th>Ok</th>
+                        <th>Not Ok</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody data-general-row-list>
+                    @foreach ($generalRows as $index => $row)
+                        <tr data-general-row>
+                            <td><input type="number" name="general_rows[{{ $index }}][urutan]" class="form-control form-control-sm" value="{{ $row['urutan'] ?? $loop->iteration }}"></td>
+                            <td><input type="text" name="general_rows[{{ $index }}][item_pengecekan]" class="form-control form-control-sm" value="{{ $row['item_pengecekan'] ?? '' }}" placeholder="Item Pengecekan"></td>
+                            <td><input type="text" name="general_rows[{{ $index }}][standar]" class="form-control form-control-sm" value="{{ $row['standar'] ?? '' }}" placeholder="Standar"></td>
+                            <td><input type="text" name="general_rows[{{ $index }}][actual_default]" class="form-control form-control-sm" value="{{ $row['actual_default'] ?? '' }}" placeholder="Manual"></td>
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                            <td><input type="text" class="form-control form-control-sm" disabled placeholder="Diisi user"></td>
+                            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                    <div class="builder-rows {{ in_array($type, ['checklist_table', 'measurement_table'], true) ? '' : 'd-none' }}" data-row-area>
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                            <strong class="small">Item Pemeriksaan</strong>
-                            <button type="button" class="btn btn-outline-primary btn-sm" data-add-row>
-                                <i class="bi bi-plus-lg me-1"></i>Tambah Row
-                            </button>
-                        </div>
-                        <div data-row-list>
-                            @foreach ($rows as $rowIndex => $row)
-                                @if ($type === 'measurement_table')
-                                    <div class="builder-row" data-row>
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][parameter]" class="form-control" value="{{ $row['parameter'] ?? '' }}" placeholder="Parameter">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][standard]" class="form-control" value="{{ $row['standard'] ?? $row['standar'] ?? '' }}" placeholder="Standar">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][actual]" class="form-control" value="{{ $row['actual'] ?? $row['aktual'] ?? '' }}" placeholder="Aktual">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][unit]" class="form-control" value="{{ $row['unit'] ?? '' }}" placeholder="Unit">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][note]" class="form-control" value="{{ $row['note'] ?? $row['keterangan'] ?? '' }}" placeholder="Keterangan">
-                                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row><i class="bi bi-x-lg"></i></button>
-                                    </div>
-                                @else
-                                    <div class="builder-row" data-row>
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][kategori]" class="form-control" value="{{ $row['kategori'] ?? '' }}" placeholder="Kategori">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][item]" class="form-control" value="{{ $row['item'] ?? $row['activity'] ?? $row['aktivitas'] ?? '' }}" placeholder="Item">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][standar]" class="form-control" value="{{ $row['standar'] ?? $row['standard'] ?? '' }}" placeholder="Standar">
-                                        <input type="text" name="blocks[{{ $blockIndex }}][rows][{{ $rowIndex }}][catatan]" class="form-control" value="{{ $row['catatan'] ?? $row['note'] ?? $row['keterangan'] ?? '' }}" placeholder="Catatan">
-                                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row><i class="bi bi-x-lg"></i></button>
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
+    <div class="content-card" data-welding-editor>
+        <div class="card-heading">
+            <div>
+                <h2>Body QC Welding</h2>
+                <div class="text-muted small">Metode QC dan pengecekan ke tampil otomatis di form user. Admin hanya menyiapkan row default tabel.</div>
+            </div>
+        </div>
 
-                    <div class="builder-fields {{ in_array($type, ['checklist_table', 'measurement_table'], true) ? 'd-none' : '' }}" data-field-area>
-                        <strong class="small d-block mb-2">Field</strong>
-                        @foreach (array_values($block['fields'] ?? []) as $fieldIndex => $field)
-                            <div class="builder-field-row">
-                                <input type="text" name="blocks[{{ $blockIndex }}][fields][{{ $fieldIndex }}][name]" class="form-control" value="{{ $field['name'] ?? '' }}" placeholder="Nama field">
-                                <input type="text" name="blocks[{{ $blockIndex }}][fields][{{ $fieldIndex }}][label]" class="form-control" value="{{ $field['label'] ?? '' }}" placeholder="Label">
-                                <select name="blocks[{{ $blockIndex }}][fields][{{ $fieldIndex }}][type]" class="form-select">
-                                    @foreach (['text' => 'Text', 'number' => 'Number', 'date' => 'Date', 'textarea' => 'Textarea', 'signature' => 'Signature', 'signature_locked' => 'Signature Locked'] as $value => $label)
-                                        <option value="{{ $value }}" @selected(($field['type'] ?? 'text') === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle mb-0">
+                <tbody>
+                    <tr>
+                        <td class="fw-semibold" style="width: 140px;">Metode QC</td>
+                        @foreach (FixedQcTemplate::defaultMethods() as $method)
+                            <td class="text-center fw-semibold">{{ $method }}</td>
                         @endforeach
+                        <td class="border-0" style="width: 80px;"></td>
+                        <td class="fw-semibold" style="width: 160px;">Pengecekan ke:</td>
+                        @foreach (FixedQcTemplate::defaultCheckSteps() as $step)
+                            <td class="text-center fw-semibold">{{ $step }}</td>
+                        @endforeach
+                    </tr>
+                    <tr>
+                        <td></td>
+                        @foreach (FixedQcTemplate::defaultMethods() as $method)
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                        @endforeach
+                        <td class="border-0"></td>
+                        <td></td>
+                        @foreach (FixedQcTemplate::defaultCheckSteps() as $step)
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                        @endforeach
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <strong>Tabel Welder</strong>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-welder-row>Tambah Row Welder</button>
+        </div>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 70px;">No</th>
+                        <th>Nama Welder</th>
+                        <th>Posisi Pengelasan</th>
+                        <th>Diameter Electrode</th>
+                        <th>Electrode/Filter</th>
+                        <th>Amper</th>
+                        <th>Keterangan</th>
+                        <th style="width: 90px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody data-welder-row-list>
+                    @foreach ($welderRows as $index => $row)
+                        <tr data-welder-row>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][no]" class="form-control form-control-sm" value="{{ $row['no'] ?? $loop->iteration }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][nama_welder]" class="form-control form-control-sm" value="{{ $row['nama_welder'] ?? '' }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][posisi_pengelasan]" class="form-control form-control-sm" value="{{ $row['posisi_pengelasan'] ?? '' }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][diameter_electrode]" class="form-control form-control-sm" value="{{ $row['diameter_electrode'] ?? '' }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][electrode_filter]" class="form-control form-control-sm" value="{{ $row['electrode_filter'] ?? '' }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][amper]" class="form-control form-control-sm" value="{{ $row['amper'] ?? '' }}"></td>
+                            <td><input type="text" name="welding_welder_rows[{{ $index }}][keterangan]" class="form-control form-control-sm" value="{{ $row['keterangan'] ?? '' }}"></td>
+                            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <strong>Tabel Hasil QC Welding</strong>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-result-row>Tambah Row Hasil</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 70px;">No</th>
+                        <th>Deskripsi</th>
+                        <th>Baik</th>
+                        <th>Perlu Perbaikan</th>
+                        <th>Tidak Layak</th>
+                        <th>Keterangan</th>
+                        <th style="width: 90px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody data-result-row-list>
+                    @foreach ($resultRows as $index => $row)
+                        <tr data-result-row>
+                            <td><input type="text" name="welding_result_rows[{{ $index }}][no]" class="form-control form-control-sm" value="{{ $row['no'] ?? $loop->iteration }}"></td>
+                            <td><input type="text" name="welding_result_rows[{{ $index }}][deskripsi]" class="form-control form-control-sm" value="{{ $row['deskripsi'] ?? '' }}"></td>
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                            <td class="text-center"><input type="checkbox" disabled></td>
+                            <td><input type="text" name="welding_result_rows[{{ $index }}][keterangan]" class="form-control form-control-sm" value="{{ $row['keterangan'] ?? '' }}"></td>
+                            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="content-card mt-3">
+        <div class="card-heading">
+            <h2>Catatan</h2>
+            <span class="text-muted small">Terkunci</span>
+        </div>
+        <textarea class="form-control" rows="4" placeholder="Catatan diisi oleh user QC" disabled></textarea>
+    </div>
+
+    <div class="content-card mt-3">
+        <div class="card-heading">
+            <h2>Lampiran Foto/Gambar</h2>
+            <span class="text-muted small">Terkunci</span>
+        </div>
+        <div class="row g-3">
+            @foreach (['Foto Before', 'Foto After', 'Dokumen Pendukung'] as $label)
+                <div class="col-12 col-md-4">
+                    <div class="qc-preview-attachment-box h-100">
+                        <i class="bi bi-images"></i>
+                        <strong>{{ $label }}</strong>
+                        <span>Upload oleh user QC</span>
                     </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="content-card mt-3">
+        <div class="card-heading">
+            <h2>Approval Footer</h2>
+            <span class="text-muted small">Terkunci</span>
+        </div>
+        <p class="text-muted">Baru bisa ter approve jika form sudah terisi semua & Final Check sudah tercentang:</p>
+        <label class="d-inline-flex align-items-center gap-2 mb-3">
+            <input type="checkbox" disabled>
+            <strong>Final Check</strong>
+        </label>
+        <div class="qc-approval-grid">
+            @foreach (FixedQcTemplate::approvalColumns() as $column)
+                <div class="qc-approval-box">
+                    <small>{{ $column['group'] }}</small>
+                    <strong>{{ $column['label'] }}</strong>
+                    <input type="text" class="form-control mt-2" placeholder="Nama" disabled>
+                    <input type="date" class="form-control mt-2" disabled>
+                    <span>{{ $column['key'] === 'qc_inspector_qc_inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
                 </div>
             @endforeach
         </div>
@@ -256,115 +302,71 @@
 @push('scripts')
     <script>
         (() => {
-            const blockList = document.querySelector('[data-block-list]');
-            const layoutMode = document.querySelector('[data-layout-mode]');
-            const excelNote = document.querySelector('[data-excel-grid-note]');
-            const blockOptions = @json($blockOptions);
-            let blockIndex = blockList.querySelectorAll('[data-block]').length;
+            const typeSelect = document.querySelector('[data-template-type]');
+            const generalEditor = document.querySelector('[data-general-editor]');
+            const weldingEditor = document.querySelector('[data-welding-editor]');
+            const generalList = document.querySelector('[data-general-row-list]');
+            const welderList = document.querySelector('[data-welder-row-list]');
+            const resultList = document.querySelector('[data-result-row-list]');
 
-            const optionHtml = (selected = 'note') => Object.entries(blockOptions)
-                .map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`)
-                .join('');
-
-            const defaultColumns = (type) => {
-                if (type === 'checklist_table') return 'Kategori, Item Pengecekan, Standar, Status, Catatan';
-                if (type === 'measurement_table') return 'No, Parameter, Standar, Aktual, Unit, Keterangan';
-                if (type === 'approval') return 'Tanggal, *1 Diisi, *2 Disetujui, *3 Disetujui';
-                return 'Label, Input';
+            const syncType = () => {
+                const isWelding = typeSelect?.value === 'welding';
+                generalEditor?.classList.toggle('d-none', isWelding);
+                weldingEditor?.classList.toggle('d-none', !isWelding);
             };
 
-            const rowHtml = (block, row, type) => {
-                if (type === 'measurement_table') {
-                    return `<div class="builder-row" data-row>
-                        <input type="text" name="blocks[${block}][rows][${row}][parameter]" class="form-control" placeholder="Parameter">
-                        <input type="text" name="blocks[${block}][rows][${row}][standard]" class="form-control" placeholder="Standar">
-                        <input type="text" name="blocks[${block}][rows][${row}][actual]" class="form-control" placeholder="Aktual">
-                        <input type="text" name="blocks[${block}][rows][${row}][unit]" class="form-control" placeholder="Unit">
-                        <input type="text" name="blocks[${block}][rows][${row}][note]" class="form-control" placeholder="Keterangan">
-                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row><i class="bi bi-x-lg"></i></button>
-                    </div>`;
-                }
+            const nextIndex = (list, selector) => list.querySelectorAll(selector).length;
 
-                return `<div class="builder-row" data-row>
-                    <input type="text" name="blocks[${block}][rows][${row}][kategori]" class="form-control" placeholder="Kategori">
-                    <input type="text" name="blocks[${block}][rows][${row}][item]" class="form-control" placeholder="Item">
-                    <input type="text" name="blocks[${block}][rows][${row}][standar]" class="form-control" placeholder="Standar">
-                    <input type="text" name="blocks[${block}][rows][${row}][catatan]" class="form-control" placeholder="Catatan">
-                    <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row><i class="bi bi-x-lg"></i></button>
-                </div>`;
-            };
-
-            const blockHtml = (index) => `<div class="builder-block" data-block data-block-index="${index}">
-                <div class="builder-block-head">
-                    <div class="row g-2 flex-grow-1">
-                        <div class="col-12 col-md-3">
-                            <label class="form-label">Jenis Bagian</label>
-                            <select name="blocks[${index}][type]" class="form-select" data-block-type>${optionHtml('note')}</select>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label">Judul Bagian</label>
-                            <input type="text" name="blocks[${index}][title]" class="form-control" placeholder="Judul block">
-                        </div>
-                        <div class="col-12 col-md-5">
-                            <label class="form-label">Kolom Tabel</label>
-                            <input type="text" name="blocks[${index}][columns]" class="form-control" value="${defaultColumns('note')}">
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-outline-danger btn-sm" data-remove-block title="Hapus block"><i class="bi bi-trash"></i></button>
-                </div>
-                <div class="builder-rows d-none" data-row-area>
-                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                        <strong class="small">Item Pemeriksaan</strong>
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row><i class="bi bi-plus-lg me-1"></i>Tambah Row</button>
-                    </div>
-                    <div data-row-list></div>
-                </div>
-                <div class="builder-fields" data-field-area></div>
-            </div>`;
-
-            document.querySelector('[data-add-block]')?.addEventListener('click', () => {
-                blockList.insertAdjacentHTML('beforeend', blockHtml(blockIndex++));
+            document.querySelector('[data-add-general-row]')?.addEventListener('click', () => {
+                const index = nextIndex(generalList, '[data-general-row]');
+                generalList.insertAdjacentHTML('beforeend', `<tr data-general-row>
+                    <td><input type="number" name="general_rows[${index}][urutan]" class="form-control form-control-sm" value="${index + 1}"></td>
+                    <td><input type="text" name="general_rows[${index}][item_pengecekan]" class="form-control form-control-sm" placeholder="Item Pengecekan"></td>
+                    <td><input type="text" name="general_rows[${index}][standar]" class="form-control form-control-sm" placeholder="Standar"></td>
+                    <td><input type="text" name="general_rows[${index}][actual_default]" class="form-control form-control-sm" placeholder="Manual"></td>
+                    <td class="text-center"><input type="checkbox" disabled></td>
+                    <td class="text-center"><input type="checkbox" disabled></td>
+                    <td><input type="text" class="form-control form-control-sm" disabled placeholder="Diisi user"></td>
+                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                </tr>`);
             });
 
-            const syncLayoutNote = () => {
-                excelNote?.classList.toggle('d-none', layoutMode?.value !== 'excel_grid');
-            };
+            document.querySelector('[data-add-welder-row]')?.addEventListener('click', () => {
+                const index = nextIndex(welderList, '[data-welder-row]');
+                welderList.insertAdjacentHTML('beforeend', `<tr data-welder-row>
+                    <td><input type="text" name="welding_welder_rows[${index}][no]" class="form-control form-control-sm" value="${index + 1}"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][nama_welder]" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][posisi_pengelasan]" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][diameter_electrode]" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][electrode_filter]" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][amper]" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="welding_welder_rows[${index}][keterangan]" class="form-control form-control-sm"></td>
+                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                </tr>`);
+            });
 
-            layoutMode?.addEventListener('change', syncLayoutNote);
-            syncLayoutNote();
+            document.querySelector('[data-add-result-row]')?.addEventListener('click', () => {
+                const index = nextIndex(resultList, '[data-result-row]');
+                resultList.insertAdjacentHTML('beforeend', `<tr data-result-row>
+                    <td><input type="text" name="welding_result_rows[${index}][no]" class="form-control form-control-sm" value="${index + 1}"></td>
+                    <td><input type="text" name="welding_result_rows[${index}][deskripsi]" class="form-control form-control-sm"></td>
+                    <td class="text-center"><input type="checkbox" disabled></td>
+                    <td class="text-center"><input type="checkbox" disabled></td>
+                    <td class="text-center"><input type="checkbox" disabled></td>
+                    <td><input type="text" name="welding_result_rows[${index}][keterangan]" class="form-control form-control-sm"></td>
+                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                </tr>`);
+            });
 
-            blockList.addEventListener('click', (event) => {
-                const removeBlock = event.target.closest('[data-remove-block]');
-                if (removeBlock) {
-                    removeBlock.closest('[data-block]').remove();
-                    return;
-                }
-
-                const addRow = event.target.closest('[data-add-row]');
-                if (addRow) {
-                    const block = addRow.closest('[data-block]');
-                    const blockPosition = block.dataset.blockIndex;
-                    const type = block.querySelector('[data-block-type]').value;
-                    const rowList = block.querySelector('[data-row-list]');
-                    rowList.insertAdjacentHTML('beforeend', rowHtml(blockPosition, rowList.querySelectorAll('[data-row]').length, type));
-                    return;
-                }
-
-                const removeRow = event.target.closest('[data-remove-row]');
-                if (removeRow) {
-                    removeRow.closest('[data-row]').remove();
+            document.addEventListener('click', (event) => {
+                const remove = event.target.closest('[data-remove-row]');
+                if (remove) {
+                    remove.closest('tr')?.remove();
                 }
             });
 
-            blockList.addEventListener('change', (event) => {
-                if (! event.target.matches('[data-block-type]')) return;
-
-                const block = event.target.closest('[data-block]');
-                const type = event.target.value;
-                block.querySelector('[name$="[columns]"]').value = defaultColumns(type);
-                block.querySelector('[data-row-area]').classList.toggle('d-none', ! ['checklist_table', 'measurement_table'].includes(type));
-                block.querySelector('[data-field-area]').classList.toggle('d-none', ['checklist_table', 'measurement_table'].includes(type));
-            });
+            typeSelect?.addEventListener('change', syncType);
+            syncType();
         })();
     </script>
 @endpush

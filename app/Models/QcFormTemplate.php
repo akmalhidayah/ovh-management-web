@@ -20,8 +20,14 @@ class QcFormTemplate extends Model
         'version',
         'status',
         'layout_mode',
+        'template_type',
+        'body_schema',
         'source_file',
         'created_by',
+    ];
+
+    protected $casts = [
+        'body_schema' => 'array',
     ];
 
     public function creator(): BelongsTo

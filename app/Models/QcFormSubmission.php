@@ -30,6 +30,7 @@ class QcFormSubmission extends Model
         'pekerjaan',
         'durasi',
         'general_info',
+        'body_data',
         'note',
         'approval_data',
     ];
@@ -38,8 +39,43 @@ class QcFormSubmission extends Model
         'submitted_at' => 'datetime',
         'tgl_mulai' => 'date',
         'general_info' => 'array',
+        'body_data' => 'array',
         'approval_data' => 'array',
     ];
+
+    public function getRouteKey(): mixed
+    {
+        $formNumber = (string) $this->getAttribute('form_number');
+
+        return $formNumber !== ''
+            ? self::routeKeyFromFormNumber($formNumber)
+            : parent::getRouteKey();
+    }
+
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        if ($field !== null) {
+            return $this->newQuery()->where($field, $value)->first();
+        }
+
+        return $this->newQuery()
+            ->where('form_number', self::formNumberFromRouteKey((string) $value))
+            ->first();
+    }
+
+    public static function routeKeyFromFormNumber(string $formNumber): string
+    {
+        return str_replace(['/', '\\'], '-', trim($formNumber));
+    }
+
+    public static function formNumberFromRouteKey(string $routeKey): string
+    {
+        if (preg_match('/^(.+)-QC-(\d{2}-\d{4})$/', $routeKey, $matches) === 1) {
+            return "{$matches[1]}/QC/{$matches[2]}";
+        }
+
+        return $routeKey;
+    }
 
     public function template(): BelongsTo
     {

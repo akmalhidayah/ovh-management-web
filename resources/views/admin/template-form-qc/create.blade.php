@@ -7,7 +7,7 @@
     <div class="page-header">
         <div>
             <h1>Buat Template Form QC</h1>
-            <p>Bangun template berbasis block untuk mengikuti format dokumen QC lama.</p>
+            <p>Buat template QC dengan header, catatan, lampiran, dan approval standar. Admin hanya mengatur body.</p>
         </div>
     </div>
 

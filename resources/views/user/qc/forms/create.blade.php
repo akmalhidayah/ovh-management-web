@@ -10,6 +10,21 @@
         </div>
     </div>
 
+    @if (session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <strong>Form belum bisa disubmit.</strong>
+            <ul class="mb-0 mt-2">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <section class="inspector-panel qc-template-picker-card">
         <div class="row g-3 align-items-end">
             <div class="col-12 col-lg-8">
@@ -40,10 +55,13 @@
             <p>Silakan publish template dari halaman admin agar user QC bisa membuat form berdasarkan template tersebut.</p>
         </section>
     @else
-        <form method="POST" action="{{ route('user.qc.forms.store') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ isset($draftSubmission) ? route('user.qc.submissions.update', $draftSubmission) : route('user.qc.forms.store') }}" enctype="multipart/form-data">
             @csrf
+            @isset($draftSubmission)
+                @method('PATCH')
+            @endisset
             <input type="hidden" name="template_id" value="{{ $selectedTemplate->id }}">
-            @include('user.qc.forms.partials.block-form-renderer', ['selectedTemplate' => $selectedTemplate])
+            @include('user.qc.forms.partials.block-form-renderer', ['selectedTemplate' => $selectedTemplate, 'draftSubmission' => $draftSubmission ?? null])
         </form>
     @endif
 @endsection

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
@@ -53,6 +54,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/kalender-overhaul', [AdminDashboardController::class, 'kalenderOverhaul'])->name('kalender-overhaul');
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
+    Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf');
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
     Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
         Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
@@ -73,12 +75,28 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
         Route::post('/{template}/duplicate', [TemplateFormQcController::class, 'duplicate'])->name('duplicate');
         Route::patch('/{template}/toggle-status', [TemplateFormQcController::class, 'toggleStatus'])->name('toggle-status');
     });
-    Route::get('/template-form-commissioning', [TemplateFormCommissioningController::class, 'index'])->name('template-form-commissioning.index');
+    Route::prefix('template-form-commissioning')->name('template-form-commissioning.')->group(function () {
+        Route::get('/', [TemplateFormCommissioningController::class, 'index'])->name('index');
+        Route::get('/create', [TemplateFormCommissioningController::class, 'create'])->name('create');
+        Route::post('/', [TemplateFormCommissioningController::class, 'store'])->name('store');
+        Route::get('/{template}/preview', [TemplateFormCommissioningController::class, 'preview'])->name('preview');
+        Route::get('/{template}/edit', [TemplateFormCommissioningController::class, 'edit'])->name('edit');
+        Route::put('/{template}', [TemplateFormCommissioningController::class, 'update'])->name('update');
+        Route::post('/{template}/duplicate', [TemplateFormCommissioningController::class, 'duplicate'])->name('duplicate');
+        Route::patch('/{template}/toggle-status', [TemplateFormCommissioningController::class, 'toggleStatus'])->name('toggle-status');
+        Route::patch('/{template}/publish', [TemplateFormCommissioningController::class, 'publish'])->name('publish');
+        Route::get('/{template}', [TemplateFormCommissioningController::class, 'show'])->name('show');
+        Route::delete('/{template}', [TemplateFormCommissioningController::class, 'destroy'])->name('destroy');
+    });
     Route::get('/equipment', [AdminDashboardController::class, 'equipment'])->name('equipment');
     Route::get('/mom', [AdminDashboardController::class, 'mom'])->name('mom');
     Route::redirect('/dokument', '/admin/dokumen');
     Route::get('/dokumen', [AdminDashboardController::class, 'dokumen'])->name('dokumen');
-    Route::get('/master-data', [AdminDashboardController::class, 'masterData'])->name('master-data');
+    Route::get('/master-data', [MasterDataController::class, 'index'])->name('master-data');
+    Route::post('/master-data', [MasterDataController::class, 'store'])->name('master-data.store');
+    Route::patch('/master-data/bulk-status', [MasterDataController::class, 'bulkStatus'])->name('master-data.bulk-status');
+    Route::put('/master-data/{masterDataRecord}', [MasterDataController::class, 'update'])->name('master-data.update');
+    Route::delete('/master-data/{masterDataRecord}', [MasterDataController::class, 'destroy'])->name('master-data.destroy');
 });
 
 Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->group(function () {
@@ -90,8 +108,11 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/drafts', [QcDraftController::class, 'index'])->name('drafts.index');
         Route::get('/history', [QcHistoryController::class, 'index'])->name('history.index');
         Route::redirect('/documents', '/user/qc/history')->name('documents.index');
+        Route::get('/submissions/{submission}/edit', [QcFormController::class, 'edit'])->name('submissions.edit');
+        Route::patch('/submissions/{submission}', [QcFormController::class, 'update'])->name('submissions.update');
         Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show');
         Route::get('/submissions/{submission}/pdf', [QcFormController::class, 'pdf'])->name('submissions.pdf');
+        Route::get('/attachments/{attachment}', [QcFormController::class, 'attachment'])->name('attachments.show');
         Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy');
         Route::get('/profile', [QcProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [QcProfileController::class, 'update'])->name('profile.update');
@@ -101,9 +122,15 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/', fn () => redirect()->route('user.commissioning.dashboard'));
         Route::get('/dashboard', [CommissioningDashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('/forms/create', [CommissioningFormController::class, 'create'])->name('forms.create');
+        Route::post('/forms', [CommissioningFormController::class, 'store'])->name('forms.store');
         Route::get('/drafts', [CommissioningDraftController::class, 'index'])->name('drafts.index');
         Route::get('/history', [CommissioningHistoryController::class, 'index'])->name('history.index');
         Route::redirect('/documents', '/user/commissioning/history')->name('documents.index');
+        Route::get('/submissions/{submission}/edit', [CommissioningFormController::class, 'edit'])->name('submissions.edit');
+        Route::patch('/submissions/{submission}', [CommissioningFormController::class, 'update'])->name('submissions.update');
+        Route::get('/submissions/{submission}', [CommissioningFormController::class, 'show'])->name('submissions.show');
+        Route::get('/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('submissions.pdf');
+        Route::get('/attachments/{attachment}', [CommissioningFormController::class, 'attachment'])->name('attachments.show');
         Route::get('/profile', [CommissioningProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [CommissioningProfileController::class, 'update'])->name('profile.update');
     });

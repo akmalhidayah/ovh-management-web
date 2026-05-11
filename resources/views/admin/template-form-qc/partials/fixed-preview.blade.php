@@ -1,0 +1,199 @@
+@php
+    use App\Support\QcTemplates\FixedQcTemplate;
+
+    $type = FixedQcTemplate::normalizeType($template->template_type);
+    $schema = FixedQcTemplate::schemaForTemplate($template);
+@endphp
+
+<div class="qc-block-preview">
+    <section class="qc-preview-section">
+        <div class="qc-preview-section-head">
+            <h2>Header</h2>
+            <span>Input manual user</span>
+        </div>
+        <div class="qc-info-grid">
+            @foreach (FixedQcTemplate::headerFields() as $field)
+                <div class="qc-info-field">
+                    <label>{{ $field['label'] }}</label>
+                    <input type="{{ $field['type'] }}" disabled>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    @if ($type === FixedQcTemplate::TYPE_WELDING)
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Metode QC dan Pengecekan ke</h2>
+                <span>Checkbox user</span>
+            </div>
+            <div class="d-flex flex-wrap gap-3">
+                @foreach (FixedQcTemplate::defaultMethods() as $method)
+                    <label><input type="checkbox" disabled> {{ $method }}</label>
+                @endforeach
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-2">
+                @foreach (FixedQcTemplate::defaultCheckSteps() as $step)
+                    <label><input type="checkbox" disabled> {{ $step }}</label>
+                @endforeach
+            </div>
+        </section>
+
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Tabel Welder</h2>
+                <span>Row bisa tambah/hapus user</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Welder</th>
+                            <th>Posisi Pengelasan</th>
+                            <th>Diameter Electrode</th>
+                            <th>Electrode/Filter</th>
+                            <th>Amper</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($schema['welder_rows'] ?? [] as $row)
+                            <tr>
+                                <td>{{ $row['no'] ?? $loop->iteration }}</td>
+                                <td>{{ $row['nama_welder'] ?? '' }}</td>
+                                <td>{{ $row['posisi_pengelasan'] ?? '' }}</td>
+                                <td>{{ $row['diameter_electrode'] ?? '' }}</td>
+                                <td>{{ $row['electrode_filter'] ?? '' }}</td>
+                                <td>{{ $row['amper'] ?? '' }}</td>
+                                <td>{{ $row['keterangan'] ?? '' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="text-center text-muted py-3">Belum ada row default.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Tabel Hasil QC Welding</h2>
+                <span>Status pilih salah satu</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Deskripsi</th>
+                            <th>Baik</th>
+                            <th>Perlu Perbaikan</th>
+                            <th>Tidak Layak</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($schema['result_rows'] ?? [] as $row)
+                            <tr>
+                                <td>{{ $row['no'] ?? $loop->iteration }}</td>
+                                <td>{{ $row['deskripsi'] ?? '' }}</td>
+                                <td><input type="radio" disabled></td>
+                                <td><input type="radio" disabled></td>
+                                <td><input type="radio" disabled></td>
+                                <td>{{ $row['keterangan'] ?? '' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="text-center text-muted py-3">Belum ada row default.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @else
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Body QC Umum</h2>
+                <span>Status pilih salah satu</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Item Pengecekan</th>
+                            <th>Standar</th>
+                            <th>Actual</th>
+                            <th>Status</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($schema['rows'] ?? [] as $row)
+                            <tr>
+                                <td>{{ $row['item_pengecekan'] ?? '' }}</td>
+                                <td>{{ $row['standar'] ?? '' }}</td>
+                                <td>{{ $row['actual_default'] ?? '' }}</td>
+                                <td>
+                                    <label><input type="radio" disabled> Ok</label>
+                                    <label class="ms-2"><input type="radio" disabled> Not Ok</label>
+                                </td>
+                                <td></td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="text-center text-muted py-3">Belum ada row default.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @endif
+
+    <section class="qc-preview-section">
+        <div class="qc-preview-section-head">
+            <h2>Catatan</h2>
+            <span>Terkunci</span>
+        </div>
+        <textarea class="form-control qc-note-preview" disabled placeholder="Catatan diisi oleh user QC"></textarea>
+    </section>
+
+    <section class="qc-preview-section">
+        <div class="qc-preview-section-head">
+            <h2>Lampiran Foto/Gambar</h2>
+            <span>Terkunci</span>
+        </div>
+        <div class="row g-3">
+            @foreach (['Foto Before', 'Foto After', 'Dokumen Pendukung'] as $label)
+                <div class="col-12 col-md-4">
+                    <div class="qc-preview-attachment-box h-100">
+                        <i class="bi bi-images"></i>
+                        <strong>{{ $label }}</strong>
+                        <span>Upload oleh user QC</span>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    <section class="qc-preview-section">
+        <div class="qc-preview-section-head">
+            <h2>Approval Footer</h2>
+            <span>Terkunci</span>
+        </div>
+        <p class="text-muted">Baru bisa ter approve jika form sudah terisi semua & Final Check sudah tercentang:</p>
+        <label class="d-inline-flex align-items-center gap-2 mb-3">
+            <input type="checkbox" disabled>
+            <strong>Final Check</strong>
+        </label>
+        <div class="qc-approval-grid">
+            @foreach (FixedQcTemplate::approvalColumns() as $column)
+                <div class="qc-approval-box">
+                    <small>{{ $column['group'] }}</small>
+                    <strong>{{ $column['label'] }}</strong>
+                    <input type="text" class="form-control mt-2" placeholder="Nama" disabled>
+                    <input type="date" class="form-control mt-2" disabled>
+                    <span>{{ $column['key'] === 'qc_inspector_qc_inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
+                </div>
+            @endforeach
+        </div>
+    </section>
+</div>

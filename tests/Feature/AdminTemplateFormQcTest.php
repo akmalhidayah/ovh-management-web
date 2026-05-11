@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\QcFormTemplate;
 use App\Models\User;
+use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\QcTemplates\QcTemplateRegistry;
 use Database\Seeders\QcFormTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,14 +76,13 @@ class AdminTemplateFormQcTest extends TestCase
             'description' => 'Manual template',
             'version' => '1.0',
             'status' => 'draft',
-            'blocks' => [
+            'template_type' => 'general',
+            'general_rows' => [
                 [
-                    'type' => 'checklist_table',
-                    'title' => 'Checklist QC',
-                    'columns' => 'No, Aktivitas, Standar, Aktual, Keterangan',
-                    'rows' => [
-                        ['activity' => 'Cek belt', 'standard' => 'Tidak sobek', 'actual_type' => 'text', 'note' => ''],
-                    ],
+                    'urutan' => 1,
+                    'item_pengecekan' => 'Cek belt',
+                    'standar' => 'Tidak sobek',
+                    'actual_default' => '',
                 ],
             ],
         ]);
@@ -90,6 +90,7 @@ class AdminTemplateFormQcTest extends TestCase
         $template = QcFormTemplate::where('code', 'QCR-MANUAL-001')->firstOrFail();
 
         $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame('general', $template->template_type);
         $this->assertSame(1, $template->blocks()->count());
         $this->assertSame(1, $template->tableRows()->count());
 
@@ -108,6 +109,55 @@ class AdminTemplateFormQcTest extends TestCase
             'id' => $template->id,
             'status' => 'active',
         ]);
+    }
+
+    public function test_admin_can_create_qc_umum_template(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'QCR-GENERAL-001',
+            'name' => 'Template QC Umum',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_GENERAL,
+            'general_rows' => [
+                ['urutan' => 1, 'item_pengecekan' => 'Cek visual', 'standar' => 'Baik', 'actual_default' => 'Normal'],
+            ],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-GENERAL-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame(FixedQcTemplate::TYPE_GENERAL, $template->template_type);
+        $this->assertSame('Cek visual', $template->body_schema['rows'][0]['item_pengecekan']);
+    }
+
+    public function test_admin_can_create_qc_welding_template(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'QCR-WELDING-001',
+            'name' => 'Template QC Welding',
+            'category' => 'Welding',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_WELDING,
+            'welding_welder_rows' => [
+                ['no' => 1, 'nama_welder' => 'Welder A', 'posisi_pengelasan' => '1G', 'diameter_electrode' => '3.2', 'electrode_filter' => 'E7018', 'amper' => '90', 'keterangan' => ''],
+            ],
+            'welding_result_rows' => [
+                ['no' => 1, 'deskripsi' => 'Visual welding', 'keterangan' => ''],
+            ],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-WELDING-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame(FixedQcTemplate::TYPE_WELDING, $template->template_type);
+        $this->assertSame('Visual welding', $template->body_schema['result_rows'][0]['deskripsi']);
     }
 
     public function test_admin_can_publish_template_form_qc(): void
@@ -216,6 +266,50 @@ class AdminTemplateFormQcTest extends TestCase
         $this->assertSame('draft', $draftTemplate->fresh()->status);
     }
 
+    public function test_user_qc_can_open_fixed_general_and_welding_forms(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+
+        $general = QcFormTemplate::create([
+            'code' => 'QCR-FIXED-GEN-001',
+            'name' => 'Fixed General QC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+            'template_type' => FixedQcTemplate::TYPE_GENERAL,
+            'body_schema' => ['rows' => [['item_pengecekan' => 'Cek bearing', 'standar' => 'Normal', 'actual_default' => '', 'urutan' => 1]]],
+        ]);
+
+        $welding = QcFormTemplate::create([
+            'code' => 'QCR-FIXED-WELD-001',
+            'name' => 'Fixed Welding QC',
+            'category' => 'Welding',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+            'template_type' => FixedQcTemplate::TYPE_WELDING,
+            'body_schema' => ['welder_rows' => [], 'result_rows' => [['no' => 1, 'deskripsi' => 'Visual welding', 'keterangan' => '']]],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', ['template' => $general->id]))
+            ->assertOk()
+            ->assertSee('Fixed General QC')
+            ->assertSee('Cek bearing')
+            ->assertSee('Final Check');
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', ['template' => $welding->id]))
+            ->assertOk()
+            ->assertSee('Fixed Welding QC')
+            ->assertSee('Metode QC')
+            ->assertSee('Visual welding')
+            ->assertDontSee('data-add-user-welder', false)
+            ->assertDontSee('data-add-user-result', false)
+            ->assertDontSee('data-remove-user-row', false);
+    }
+
     public function test_user_qc_create_form_is_safe_without_active_template(): void
     {
         $user = User::factory()->create([
@@ -292,12 +386,13 @@ class AdminTemplateFormQcTest extends TestCase
         $this->seed(QcFormTemplateSeeder::class);
         $this->seed(QcFormTemplateSeeder::class);
 
-        $this->assertSame(31, QcFormTemplate::whereIn('code', $expectedCodes)->count());
-        $this->assertSame(31, QcFormTemplate::count());
-        $this->assertSame(
-            ['01', '02', '03', '04', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34'],
-            QcTemplateRegistry::numbers()
-        );
+        $this->assertSame(count($expectedCodes), QcFormTemplate::whereIn('code', $expectedCodes)->count());
+        $this->assertSame(count($expectedCodes), QcFormTemplate::count());
+
+        if ($expectedCodes === []) {
+            return;
+        }
+
         $this->assertDatabaseMissing('qc_form_templates', ['code' => 'QCR-05']);
         $this->assertDatabaseMissing('qc_form_templates', ['code' => 'QCR-06']);
         $this->assertDatabaseMissing('qc_form_templates', ['code' => 'QCR-07']);

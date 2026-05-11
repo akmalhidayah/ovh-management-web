@@ -114,10 +114,10 @@
                                 <div class="fw-semibold">{{ $template->name }}</div>
                                 <div class="template-meta">
                                     <span>{{ $template->code ?: 'Tanpa kode' }}</span>
-                                    <span>{{ $template->blocks_count }} bagian</span>
+                                    <span>{{ $template->template_type ? \App\Support\QcTemplates\FixedQcTemplate::templateTypeLabel($template->template_type) : $template->blocks_count.' bagian' }}</span>
                                     <span>{{ $template->fields_count }} item</span>
                                     <span>Versi {{ $template->version }}</span>
-                                    <span>{{ $template->layout_mode === 'excel_grid' ? 'Excel Grid' : 'Block Based' }}</span>
+                                    <span>{{ $template->template_type ? 'Form Terarah' : ($template->layout_mode === 'excel_grid' ? 'Excel Grid' : 'Block Based') }}</span>
                                 </div>
                                 @if ($template->status === 'draft')
                                     <div class="template-row-note">Perlu direview sebelum digunakan.</div>

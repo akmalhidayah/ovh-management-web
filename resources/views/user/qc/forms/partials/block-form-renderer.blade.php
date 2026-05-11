@@ -15,6 +15,9 @@
     $signerPosition = 'Quality Control Personil';
 @endphp
 
+@if ($selectedTemplate->template_type)
+    @include('user.qc.forms.partials.fixed-form-renderer', ['selectedTemplate' => $selectedTemplate, 'draftSubmission' => $draftSubmission ?? null])
+@else
 <div class="qc-user-form">
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-card-head">
@@ -140,7 +143,7 @@
                             $key = $attachmentKey($field);
                             $label = $attachmentLabel($field);
                             $type = $attachmentType($field);
-                            $accept = $attachmentAccept($field) ?: ($type === 'image' ? 'image/*' : null);
+                            $accept = '.jpg,.jpeg,.png,image/jpeg,image/png';
                             $multiple = $attachmentMultiple($field);
                             $maxFiles = $attachmentMaxFiles($field);
                         @endphp
@@ -148,7 +151,7 @@
                             <div class="qc-upload-box-head">
                                 <div>
                                     <strong>{{ $label }}</strong>
-                                    <span>{{ $multiple ? 'Bisa memilih beberapa file' : 'Pilih satu file' }}{{ $maxFiles ? ' - maks. '.$maxFiles.' file' : '' }}</span>
+                                    <span>Hanya JPG atau PNG. {{ $multiple ? 'Bisa memilih beberapa file' : 'Pilih satu file' }}{{ $maxFiles ? ' - maks. '.$maxFiles.' file' : '' }}</span>
                                 </div>
                                 <i class="bi {{ $type === 'image' ? 'bi-images' : 'bi-paperclip' }}"></i>
                             </div>
@@ -157,7 +160,7 @@
                                 class="form-control"
                                 name="attachments[{{ $key }}][]"
                                 data-upload-input
-                                @if ($accept) accept="{{ $accept }}" @endif
+                                accept="{{ $accept }}"
                                 @if ($multiple) multiple @endif
                             >
                             <div class="qc-upload-message" data-upload-message></div>
@@ -280,3 +283,4 @@
         </div>
     </section>
 </div>
+@endif

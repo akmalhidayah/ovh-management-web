@@ -1,29 +1,63 @@
-<x-page-header title="Commissioning" subtitle="Data dummy commissioning equipment.">
-    <button class="btn btn-outline-secondary"><i class="bi bi-download me-2"></i>Download</button>
-    <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tambah Data</button>
-</x-page-header>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-4"><x-stat-card title="Total Commissioning" value="38" icon="bi-tools" tone="primary" /></div>
-    <div class="col-12 col-md-4"><x-stat-card title="Selesai" value="24" icon="bi-check2-circle" tone="success" /></div>
-    <div class="col-12 col-md-4"><x-stat-card title="Proses" value="14" icon="bi-hourglass-split" tone="warning" /></div>
+<div class="page-header">
+    <div>
+        <h1>Commissioning</h1>
+        <p>Monitoring form commissioning yang dibuat user role Commissioning.</p>
+    </div>
 </div>
 
-<x-filter-card>
-    <div class="col-12 col-md-4"><label class="form-label">Tahun</label><select class="form-select"><option>2026</option></select></div>
-    <div class="col-12 col-md-4"><label class="form-label">Plant</label><select class="form-select"><option>Semua Plant</option></select></div>
-    <div class="col-12 col-md-4"><label class="form-label">Area</label><select class="form-select"><option>Semua Area</option></select></div>
-</x-filter-card>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4"><x-stat-card title="Total Commissioning" :value="$summary['total']" icon="bi-tools" tone="primary" /></div>
+    <div class="col-12 col-md-4"><x-stat-card title="Submitted" :value="$summary['submitted']" icon="bi-check2-circle" tone="success" /></div>
+    <div class="col-12 col-md-4"><x-stat-card title="Draft" :value="$summary['draft']" icon="bi-pencil-square" tone="warning" /></div>
+</div>
+
+<div class="content-card">
+    <form method="GET" class="row g-3 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">Semua</option>
+                <option value="submitted" @selected(request('status') === 'submitted')>Submitted</option>
+                <option value="draft" @selected(request('status') === 'draft')>Draft</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label">Cari</label>
+            <input type="search" name="search" class="form-control" value="{{ request('search') }}" placeholder="Form no, equipment, area, functional location">
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </form>
+</div>
 
 <div class="content-card">
     <div class="table-responsive">
         <table class="table align-middle ovh-table">
-            <thead><tr><th>No</th><th>Tahun</th><th>Plant</th><th>Area</th><th>Equipment</th><th>Tanggal</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Form No</th><th>Template</th><th>User</th><th>Equipment</th><th>Area</th><th>Status</th><th>Submitted</th><th class="text-end">Action</th></tr></thead>
             <tbody>
-                @foreach ([['2026','Plant A','Turbine','Turbine Generator','2026-05-12','Proses'], ['2026','Plant B','Boiler','Feed Pump','2026-05-18','Selesai'], ['2026','Plant C','Electrical','Switchgear','2026-05-22','Draft']] as $i => $row)
-                    <tr><td>{{ $i + 1 }}</td><td>{{ $row[0] }}</td><td>{{ $row[1] }}</td><td>{{ $row[2] }}</td><td>{{ $row[3] }}</td><td>{{ $row[4] }}</td><td><x-status-badge :status="$row[5]" /></td><td><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></button></td></tr>
-                @endforeach
+                @forelse ($submissions as $submission)
+                    <tr>
+                        <td>{{ $submission->form_number }}</td>
+                        <td>{{ $submission->template?->name }}</td>
+                        <td>{{ $submission->user?->name ?: '-' }}</td>
+                        <td>{{ $submission->equipment ?: '-' }}</td>
+                        <td>{{ $submission->area ?: '-' }}</td>
+                        <td><x-status-badge :status="$submission->status === 'submitted' ? 'Submitted' : 'Draft'" /></td>
+                        <td>{{ $submission->submitted_at?->format('d M Y H:i') ?: '-' }}</td>
+                        <td class="text-end">
+                            @if ($submission->status === 'submitted')
+                                <a href="{{ route('admin.commissioning.submissions.pdf', $submission) }}" class="btn btn-sm btn-success" target="_blank">PDF</a>
+                            @else
+                                <span class="text-muted small">Draft user</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="8" class="text-center text-muted py-4">Belum ada submission commissioning.</td></tr>
+                @endforelse
             </tbody>
         </table>
     </div>
+    {{ $submissions->links() }}
 </div>

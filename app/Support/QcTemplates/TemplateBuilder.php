@@ -18,6 +18,8 @@ class TemplateBuilder
     {
         return DB::transaction(function () use ($data) {
             $layoutMode = $data['layout_mode'] ?? 'block_based';
+            $templateType = FixedQcTemplate::normalizeType($data['template_type'] ?? FixedQcTemplate::TYPE_GENERAL);
+            $bodySchema = $data['body_schema'] ?? self::bodySchemaFromPreset($data);
 
             $template = QcFormTemplate::updateOrCreate(
                 ['code' => $data['code']],
@@ -28,6 +30,8 @@ class TemplateBuilder
                     'version' => $data['version'] ?? '1.0',
                     'status' => $data['status'] ?? 'draft',
                     'layout_mode' => $layoutMode === 'excel_like' ? 'block_based' : $layoutMode,
+                    'template_type' => $templateType,
+                    'body_schema' => FixedQcTemplate::normalizeSchema($templateType, $bodySchema),
                     'created_by' => $data['created_by'] ?? null,
                 ]
             );
@@ -271,5 +275,27 @@ class TemplateBuilder
             'approval' => 'Approval',
             default => 'Catatan',
         };
+    }
+
+    private static function bodySchemaFromPreset(array $data): array
+    {
+        $rows = [];
+
+        foreach ($data['blocks'] ?? [] as $block) {
+            if (! in_array($block['type'] ?? null, ['checklist_table', 'measurement_table'], true)) {
+                continue;
+            }
+
+            foreach ($block['rows'] ?? [] as $row) {
+                $rows[] = [
+                    'item_pengecekan' => $row['item_pengecekan'] ?? $row['item'] ?? $row['activity'] ?? $row['aktivitas'] ?? $row['parameter'] ?? '',
+                    'standar' => $row['standar'] ?? $row['standard'] ?? '',
+                    'actual_default' => $row['actual_default'] ?? $row['actual'] ?? $row['aktual'] ?? '',
+                    'urutan' => count($rows) + 1,
+                ];
+            }
+        }
+
+        return ['rows' => $rows];
     }
 }

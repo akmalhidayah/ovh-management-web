@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommissioningFormSubmission;
 use App\Support\QcSubmissionPageData;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -34,9 +35,30 @@ class DashboardController extends Controller
         return view('admin.schedule');
     }
 
-    public function commissioning(): View
+    public function commissioning(Request $request): View
     {
-        return view('admin.commissioning');
+        $submissions = CommissioningFormSubmission::with(['template', 'user'])
+            ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
+            ->when($request->query('search'), function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('form_number', 'like', "%{$search}%")
+                        ->orWhere('equipment', 'like', "%{$search}%")
+                        ->orWhere('area', 'like', "%{$search}%")
+                        ->orWhere('functional_location', 'like', "%{$search}%");
+                });
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.commissioning', [
+            'submissions' => $submissions,
+            'summary' => [
+                'total' => CommissioningFormSubmission::count(),
+                'submitted' => CommissioningFormSubmission::where('status', 'submitted')->count(),
+                'draft' => CommissioningFormSubmission::where('status', 'draft')->count(),
+            ],
+        ]);
     }
 
     public function qc(Request $request): View
@@ -59,8 +81,4 @@ class DashboardController extends Controller
         return view('admin.dokumen');
     }
 
-    public function masterData(): View
-    {
-        return view('admin.master-data');
-    }
 }

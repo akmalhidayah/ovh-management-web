@@ -9,6 +9,9 @@
     $signerRole = $signatureApproval['role'] ?? 'Quality Control Personil';
 @endphp
 
+@if ($submission->template?->template_type)
+    @include('qc-submissions._fixed-detail', ['submission' => $submission, 'statusLabels' => $statusLabels])
+@else
 <div class="qc-submission-detail">
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-card-head">
@@ -104,7 +107,8 @@
         <div class="qc-form-section-title"><h3>Lampiran</h3></div>
         <div class="qc-attachment-grid">
             @forelse ($submission->attachments as $attachment)
-                <a href="{{ asset('storage/'.$attachment->file_path) }}" target="_blank" class="qc-upload-box text-decoration-none text-reset">
+                @php($attachmentUrl = route('user.qc.attachments.show', $attachment))
+                <a href="{{ $attachmentUrl }}" target="_blank" class="qc-upload-box text-decoration-none text-reset">
                     <div class="qc-upload-box-head">
                         <div>
                             <strong>{{ $attachment->label ?: $attachment->field_key }}</strong>
@@ -113,7 +117,7 @@
                         <i class="bi {{ $attachment->type === 'image' ? 'bi-image' : 'bi-file-earmark-text' }}"></i>
                     </div>
                     @if ($attachment->type === 'image')
-                        <img src="{{ asset('storage/'.$attachment->file_path) }}" alt="{{ $attachment->original_name }}" class="img-fluid rounded border">
+                        <img src="{{ $attachmentUrl }}" alt="{{ $attachment->original_name }}" class="img-fluid rounded border">
                     @endif
                 </a>
             @empty
@@ -140,3 +144,4 @@
         </div>
     </section>
 </div>
+@endif

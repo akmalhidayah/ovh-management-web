@@ -55,16 +55,8 @@
         $groups[] = [
             'label' => 'Master Data',
             'icon' => 'bi-database-gear',
-            'routes' => ['admin.master-data'],
-            'items' => [
-                ['label' => 'Tahun', 'route' => 'admin.master-data', 'hash' => 'tahun'],
-                ['label' => 'Plant', 'route' => 'admin.master-data', 'hash' => 'plant'],
-                ['label' => 'Area', 'route' => 'admin.master-data', 'hash' => 'area'],
-                ['label' => 'Equipment', 'route' => 'admin.master-data', 'hash' => 'equipment'],
-                ['label' => 'Status', 'route' => 'admin.master-data', 'hash' => 'status'],
-                ['label' => 'Kategori Dokumen', 'route' => 'admin.master-data', 'hash' => 'kategori-dokumen'],
-                ['label' => 'User Panel', 'route' => 'admin.master-data', 'hash' => 'pic-user'],
-            ],
+            'route' => 'admin.master-data',
+            'active' => 'admin.master-data*',
         ];
     }
 @endphp
@@ -84,7 +76,7 @@
         @foreach ($groups as $index => $item)
             @php
                 $isGroup = isset($item['items']);
-                $isActive = $isGroup ? request()->routeIs(...$item['routes']) : request()->routeIs($item['route']);
+                $isActive = $isGroup ? request()->routeIs(...$item['routes']) : request()->routeIs($item['active'] ?? $item['route']);
                 $groupId = 'sidebarGroup'.$index;
             @endphp
 
