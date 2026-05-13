@@ -673,7 +673,7 @@ class UserRoleUiData
                 'checks' => [
                     'Bolt and nut tightness at motor junction box',
                     'Check grounding connections',
-                    'Check tag number motor equipment',
+                    'Check section number motor equipment',
                     'Check tag & wire number',
                     'Check isolation power cable',
                     'Cable glands, clamping and termination',

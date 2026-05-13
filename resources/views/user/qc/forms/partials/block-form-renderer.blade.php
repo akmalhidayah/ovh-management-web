@@ -278,7 +278,7 @@
             <p>Tahap ini masih render form. Penyimpanan draft dan submit akan dibuat berikutnya.</p>
         </div>
         <div class="qc-form-actions">
-            <button type="submit" name="action" value="draft" class="btn btn-primary">Simpan Draft</button>
+            <button type="submit" name="action" value="draft" class="btn btn-primary" formnovalidate>Simpan Draft</button>
             <button type="submit" name="action" value="submit" class="btn btn-success">Submit QC</button>
         </div>
     </section>

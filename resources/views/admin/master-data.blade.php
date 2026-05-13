@@ -13,6 +13,7 @@
             'active' => 'text-bg-success',
             'inactive' => 'text-bg-secondary',
         ];
+        $showBulkSelection = in_array($filters['document_category'], ['qc', 'commissioning'], true);
     @endphp
 
     @if (session('success'))
@@ -162,24 +163,28 @@
                 <h2>Data Equipment Per Dokumen</h2>
                 <div class="text-muted small">Kolom mengikuti data source: Func. Location, Equipment No., Section No., Descriptions, Plant, Area.</div>
             </div>
-            <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
-                <span class="text-muted small" data-bulk-selected-count>0 dipilih</span>
-                <button type="submit" form="bulkMasterDataForm" name="status" value="active" class="btn btn-sm btn-success" data-bulk-action disabled>
-                    <i class="bi bi-check2-circle me-1"></i>Aktifkan
-                </button>
-                <button type="submit" form="bulkMasterDataForm" name="status" value="inactive" class="btn btn-sm btn-outline-secondary" data-bulk-action disabled>
-                    <i class="bi bi-pause-circle me-1"></i>Nonaktifkan
-                </button>
-            </div>
+            @if ($showBulkSelection)
+                <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                    <span class="text-muted small" data-bulk-selected-count>0 dipilih</span>
+                    <button type="submit" form="bulkMasterDataForm" name="status" value="active" class="btn btn-sm btn-success" data-bulk-action disabled>
+                        <i class="bi bi-check2-circle me-1"></i>Aktifkan
+                    </button>
+                    <button type="submit" form="bulkMasterDataForm" name="status" value="inactive" class="btn btn-sm btn-outline-secondary" data-bulk-action disabled>
+                        <i class="bi bi-pause-circle me-1"></i>Nonaktifkan
+                    </button>
+                </div>
+            @endif
         </div>
 
         <div class="table-responsive">
             <table class="table align-middle template-table">
                 <thead>
                     <tr>
-                        <th style="width: 44px;">
-                            <input type="checkbox" class="form-check-input" data-master-select-all aria-label="Pilih semua data pada halaman ini">
-                        </th>
+                        @if ($showBulkSelection)
+                            <th style="width: 44px;">
+                                <input type="checkbox" class="form-check-input" data-master-select-all aria-label="Pilih semua data pada halaman ini">
+                            </th>
+                        @endif
                         <th>Kategori</th>
                         <th>Func. Location</th>
                         <th>Equipment No.</th>
@@ -194,15 +199,17 @@
                 <tbody>
                     @forelse ($records as $record)
                         <tr>
-                            <td>
-                                <input type="checkbox"
-                                       class="form-check-input"
-                                       name="record_ids[]"
-                                       value="{{ $record->id }}"
-                                       form="bulkMasterDataForm"
-                                       data-master-row-check
-                                       aria-label="Pilih {{ $record->func_location }}">
-                            </td>
+                            @if ($showBulkSelection)
+                                <td>
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           name="record_ids[]"
+                                           value="{{ $record->id }}"
+                                           form="bulkMasterDataForm"
+                                           data-master-row-check
+                                           aria-label="Pilih {{ $record->func_location }}">
+                                </td>
+                            @endif
                             <td>
                                 <span class="badge {{ $categoryBadge[$record->document_category] ?? 'text-bg-secondary' }}">
                                     {{ $record->document_category_label }}
@@ -247,7 +254,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-4">Belum ada master data sesuai filter.</td>
+                            <td colspan="{{ $showBulkSelection ? 10 : 9 }}" class="text-center text-muted py-4">Belum ada master data sesuai filter.</td>
                         </tr>
                     @endforelse
                 </tbody>

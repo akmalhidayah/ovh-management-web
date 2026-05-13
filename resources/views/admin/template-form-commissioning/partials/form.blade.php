@@ -20,6 +20,7 @@
     $gearboxTestFields = $schema['gearbox_test_fields'];
     $gearboxRows = $schema['gearbox_test_rows'];
     $rows = $schema['equipment_check_rows'] ?: FixedCommissioningTemplate::defaultSchema()['equipment_check_rows'];
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedCommissioningTemplate::defaultApprovalDefaults();
 @endphp
 
 <form method="POST" action="{{ $action }}">
@@ -58,18 +59,20 @@
         <div class="card-heading">
             <div>
                 <h2>Informasi Umum / Header</h2>
-                <div class="text-muted small">Bagian ini ditampilkan di form user dan otomatis mengikuti master data.</div>
+                <div class="text-muted small">Urutan mengikuti form QC. Name Equipment dipilih user dari master data, field lain otomatis terisi.</div>
             </div>
         </div>
         <div class="row g-3">
-            @foreach (FixedCommissioningTemplate::headerFields() as $field)
-                <div class="col-12 col-md-3">
+            @foreach (array_chunk(FixedCommissioningTemplate::headerFields(), 3) as $row)
+                @foreach ($row as $field)
+                <div class="col-12 col-md-4">
                     <label class="form-label">{{ $field['label'] }}</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-lock"></i></span>
                         <input type="text" class="form-control" value="{{ $field['label'] }}" readonly>
                     </div>
                 </div>
+                @endforeach
             @endforeach
         </div>
     </div>
@@ -90,6 +93,7 @@
                             <th>
                                 <input type="hidden" name="motor_rating_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                 <input type="text" name="motor_rating_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
+                                <input type="text" name="motor_rating_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                             </th>
                         @endforeach
                         <th class="bg-dark text-white" colspan="4">RMS Vibration velocity - ISO 10816-1</th>
@@ -114,6 +118,7 @@
                                 <th rowspan="2">
                                     <input type="hidden" name="motor_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                     <input type="text" name="motor_test_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
+                                    <input type="text" name="motor_test_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                                 </th>
                             @endif
                         @endforeach
@@ -125,6 +130,7 @@
                                 <th>
                                     <input type="hidden" name="motor_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                     <input type="text" name="motor_test_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
+                                    <input type="text" name="motor_test_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                                 </th>
                             @elseif (in_array($field['key'], ['starting_current', 'time', 'remarks'], true))
                                 <input type="hidden" name="motor_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
@@ -166,6 +172,7 @@
                             <th>
                                 <input type="hidden" name="gearbox_rating_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                 <input type="text" name="gearbox_rating_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
+                                <input type="text" name="gearbox_rating_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                             </th>
                         @endforeach
                     </tr>
@@ -182,9 +189,7 @@
                                 <th rowspan="2">
                                     <input type="hidden" name="gearbox_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                     <input type="text" name="gearbox_test_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
-                                    @if ($field['key'] === 'time')
-                                        <div class="small text-muted mt-1">(Interval 10 minutes)</div>
-                                    @endif
+                                    <input type="text" name="gearbox_test_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                                 </th>
                             @endif
                         @endforeach
@@ -196,6 +201,7 @@
                                 <th>
                                     <input type="hidden" name="gearbox_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
                                     <input type="text" name="gearbox_test_fields[{{ $index }}][label]" class="form-control form-control-sm text-center fw-semibold" value="{{ $field['label'] }}">
+                                    <input type="text" name="gearbox_test_fields[{{ $index }}][unit]" class="form-control form-control-sm text-center mt-1" value="{{ $field['unit'] ?? '' }}" placeholder="Satuan">
                                 </th>
                             @elseif (in_array($field['key'], ['time', 'temperature', 'remarks'], true))
                                 <input type="hidden" name="gearbox_test_fields[{{ $index }}][key]" value="{{ $field['key'] }}">
@@ -294,10 +300,12 @@
         </div>
         <div class="row g-3">
             @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
+                @php($approvalName = $approvalDefaults[$column['key']]['name'] ?? '')
                 <div class="col-12 col-md-6 col-xl-3">
                     <div class="qc-approval-box is-locked h-100">
                         <small>{{ $column['group'] }}</small>
                         <strong>{{ $column['label'] }}</strong>
+                        <input type="text" name="approval_defaults[{{ $column['key'] }}][name]" class="form-control mt-3" value="{{ old("approval_defaults.{$column['key']}.name", $approvalName) }}" placeholder="Nama penanda tangan">
                         <span><i class="bi bi-lock me-1"></i>Terkunci</span>
                     </div>
                 </div>

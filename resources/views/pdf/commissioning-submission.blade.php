@@ -1,5 +1,6 @@
 @php
     use App\Support\Commissioning\FixedCommissioningTemplate;
+    use App\Support\Pdf\SignatureImage;
     $header = $submission->header_data ?? [];
     $body = $submission->body_data ?? [];
     $value = fn ($key, $default = '-') => $header[$key] ?? $default;
@@ -12,9 +13,30 @@
     $motorTestFields = $schema['motor_test_fields'];
     $gearboxRatingFields = $schema['gearbox_rating_fields'];
     $gearboxTestFields = $schema['gearbox_test_fields'];
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedCommissioningTemplate::defaultApprovalDefaults();
     $imageAttachments = $submission->attachments
         ->where('type', 'image')
         ->values();
+    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    $check = fn (bool $checked) => $checked ? '<img src="'.$checkMarkSvg.'" class="pdf-check-mark" alt="check">' : '';
+    $signature = fn (?string $source) => SignatureImage::forPdf($source);
+    $headerRows = [
+        [
+            ['label' => 'Doc.Number', 'value' => $value('doc_number', $submission->form_number)],
+            ['label' => 'Plant', 'value' => $value('plant')],
+            ['label' => 'Section No.', 'value' => $value('tag_num')],
+        ],
+        [
+            ['label' => 'Functional Location', 'value' => $value('functional_location')],
+            ['label' => 'ID Equipment', 'value' => $value('id_equipment')],
+            ['label' => 'Name Equipment', 'value' => $value('name_equipment')],
+        ],
+        [
+            ['label' => 'Area', 'value' => $value('area')],
+            ['label' => 'Date & Time', 'value' => $value('date_time')],
+            ['label' => 'User Commissioning', 'value' => $value('inspector_commissioning', $submission->user?->name ?: '-')],
+        ],
+    ];
 @endphp
 <!doctype html>
 <html>
@@ -51,13 +73,13 @@
         }
         .sig-logo { width: 31mm; }
         .st-logo { width: 21mm; height: 21mm; object-fit: contain; }
-        .section { font-size: 10px; font-weight: bold; margin-top: 12px; margin-bottom: 3px; text-align: left; }
+        .section { font-size: 10px; font-weight: bold; margin-top: 16px; margin-bottom: 5px; text-align: left; }
         .no-border td { border: 0; }
         .black { background: #000; color: #fff; }
         .approval td { text-align: center; vertical-align: top; }
         .approval .approval-group td { height: 18px; padding: 2px 3px; }
         .approval .approval-role th { height: 18px; padding: 3px; }
-        .approval .approval-sign td { height: 58px; }
+        .approval .approval-sign td { height: 30mm; font-size: 10px; font-weight: 700; }
         .approval .approval-date td { height: 16px; text-align: left; }
         .approval-block {
             page-break-inside: avoid;
@@ -72,14 +94,33 @@
             break-inside: avoid;
         }
         .top-table { margin-bottom: 12px; }
-        .section-table { margin-bottom: 12px; }
-        .header-table td { text-align: center; }
+        .section-table { margin-bottom: 16px; }
+        .header-table td { text-align: left; padding: 1.2mm 1.5mm; }
+        .info-label { font-weight: 700; }
+        .info-value { font-style: italic; }
         .notes-table td { text-align: left; vertical-align: top; }
         .notes-table td { height: 108px; }
-        .doc-image { max-width: 46%; max-height: 100px; margin: 3px; object-fit: contain; border: 1px solid #bbb; }
+        .doc-image-list { display: block; padding-top: 4mm; }
+        .doc-image { display: inline-block; max-width: 30%; max-height: 100px; margin: 2mm 1.5mm 0 0; object-fit: contain; border: 1px solid #bbb; vertical-align: top; }
         .motor-table { table-layout: fixed; }
-        .gearbox-rating-table { width: 55%; }
-        .gearbox-test-table { width: 70%; margin-top: 4px; }
+        .pdf-table-gap { height: 4mm; }
+        .gearbox-rating-table { width: 100%; margin-bottom: 5mm; table-layout: fixed; }
+        .gearbox-test-table { width: 100%; margin-top: 0; table-layout: fixed; }
+        .field-unit { display: block; font-size: 7px; font-weight: normal; }
+        .pdf-check-mark {
+            display: block;
+            width: 6.4mm;
+            height: 5mm;
+            margin: 0 auto;
+        }
+        .sig-img {
+            display: block;
+            width: 36mm;
+            max-width: 100%;
+            max-height: 19mm;
+            margin: 0 auto 1mm;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
@@ -103,34 +144,37 @@
     </table>
 
     <table class="header-table section-table">
-        <tr>
-            <td><strong>Doc.Number</strong><br>{{ $value('doc_number', $submission->form_number) }}</td>
-            <td><strong>Tahun</strong><br>{{ $value('tahun') }}</td>
-            <td><strong>Area</strong><br>{{ $value('area') }}</td>
-            <td><strong>Date & Time</strong><br>{{ $value('date_time') }}</td>
-        </tr>
-        <tr>
-            <td><strong>Tag.Num</strong><br>{{ $value('tag_num') }}</td>
-            <td><strong>Functional Location</strong><br>{{ $value('functional_location') }}</td>
-            <td><strong>Name Equipment</strong><br>{{ $value('name_equipment') }}</td>
-            <td><strong>ID Equipment</strong><br>{{ $value('id_equipment') }}</td>
-        </tr>
+        @foreach ($headerRows as $row)
+            <tr>
+                @foreach ($row as $cell)
+                    <td><span class="info-label">{{ $cell['label'] }}</span> : <span class="info-value">{{ $cell['value'] }}</span></td>
+                @endforeach
+            </tr>
+        @endforeach
     </table>
 
     <div class="section">{{ $labels['motor_title'] }}</div>
     <table class="motor-table section-table">
         <tr>
             @foreach ($motorRatingFields as $field)
-                <th>{{ $field['label'] }}</th>
+                <th>
+                    {{ $field['label'] }}
+                    @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                        <span class="field-unit">{{ $unitLabel }}</span>
+                    @endif
+                </th>
             @endforeach
             <th class="black" colspan="4">RMS Vibration velocity - ISO 10816-1</th>
         </tr>
         <tr>
             @foreach ($motorRatingFields as $field)
-                <td>{{ $body['motor_rating'][$field['key']] ?? '' }}</td>
+                <td>{{ FixedCommissioningTemplate::valueWithUnit($body['motor_rating'][$field['key']] ?? '', $field) }}</td>
             @endforeach
             <td colspan="4">Power &lt;= 15 kW: &lt; 4.5 mm/s<br>15 kW &lt; Power &lt;= 300 kW: &lt; 7.1 mm/s<br>300 kW &lt; Power &lt;= 10 MW: &lt; 11.2 mm/s</td>
         </tr>
+    </table>
+    <div class="pdf-table-gap"></div>
+    <table class="motor-table section-table">
         <tr>
             @foreach ($motorTestFields as $field)
                 @if ($field['key'] === 'r')
@@ -140,10 +184,8 @@
                 @elseif (! in_array($field['key'], ['s', 't', 'vertical', 'axial'], true))
                     <th rowspan="2">
                         {{ $field['label'] }}
-                        @if ($field['key'] === 'starting_current')
-                            <br><small>(Ampere)</small>
-                        @elseif ($field['key'] === 'time')
-                            <br><small>(Interval 10 minutes)</small>
+                        @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                            <span class="field-unit">{{ $unitLabel }}</span>
                         @endif
                     </th>
                 @endif
@@ -152,14 +194,19 @@
         <tr>
             @foreach ($motorTestFields as $field)
                 @if (in_array($field['key'], ['r', 's', 't', 'horizontal', 'vertical', 'axial'], true))
-                    <th>{{ $field['label'] }}</th>
+                    <th>
+                        {{ $field['label'] }}
+                        @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                            <span class="field-unit">{{ $unitLabel }}</span>
+                        @endif
+                    </th>
                 @endif
             @endforeach
         </tr>
         @foreach (($body['motor_test_rows'] ?? []) as $row)
             <tr>
                 @foreach ($motorTestFields as $field)
-                    <td>{{ $row[$field['key']] ?? '' }}</td>
+                    <td>{{ FixedCommissioningTemplate::valueWithUnit($row[$field['key']] ?? '', $field) }}</td>
                 @endforeach
             </tr>
         @endforeach
@@ -169,12 +216,17 @@
     <table class="gearbox-rating-table">
         <tr>
             @foreach ($gearboxRatingFields as $field)
-                <th>{{ $field['label'] }}</th>
+                <th>
+                    {{ $field['label'] }}
+                    @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                        <span class="field-unit">{{ $unitLabel }}</span>
+                    @endif
+                </th>
             @endforeach
         </tr>
         <tr>
             @foreach ($gearboxRatingFields as $field)
-                <td>{{ $body['gearbox_rating'][$field['key']] ?? '' }}</td>
+                <td>{{ FixedCommissioningTemplate::valueWithUnit($body['gearbox_rating'][$field['key']] ?? '', $field) }}</td>
             @endforeach
         </tr>
     </table>
@@ -186,8 +238,8 @@
                 @elseif (! in_array($field['key'], ['vertical', 'axial'], true))
                     <th rowspan="2">
                         {{ $field['label'] }}
-                        @if ($field['key'] === 'time')
-                            <br><small>(Interval 10 minutes)</small>
+                        @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                            <span class="field-unit">{{ $unitLabel }}</span>
                         @endif
                     </th>
                 @endif
@@ -196,14 +248,19 @@
         <tr>
             @foreach ($gearboxTestFields as $field)
                 @if (in_array($field['key'], ['horizontal', 'vertical', 'axial'], true))
-                    <th>{{ $field['label'] }}</th>
+                    <th>
+                        {{ $field['label'] }}
+                        @if ($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field))
+                            <span class="field-unit">{{ $unitLabel }}</span>
+                        @endif
+                    </th>
                 @endif
             @endforeach
         </tr>
         @foreach (($body['gearbox_test_rows'] ?? []) as $row)
             <tr>
                 @foreach ($gearboxTestFields as $field)
-                    <td>{{ $row[$field['key']] ?? '' }}</td>
+                    <td>{{ FixedCommissioningTemplate::valueWithUnit($row[$field['key']] ?? '', $field) }}</td>
                 @endforeach
             </tr>
         @endforeach
@@ -213,7 +270,7 @@
     <table class="section-table">
         <tr><th>No.</th><th>Item</th><th>Check</th><th>YES</th><th>NO</th><th>NA</th><th>Remark</th></tr>
         @foreach (($body['equipment_check_rows'] ?? []) as $row)
-            <tr><td>{{ $row['no'] ?? $loop->iteration }}</td><td>{{ $row['item'] ?? '' }}</td><td>{{ ! empty($row['check']) ? '✓' : '' }}</td><td>{{ ($row['result'] ?? '') === 'YES' ? '✓' : '' }}</td><td>{{ ($row['result'] ?? '') === 'NO' ? '✓' : '' }}</td><td>{{ ($row['result'] ?? '') === 'NA' ? '✓' : '' }}</td><td>{{ $row['remark'] ?? '' }}</td></tr>
+            <tr><td>{{ $row['no'] ?? $loop->iteration }}</td><td>{{ $row['item'] ?? '' }}</td><td>{!! $check(! empty($row['check'])) !!}</td><td>{!! $check(($row['result'] ?? '') === 'YES') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NO') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NA') !!}</td><td>{{ $row['remark'] ?? '' }}</td></tr>
         @endforeach
     </table>
 
@@ -222,14 +279,16 @@
             <td style="width: 50%;"><strong>{{ $labels['note_label'] }}:</strong><br>{{ $submission->note ?: '-' }}</td>
             <td style="width: 50%;">
                 <strong>{{ $labels['documentation_label'] }}</strong><br>
-                @forelse ($imageAttachments->take(6) as $attachment)
-                    @php($path = \Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path) ? \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path) : storage_path('app/public/'.$attachment->file_path))
-                    @if (file_exists($path))
-                        <img src="{{ $path }}" class="doc-image" alt="{{ $attachment->original_name }}">
-                    @endif
-                @empty
-                    -
-                @endforelse
+                <div class="doc-image-list">
+                    @forelse ($imageAttachments->take(6) as $attachment)
+                        @php($path = \Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path) ? \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path) : storage_path('app/public/'.$attachment->file_path))
+                        @if (file_exists($path))
+                            <img src="{{ $path }}" class="doc-image" alt="{{ $attachment->original_name }}">
+                        @endif
+                    @empty
+                        -
+                    @endforelse
+                </div>
             </td>
         </tr>
     </table>
@@ -249,7 +308,12 @@
             <tr class="approval-sign">
                 @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
                     @php($data = $submission->approval_data[$column['key']] ?? [])
-                    <td>{{ $data['name'] ?? '' }}</td>
+                    <td>
+                        @if (! empty($data['signature']))
+                            <img src="{{ $signature($data['signature']) }}" class="sig-img" alt="Tanda tangan">
+                        @endif
+                        {{ $data['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '') }}
+                    </td>
                 @endforeach
             </tr>
             <tr class="approval-date">

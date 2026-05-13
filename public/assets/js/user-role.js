@@ -313,10 +313,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const context = canvas.getContext('2d');
         let isDrawing = false;
 
-        context.lineWidth = 2;
+        context.lineWidth = 5;
         context.lineCap = 'round';
         context.lineJoin = 'round';
-        context.strokeStyle = '#102033';
+        context.strokeStyle = '#000000';
 
         const getPoint = (event) => {
             const rect = canvas.getBoundingClientRect();
@@ -428,6 +428,76 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             body.appendChild(row);
             updateRemarksSpan();
+        });
+    });
+
+    document.querySelectorAll('form[data-confirm-submit]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const submitter = event.submitter;
+
+            if (!submitter || submitter.value !== 'submit' || form.dataset.submitConfirmed === 'true') {
+                return;
+            }
+
+            event.preventDefault();
+
+            const confirmSubmit = () => {
+                form.dataset.submitConfirmed = 'true';
+                form.requestSubmit ? form.requestSubmit(submitter) : submitter.click();
+            };
+
+            const saveDraft = () => {
+                const draftButton = form.querySelector('button[type="submit"][name="action"][value="draft"], input[type="submit"][name="action"][value="draft"]');
+
+                if (draftButton && form.requestSubmit) {
+                    form.requestSubmit(draftButton);
+                    return;
+                }
+
+                let actionInput = form.querySelector('input[type="hidden"][name="action"]');
+                if (!actionInput) {
+                    actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'action';
+                    form.appendChild(actionInput);
+                }
+
+                actionInput.value = 'draft';
+                form.submit();
+            };
+
+            if (!window.Swal) {
+                if (window.confirm('Yakin ingin submit form? Setelah disubmit, perubahan tidak bisa dilakukan dari halaman pengisian.')) {
+                    confirmSubmit();
+                }
+
+                return;
+            }
+
+            window.Swal.fire({
+                title: 'Submit final form?',
+                text: 'Pastikan data sudah benar. Setelah submit final, form tidak dapat diedit lagi dari halaman pengisian.',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Ya, submit final',
+                denyButtonText: 'Simpan Draft',
+                cancelButtonText: 'Cek lagi',
+                reverseButtons: true,
+                focusCancel: true,
+                confirmButtonColor: '#15803d',
+                denyButtonColor: '#2563eb',
+                cancelButtonColor: '#64748b',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    confirmSubmit();
+                    return;
+                }
+
+                if (result.isDenied) {
+                    saveDraft();
+                }
+            });
         });
     });
 });

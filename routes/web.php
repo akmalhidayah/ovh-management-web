@@ -64,8 +64,6 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
         Route::get('/', [TemplateFormQcController::class, 'index'])->name('index');
         Route::get('/create', [TemplateFormQcController::class, 'create'])->name('create');
         Route::post('/', [TemplateFormQcController::class, 'store'])->name('store');
-        Route::get('/import', [TemplateFormQcController::class, 'import'])->name('import');
-        Route::post('/import', [TemplateFormQcController::class, 'processImport'])->name('import.process');
         Route::patch('/{template}/publish', [TemplateFormQcController::class, 'publish'])->name('publish');
         Route::get('/{template}', [TemplateFormQcController::class, 'show'])->name('show');
         Route::get('/{template}/edit', [TemplateFormQcController::class, 'edit'])->name('edit');

@@ -8,10 +8,12 @@
         'rows' => old('general_rows', []),
         'welder_rows' => old('welding_welder_rows', []),
         'result_rows' => old('welding_result_rows', []),
+        'approval_defaults' => old('approval_defaults', []),
     ] : ($template->body_schema ?? FixedQcTemplate::defaultSchema($selectedType)));
     $generalRows = $schema['rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_GENERAL)['rows'];
     $welderRows = $schema['welder_rows'] ?? [];
     $resultRows = $schema['result_rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_WELDING)['result_rows'];
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($selectedType);
 
     if ($generalRows === []) {
         $generalRows = FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_GENERAL)['rows'];
@@ -77,11 +79,20 @@
             <span class="text-muted small">Terkunci</span>
         </div>
         <div class="qc-info-grid">
-            @foreach (FixedQcTemplate::headerFields() as $field)
-                <div class="qc-info-field">
-                    <label>{{ $field['label'] }}</label>
-                    <input type="{{ $field['type'] }}" class="form-control" disabled>
-                </div>
+            @php
+                $headerRows = FixedQcTemplate::headerRows($selectedType);
+                $headerFieldMap = collect(FixedQcTemplate::headerFields($selectedType))->keyBy('key');
+            @endphp
+            @foreach ($headerRows as $row)
+                @foreach ($row as $fieldKey)
+                    @php
+                        $field = $headerFieldMap[$fieldKey];
+                    @endphp
+                    <div class="qc-info-field">
+                        <label>{{ $field['label'] }}</label>
+                        <input type="{{ $field['type'] }}" class="form-control" disabled>
+                    </div>
+                @endforeach
             @endforeach
         </div>
     </div>
@@ -244,6 +255,22 @@
         </div>
     </div>
 
+    <div class="content-card" data-locked-body-editor>
+        <div class="card-heading">
+            <div>
+                <h2>Body Form Fixed</h2>
+                <div class="text-muted small">Kolom dan isi tabel mengikuti format QC yang diberikan. Admin hanya mengatur nama approval.</div>
+            </div>
+            <span class="badge text-bg-secondary">Terkunci</span>
+        </div>
+        <div data-castable-summary>
+            @include('admin.template-form-qc.partials.fixed-castable-locked-body')
+        </div>
+        <div data-brics-summary>
+            @include('admin.template-form-qc.partials.fixed-brics-locked-body')
+        </div>
+    </div>
+
     <div class="content-card mt-3">
         <div class="card-heading">
             <h2>Catatan</h2>
@@ -280,17 +307,36 @@
             <input type="checkbox" disabled>
             <strong>Final Check</strong>
         </label>
-        <div class="qc-approval-grid">
-            @foreach (FixedQcTemplate::approvalColumns() as $column)
-                <div class="qc-approval-box">
-                    <small>{{ $column['group'] }}</small>
-                    <strong>{{ $column['label'] }}</strong>
-                    <input type="text" class="form-control mt-2" placeholder="Nama" disabled>
-                    <input type="date" class="form-control mt-2" disabled>
-                    <span>{{ $column['key'] === 'qc_inspector_qc_inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
-                </div>
-            @endforeach
-        </div>
+        @foreach ($typeOptions as $approvalType => $approvalLabel)
+            @php
+                $typeSchema = $approvalType === $selectedType
+                    ? $schema
+                    : FixedQcTemplate::normalizeSchema($approvalType, $template->template_type === $approvalType ? ($template->body_schema ?? []) : []);
+                $typeApprovalDefaults = $typeSchema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($approvalType);
+                $approvalColumns = FixedQcTemplate::approvalColumns($approvalType);
+            @endphp
+            <div class="qc-approval-grid {{ $selectedType === $approvalType ? '' : 'd-none' }}"
+                 style="--qc-approval-columns: {{ count($approvalColumns) }}"
+                 data-approval-editor="{{ $approvalType }}">
+                @foreach ($approvalColumns as $column)
+                    @php
+                        $approvalName = $typeApprovalDefaults[$column['key']]['name'] ?? '';
+                    @endphp
+                    <div class="qc-approval-box">
+                        <small>{{ $column['group'] }}</small>
+                        <strong>{{ $column['label'] }}</strong>
+                        <input type="text"
+                               name="approval_defaults[{{ $column['key'] }}][name]"
+                               class="form-control mt-2"
+                               value="{{ old("approval_defaults.{$column['key']}.name", $approvalName) }}"
+                               placeholder="Nama penanda tangan"
+                               @disabled($selectedType !== $approvalType)>
+                        <input type="date" class="form-control mt-2" disabled>
+                        <span>{{ ($column['role'] ?? null) === 'QC Inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endforeach
     </div>
 
     <div class="d-flex flex-wrap justify-content-end gap-2">
@@ -305,14 +351,31 @@
             const typeSelect = document.querySelector('[data-template-type]');
             const generalEditor = document.querySelector('[data-general-editor]');
             const weldingEditor = document.querySelector('[data-welding-editor]');
+            const lockedBodyEditor = document.querySelector('[data-locked-body-editor]');
+            const castableSummary = document.querySelector('[data-castable-summary]');
+            const bricsSummary = document.querySelector('[data-brics-summary]');
+            const approvalEditors = document.querySelectorAll('[data-approval-editor]');
             const generalList = document.querySelector('[data-general-row-list]');
             const welderList = document.querySelector('[data-welder-row-list]');
             const resultList = document.querySelector('[data-result-row-list]');
 
             const syncType = () => {
                 const isWelding = typeSelect?.value === 'welding';
-                generalEditor?.classList.toggle('d-none', isWelding);
+                const isCastable = typeSelect?.value === 'castable';
+                const isBrics = typeSelect?.value === 'brics';
+                const isLockedBody = isCastable || isBrics;
+                generalEditor?.classList.toggle('d-none', isWelding || isLockedBody);
                 weldingEditor?.classList.toggle('d-none', !isWelding);
+                lockedBodyEditor?.classList.toggle('d-none', !isLockedBody);
+                castableSummary?.classList.toggle('d-none', !isCastable);
+                bricsSummary?.classList.toggle('d-none', !isBrics);
+                approvalEditors.forEach((editor) => {
+                    const active = editor.dataset.approvalEditor === typeSelect?.value;
+                    editor.classList.toggle('d-none', !active);
+                    editor.querySelectorAll('input, select, textarea').forEach((input) => {
+                        if (!input.matches('[type="date"]')) input.disabled = !active;
+                    });
+                });
             };
 
             const nextIndex = (list, selector) => list.querySelectorAll(selector).length;

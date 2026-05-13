@@ -32,7 +32,7 @@ class CommissioningFormFlowTest extends TestCase
 
         $template = CommissioningFormTemplate::where('code', 'COM-MOTOR-001')->firstOrFail();
 
-        $response->assertRedirect(route('admin.template-form-commissioning.edit', $template));
+        $response->assertRedirect(route('admin.template-form-commissioning.preview', $template));
         $this->assertSame('Check coupling alignment', $template->body_schema['equipment_check_rows'][0]['item']);
 
         $this->actingAs($admin)
@@ -54,7 +54,9 @@ class CommissioningFormFlowTest extends TestCase
             ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
             ->assertOk()
             ->assertSee('Template Motor Commissioning')
-            ->assertSee('ST-COM-LOC-001')
+            ->assertSee('Pilih Name Equipment')
+            ->assertSee('Section No.')
+            ->assertSee('GEARBOX MOTOR')
             ->assertSee('EQ-COM-001');
 
         $this->actingAs($user)
@@ -67,6 +69,8 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('ST-COM-LOC-001', $submission->functional_location);
         $this->assertSame('SEC-COM-001', $submission->tag_num);
         $this->assertSame('GEARBOX MOTOR', $submission->equipment);
+        $this->assertSame('TONASA 4', $submission->header_data['plant']);
+        $this->assertSame($user->name, $submission->header_data['inspector_commissioning']);
         $this->assertStringContainsString('/COM/', $submission->form_number);
 
         $pdfUrl = route('user.commissioning.submissions.pdf', $submission);

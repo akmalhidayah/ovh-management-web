@@ -9,10 +9,10 @@
         ['label' => 'Tahun', 'value' => $record['year'] ?? ''],
         ['label' => 'Unit', 'value' => $record['unit'] ?? ''],
         ['label' => 'Alat', 'value' => $record['equipment'] ?? ''],
-        ['label' => 'Tag Num.', 'value' => $record['tag_num'] ?? ''],
+        ['label' => 'Section', 'value' => $record['tag_num'] ?? ''],
         ['label' => 'Tgl. Mulai', 'value' => $record['start_date'] ?? ''],
         ['label' => 'Pekerjaan', 'value' => $record['job'] ?? ''],
-        ['label' => 'Durasi', 'value' => $record['duration'] ?? ''],
+        ['label' => 'Durasi (menit)', 'value' => $record['duration'] ?? ''],
     ];
 @endphp
 

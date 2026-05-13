@@ -1,5 +1,6 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
+    use App\Support\Pdf\SignatureImage;
     use Illuminate\Support\Str;
 
     $isFixed = (bool) $submission->template?->template_type;
@@ -7,6 +8,9 @@
     $generalInfo = $submission->general_info ?? [];
     $bodyData = $submission->body_data ?? [];
     $approvalData = $submission->approval_data ?? [];
+    $templateSchema = $submission->template ? FixedQcTemplate::schemaForTemplate($submission->template) : [];
+    $approvalDefaults = $templateSchema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
+    $approvalColumns = FixedQcTemplate::approvalColumns($type);
     $rowsByBlock = $submission->rows->groupBy($isFixed ? 'block_type' : 'qc_form_template_block_id');
     $generalRows = $rowsByBlock->get('general', collect());
     $weldingWelderRows = $rowsByBlock->get('welding_welder', collect());
@@ -17,12 +21,43 @@
     $value = fn (string $key, string $fallback = '') => $generalInfo[$key] ?? $fallback;
     $dateTime = $value('date_time') ?: $submission->submitted_at?->format('Y-m-d H:i');
     $attachments = $submission->attachments->groupBy('field_key');
-    $approvalByRole = collect(FixedQcTemplate::approvalColumns())->mapWithKeys(fn ($column) => [
-        $column['role'] => $approvalData[$column['key']] ?? [],
-    ]);
+    $approvalByRole = collect($approvalColumns)->mapWithKeys(function ($column) use ($approvalData, $approvalDefaults) {
+        $approval = $approvalData[$column['key']] ?? [];
+
+        if (blank($approval['name'] ?? null)) {
+            $approval['name'] = $approvalDefaults[$column['key']]['name'] ?? '';
+        }
+
+        return [$column['role'] => $approval];
+    });
     $approval = fn (string $role) => $approvalByRole[$role] ?? [];
-    $check = fn (bool $checked) => $checked ? '&#10003;' : '';
-    $pdfTitlePekerjaan = $submission->pekerjaan ?: ($generalInfo['pekerjaan'] ?? 'Form QC');
+    $approvalByKey = collect($approvalColumns)->mapWithKeys(function ($column) use ($approvalData, $approvalDefaults) {
+        $approval = $approvalData[$column['key']] ?? [];
+
+        if (blank($approval['name'] ?? null)) {
+            $approval['name'] = $approvalDefaults[$column['key']]['name'] ?? '';
+        }
+
+        return [$column['key'] => $approval];
+    });
+    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    $check = fn (bool $checked) => $checked ? '<img src="'.$checkMarkSvg.'" class="pdf-check-mark" alt="check">' : '';
+    $signature = fn (?string $source) => SignatureImage::forPdf($source);
+    $pdfTitlePekerjaan = $type === FixedQcTemplate::TYPE_BRICS
+        ? ($bodyData['brics_customer']['subject'] ?? 'BRICK INSTALLATIONS')
+        : ($submission->pekerjaan ?: ($generalInfo['pekerjaan'] ?? 'Form QC'));
+    $headerRows = collect(FixedQcTemplate::headerRows($type))
+        ->map(fn ($row) => collect($row)->map(fn ($key) => [
+            'label' => collect(FixedQcTemplate::headerFields($type))->firstWhere('key', $key)['label'] ?? $key,
+            'value' => match ($key) {
+                'doc_number' => $value('doc_number', $submission->report_no ?: $submission->form_number),
+                'date_time' => $dateTime,
+                'inspector_qc' => $value('inspector_qc', $submission->user?->name ?: '-'),
+                'plant' => $value('plant', $submission->plant ?: '-'),
+                default => $value($key),
+            },
+        ])->all())
+        ->all();
 @endphp
 <!doctype html>
 <html lang="id">
@@ -73,7 +108,6 @@
         .sig-logo { width: 31mm; }
         .st-logo { width: 21mm; height: 21mm; object-fit: contain; }
         .info-table td {
-            width: 25%;
             height: 8mm;
             padding: 1.2mm 1.5mm;
             border: 1px solid #000;
@@ -111,6 +145,12 @@
             line-height: 1.35;
         }
         .center { text-align: center; }
+        .pdf-check-mark {
+            display: block;
+            width: 6.4mm;
+            height: 5mm;
+            margin: 0 auto;
+        }
         .note-box {
             height: 22mm;
             padding: 1.5mm;
@@ -149,14 +189,14 @@
         }
         .attachment-grid td {
             height: 155mm;
-            padding: 4mm;
+            padding: 8mm 4mm 4mm;
             vertical-align: top;
         }
         .attachment-img {
             display: block;
             max-width: 82mm;
-            max-height: 140mm;
-            margin: 3mm auto;
+            max-height: 132mm;
+            margin: 0 auto 3mm;
             border: 1px solid #999;
         }
         .approval-table td,
@@ -172,9 +212,10 @@
             font-weight: 700;
         }
         .approval-sign-row td {
-            height: 22mm;
+            height: 30mm;
             padding: 1mm;
-            font-size: 8px;
+            font-size: 9.5px;
+            font-weight: 700;
         }
         .approval-date-row td {
             height: 5mm;
@@ -188,14 +229,47 @@
         }
         .sig-img {
             display: block;
-            max-width: 28mm;
-            max-height: 12mm;
+            width: 36mm;
+            max-width: 100%;
+            max-height: 19mm;
             margin: 0 auto 1mm;
+            object-fit: contain;
         }
         .legacy-table th,
         .legacy-table td {
             border: 1px solid #000;
             padding: 4px;
+        }
+        .fixed-section-title {
+            border: 1px solid #000;
+            background: #e5e2d8;
+            padding: 1.2mm;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .fixed-form-table th,
+        .fixed-form-table td {
+            border: 1px solid #000;
+            background: #fff;
+            padding: 1mm;
+            font-size: 7.2px;
+        }
+        .fixed-form-table th {
+            background: #e5e2d8;
+            font-weight: 800;
+            text-align: center;
+        }
+        .pdf-input-line {
+            min-height: 4mm;
+            border-bottom: 1px dotted #555;
+        }
+        .pdf-small-box {
+            display: inline-block;
+            width: 8mm;
+            height: 4mm;
+            border: 1px solid #000;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -221,28 +295,19 @@
             </tr>
         </table>
 
-        <table class="info-table">
-            <tr>
-                <td><span class="info-label">Doc.Number</span> : <span class="info-value">{{ $value('doc_number', $submission->report_no ?: $submission->form_number) }}</span></td>
-                <td><span class="info-label">Functional Location</span> : <span class="info-value">{{ $value('functional_location') }}</span></td>
-                <td><span class="info-label">Tahun</span> : <span class="info-value">{{ $value('tahun') }}</span></td>
-                <td><span class="info-label">Date &amp; Time</span> : <span class="info-value">{{ $dateTime }}</span></td>
-            </tr>
-            <tr>
-                <td><span class="info-label">Tag.Num</span> : <span class="info-value">{{ $value('tag_num') }}</span></td>
-                <td><span class="info-label">Area</span> : <span class="info-value">{{ $value('area') }}</span></td>
-                <td><span class="info-label">Name Equipment</span> : <span class="info-value">{{ $value('name_equipment') }}</span></td>
-                <td><span class="info-label">ID Equipment</span> : <span class="info-value">{{ $value('id_equipment') }}</span></td>
-            </tr>
-            <tr>
-                <td><span class="info-label">Alat</span> : <span class="info-value">{{ $value('alat') }}</span></td>
-                <td><span class="info-label">Pekerjaan</span> : <span class="info-value">{{ $value('pekerjaan') }}</span></td>
-                <td><span class="info-label">Unit Kerja</span> : <span class="info-value">{{ $value('unit_kerja') }}</span></td>
-                <td><span class="info-label">Durasi</span> : <span class="info-value">{{ $value('durasi') }}</span></td>
-            </tr>
-        </table>
+        @if ($type !== FixedQcTemplate::TYPE_BRICS)
+            <table class="info-table">
+                @foreach ($headerRows as $row)
+                    <tr>
+                        @foreach ($row as $cell)
+                            <td><span class="info-label">{{ $cell['label'] }}</span> : <span class="info-value">{{ $cell['value'] }}</span></td>
+                        @endforeach
+                    </tr>
+                @endforeach
+            </table>
 
-        <div class="section-gap"></div>
+            <div class="section-gap"></div>
+        @endif
 
         @if ($type === FixedQcTemplate::TYPE_WELDING)
             <table class="data-table welding-data-table">
@@ -324,6 +389,10 @@
                     <tr><td colspan="6">&nbsp;</td></tr>
                 @endforelse
             </table>
+        @elseif ($type === FixedQcTemplate::TYPE_CASTABLE)
+            @include('pdf.qc-castable-body', ['bodyData' => $bodyData])
+        @elseif ($type === FixedQcTemplate::TYPE_BRICS)
+            @include('pdf.qc-brics-body', ['bodyData' => $bodyData])
         @else
             <table class="data-table">
                 <tr>
@@ -366,35 +435,93 @@
         <div class="note-box">{{ $submission->note ?: '' }}</div>
 
         <div class="approval-block">
-        <table class="approval-table">
-            <tr>
-                <th rowspan="2" style="width: 15%;" class="inspector-title">TTD<br>QC Inspektor</th>
-                <th colspan="2">Checked by / Diperiksa Oleh :</th>
-                <th rowspan="2" style="width: 18%;">Approved by / Disetujui oleh :<br>UNIT KERJA</th>
-                <th rowspan="2" style="width: 21%;">Known by / Diketahui Oleh :<br>OVERHAUL MANAGEMENT</th>
-            </tr>
-            <tr>
-                <th style="width: 18%;">QC LEADER</th>
-                <th style="width: 28%;">COORDINATOR QC &amp;<br>COMMISSIONING</th>
-            </tr>
-            <tr class="approval-sign-row">
-                @foreach (['QC Inspektor', 'QC Leader', 'Coordinator QC & Commissioning', 'Unit Kerja', 'Overhaul Management'] as $role)
-                    @php $ap = $approval($role); @endphp
-                    <td>
-                        @if (! empty($ap['signature']))
-                            <img src="{{ $ap['signature'] }}" class="sig-img" alt="Tanda tangan">
-                        @endif
-                        {{ $ap['name'] ?? '' }}
-                    </td>
-                @endforeach
-            </tr>
-            <tr class="approval-date-row">
-                @foreach (['QC Inspektor', 'QC Leader', 'Coordinator QC & Commissioning', 'Unit Kerja', 'Overhaul Management'] as $role)
-                    @php $ap = $approval($role); @endphp
-                    <td>Date : {{ $ap['date'] ?? '' }}</td>
-                @endforeach
-            </tr>
-        </table>
+            @if ($type === FixedQcTemplate::TYPE_CASTABLE)
+                <table class="approval-table" style="width: 56%; margin-left: 44%;">
+                    <tr>
+                        <th style="width: 25%;">Tanggal</th>
+                        @foreach ($approvalColumns as $column)
+                            <th>{{ $column['label'] }}</th>
+                        @endforeach
+                    </tr>
+                    <tr class="approval-sign-row">
+                        <td>{{ collect($approvalByKey)->pluck('date')->filter()->first() ?: '' }}</td>
+                        @foreach ($approvalColumns as $column)
+                            @php $ap = $approvalByKey[$column['key']] ?? []; @endphp
+                            <td>
+                                @if (! empty($ap['signature']))
+                                    <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
+                                @endif
+                                <div>{{ $ap['name'] ?? '' }}</div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+                <div style="margin-top: 2mm; font-size: 8.5px; line-height: 1.55;">
+                    <div><strong>*1</strong>&nbsp;&nbsp;&nbsp;&nbsp; Supervisor/Inspector pekerjaan</div>
+                    <div><strong>*2</strong>&nbsp;&nbsp;&nbsp;&nbsp; Manager/atasan supervisor/inspector</div>
+                    <div><strong>*3</strong>&nbsp;&nbsp;&nbsp;&nbsp; Manager bidang terkait ( maint mekanikal/electrical atau production support dll)</div>
+                </div>
+            @elseif ($type === FixedQcTemplate::TYPE_BRICS)
+                <table class="approval-table">
+                    <tr>
+                        @foreach ($approvalColumns as $column)
+                            <th>{{ strtoupper($column['group']) }}</th>
+                        @endforeach
+                    </tr>
+                    <tr>
+                        @foreach ($approvalColumns as $column)
+                            <td>{{ strtoupper($column['label']) }}</td>
+                        @endforeach
+                    </tr>
+                    <tr class="approval-sign-row">
+                        @foreach ($approvalColumns as $column)
+                            @php $ap = $approvalByKey[$column['key']] ?? []; @endphp
+                            <td>
+                                @if (! empty($ap['signature']))
+                                    <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
+                                @endif
+                                <div>{{ $ap['name'] ?? '' }}</div>
+                            </td>
+                        @endforeach
+                    </tr>
+                    <tr class="approval-date-row">
+                        @foreach ($approvalColumns as $column)
+                            @php $ap = $approvalByKey[$column['key']] ?? []; @endphp
+                            <td>Date : {{ $ap['date'] ?? '' }}</td>
+                        @endforeach
+                    </tr>
+                </table>
+            @else
+                <table class="approval-table">
+                    <tr>
+                        <th rowspan="2" style="width: 15%;" class="inspector-title">TTD<br>QC Inspektor</th>
+                        <th colspan="2">Checked by / Diperiksa Oleh :</th>
+                        <th rowspan="2" style="width: 18%;">Approved by / Disetujui oleh :<br>UNIT KERJA</th>
+                        <th rowspan="2" style="width: 21%;">Known by / Diketahui Oleh :<br>OVERHAUL MANAGEMENT</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 18%;">QC LEADER</th>
+                        <th style="width: 28%;">COORDINATOR QC &amp;<br>COMMISSIONING</th>
+                    </tr>
+                    <tr class="approval-sign-row">
+                        @foreach (['QC Inspektor', 'QC Leader', 'Coordinator QC & Commissioning', 'Unit Kerja', 'Overhaul Management'] as $role)
+                            @php $ap = $approval($role); @endphp
+                            <td>
+                                @if (! empty($ap['signature']))
+                                    <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
+                                @endif
+                                <div>{{ $ap['name'] ?? '' }}</div>
+                            </td>
+                        @endforeach
+                    </tr>
+                    <tr class="approval-date-row">
+                        @foreach (['QC Inspektor', 'QC Leader', 'Coordinator QC & Commissioning', 'Unit Kerja', 'Overhaul Management'] as $role)
+                            @php $ap = $approval($role); @endphp
+                            <td>Date : {{ $ap['date'] ?? '' }}</td>
+                        @endforeach
+                    </tr>
+                </table>
+            @endif
         </div>
 
         <div class="page-break"></div>
@@ -419,26 +546,17 @@
                 </tr>
             </table>
 
-            <table class="info-table">
-                <tr>
-                    <td><span class="info-label">Doc.Number</span> : <span class="info-value">{{ $value('doc_number', $submission->report_no ?: $submission->form_number) }}</span></td>
-                    <td><span class="info-label">Functional Location</span> : <span class="info-value">{{ $value('functional_location') }}</span></td>
-                    <td><span class="info-label">Tahun</span> : <span class="info-value">{{ $value('tahun') }}</span></td>
-                    <td><span class="info-label">Date &amp; Time</span> : <span class="info-value">{{ $dateTime }}</span></td>
-                </tr>
-                <tr>
-                    <td><span class="info-label">Tag.Num</span> : <span class="info-value">{{ $value('tag_num') }}</span></td>
-                    <td><span class="info-label">Area</span> : <span class="info-value">{{ $value('area') }}</span></td>
-                    <td><span class="info-label">Name Equipment</span> : <span class="info-value">{{ $value('name_equipment') }}</span></td>
-                    <td><span class="info-label">ID Equipment</span> : <span class="info-value">{{ $value('id_equipment') }}</span></td>
-                </tr>
-                <tr>
-                    <td><span class="info-label">Alat</span> : <span class="info-value">{{ $value('alat') }}</span></td>
-                    <td><span class="info-label">Pekerjaan</span> : <span class="info-value">{{ $value('pekerjaan') }}</span></td>
-                    <td><span class="info-label">Unit Kerja</span> : <span class="info-value">{{ $value('unit_kerja') }}</span></td>
-                    <td><span class="info-label">Durasi</span> : <span class="info-value">{{ $value('durasi') }}</span></td>
-                </tr>
-            </table>
+            @if ($type !== FixedQcTemplate::TYPE_BRICS)
+                <table class="info-table">
+                    @foreach ($headerRows as $row)
+                        <tr>
+                            @foreach ($row as $cell)
+                                <td><span class="info-label">{{ $cell['label'] }}</span> : <span class="info-value">{{ $cell['value'] }}</span></td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </table>
+            @endif
 
             <div class="section-gap"></div>
             <div class="attachment-label">Lampiran</div>
@@ -451,14 +569,27 @@
                 <tr>
                     @foreach (['foto_before', 'foto_after'] as $key)
                         <td>
-                        @foreach (($attachments[$key] ?? collect())->take(1) as $attachment)
+                        @foreach (($attachments[$key] ?? collect())->take(2) as $attachment)
                             @php
-                                $path = \Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)
-                                    ? \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path)
-                                    : storage_path('app/public/'.$attachment->file_path);
+                                $path = null;
+
+                                if (\Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)) {
+                                    $path = \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path);
+                                } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+                                    $path = \Illuminate\Support\Facades\Storage::disk('public')->path($attachment->file_path);
+                                } else {
+                                    $publicPath = storage_path('app/public/'.$attachment->file_path);
+                                    $path = file_exists($publicPath) ? $publicPath : null;
+                                }
+
+                                $imageSource = null;
+                                if ($attachment->type === 'image' && $path && file_exists($path)) {
+                                    $mime = $attachment->mime_type ?: 'image/jpeg';
+                                    $imageSource = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($path));
+                                }
                             @endphp
-                            @if ($attachment->type === 'image' && file_exists($path))
-                                <img src="{{ $path }}" class="attachment-img" alt="{{ $attachment->original_name }}">
+                            @if ($imageSource)
+                                <img src="{{ $imageSource }}" class="attachment-img" alt="{{ $attachment->original_name }}">
                             @endif
                         @endforeach
                         </td>

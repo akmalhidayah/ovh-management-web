@@ -3,6 +3,7 @@
 
     $type = FixedQcTemplate::normalizeType($selectedTemplate->template_type);
     $schema = FixedQcTemplate::schemaForTemplate($selectedTemplate);
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
     $signerName = auth()->user()?->name ?: 'User QC';
     $today = now()->toDateString();
     $draftHeader = $draftSubmission?->general_info ?? [];
@@ -42,12 +43,17 @@
     $noteValue = old('note', $draftSubmission?->note ?? '');
     $masterDataRecords = collect($activeQcMasterDataRecords ?? []);
     $selectedMasterDataId = old('header.master_data_record_id', $oldHeader['master_data_record_id'] ?? null);
-    if (! $selectedMasterDataId && ! empty($oldHeader['functional_location'])) {
+    if (! $selectedMasterDataId && (! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
         $selectedMasterDataId = optional($masterDataRecords->first(function ($record) use ($oldHeader) {
-            return $record->func_location === ($oldHeader['functional_location'] ?? null)
-                && (! isset($oldHeader['id_equipment']) || $record->equipment_no === $oldHeader['id_equipment']);
+            return (
+                $record->description === ($oldHeader['name_equipment'] ?? null)
+                || $record->func_location === ($oldHeader['functional_location'] ?? null)
+            ) && (! isset($oldHeader['id_equipment']) || $record->equipment_no === $oldHeader['id_equipment']);
         }))->id;
     }
+    $headerRows = FixedQcTemplate::headerRows($type);
+    $headerFieldMap = collect(FixedQcTemplate::headerFields($type))->keyBy('key');
+    $durationMinuteOptions = range(5, 60, 5);
 @endphp
 
 <div class="qc-user-form" data-fixed-qc-form>
@@ -72,41 +78,59 @@
             <h3>Header</h3>
         </div>
         <div class="qc-user-field-grid">
-            @foreach (FixedQcTemplate::headerFields() as $field)
-                @php
-                    $fieldValue = $oldHeader[$field['key']] ?? ($field['key'] === 'doc_number' ? ($autoDocNumber ?? '') : '');
-                    $isAutoFilledByMasterData = in_array($field['key'], ['tahun', 'tag_num', 'area', 'id_equipment', 'alat'], true);
-                @endphp
-                <label class="qc-user-field">
-                    <span>{{ $field['label'] }}</span>
-                    @if ($field['key'] === 'functional_location')
-                        <input type="hidden" name="header[functional_location]" value="{{ $fieldValue }}" data-header-input="functional_location">
-                        <select name="header[master_data_record_id]" class="form-select" data-master-data-select>
-                            <option value="">Pilih Functional Location</option>
-                            @foreach ($masterDataRecords as $record)
-                                <option value="{{ $record->id }}"
-                                        @selected((string) $selectedMasterDataId === (string) $record->id)
-                                        data-functional-location="{{ $record->func_location }}"
-                                        data-tahun="{{ $record->year }}"
-                                        data-tag-num="{{ $record->section_no }}"
-                                        data-area="{{ $record->area }}"
-                                        data-id-equipment="{{ $record->equipment_no }}"
-                                        data-alat="{{ $record->description }}">
-                                    {{ $record->func_location }} - {{ $record->equipment_no }} - {{ $record->description }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @else
-                        <input type="{{ $field['type'] }}"
-                               name="header[{{ $field['key'] }}]"
-                               value="{{ $fieldValue }}"
-                               class="form-control"
-                               data-header-input="{{ $field['key'] }}"
-                               @if ($field['key'] === 'doc_number' || $isAutoFilledByMasterData) readonly @endif>
-                    @endif
-                </label>
+            @foreach ($headerRows as $row)
+                @foreach ($row as $fieldKey)
+                    @php
+                        $field = $headerFieldMap[$fieldKey];
+                        $fieldValue = $oldHeader[$fieldKey] ?? ($fieldKey === 'doc_number' ? ($autoDocNumber ?? '') : ($fieldKey === 'inspector_qc' ? $signerName : ''));
+                        $isAutoFilledByMasterData = in_array($fieldKey, ['plant', 'tahun', 'tag_num', 'functional_location', 'area', 'id_equipment'], true);
+                    @endphp
+                    <label class="qc-user-field">
+                        <span>{{ $field['label'] }}</span>
+                        @if ($fieldKey === 'name_equipment')
+                            <input type="hidden" name="header[name_equipment]" value="{{ $fieldValue }}" data-header-input="name_equipment">
+                            <select name="header[master_data_record_id]" class="form-select" data-master-data-select>
+                                <option value="">Pilih Name Equipment</option>
+                                @foreach ($masterDataRecords as $record)
+                                    <option value="{{ $record->id }}"
+                                            @selected((string) $selectedMasterDataId === (string) $record->id)
+                                            data-plant="{{ $record->plant }}"
+                                            data-functional-location="{{ $record->func_location }}"
+                                            data-tahun="{{ $record->year }}"
+                                            data-tag-num="{{ $record->section_no }}"
+                                            data-area="{{ $record->area }}"
+                                            data-id-equipment="{{ $record->equipment_no }}"
+                                            data-name-equipment="{{ $record->description }}">
+                                        {{ $record->description }} - {{ $record->equipment_no }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @elseif ($fieldKey === 'durasi')
+                            <input type="text"
+                                   name="header[durasi]"
+                                   value="{{ $fieldValue }}"
+                                   class="form-control"
+                                   data-header-input="durasi"
+                                   list="qc-duration-minute-options"
+                                   inputmode="numeric"
+                                   placeholder="Contoh: 30">
+                        @else
+                            <input type="{{ $field['type'] }}"
+                                   name="header[{{ $fieldKey }}]"
+                                   value="{{ $fieldValue }}"
+                                   class="form-control"
+                                   data-header-input="{{ $fieldKey }}"
+                                   @if (in_array($fieldKey, ['doc_number', 'inspector_qc'], true) || $isAutoFilledByMasterData) readonly @endif>
+                        @endif
+                    </label>
+                @endforeach
             @endforeach
         </div>
+        <datalist id="qc-duration-minute-options">
+            @foreach ($durationMinuteOptions as $minutes)
+                <option value="{{ $minutes }}">{{ $minutes }} menit</option>
+            @endforeach
+        </datalist>
     </section>
 
     @if ($type === FixedQcTemplate::TYPE_WELDING)
@@ -246,6 +270,10 @@
                 </table>
             </div>
         </section>
+    @elseif ($type === FixedQcTemplate::TYPE_CASTABLE)
+        @include('user.qc.forms.partials.fixed-castable-body', ['oldBody' => $oldBody])
+    @elseif ($type === FixedQcTemplate::TYPE_BRICS)
+        @include('user.qc.forms.partials.fixed-brics-body', ['oldBody' => $oldBody])
     @else
         <section class="inspector-panel qc-form-card">
             <div class="qc-user-table-wrap">
@@ -322,17 +350,22 @@
             <strong>Final Check</strong>
         </label>
         <div class="text-muted small mb-3" data-final-check-help>Final Check aktif setelah semua status bernilai Ok/Baik.</div>
-        <div class="qc-user-approval-grid" style="--qc-approval-columns: 5">
-            @foreach (FixedQcTemplate::approvalColumns() as $column)
+        @php
+            $approvalColumns = FixedQcTemplate::approvalColumns($type);
+        @endphp
+        <div class="qc-user-approval-grid" style="--qc-approval-columns: {{ count($approvalColumns) }}">
+            @foreach ($approvalColumns as $column)
                 @php
                     $isInspector = ($column['role'] ?? null) === 'QC Inspektor';
+                    $defaultApprovalName = $approvalDefaults[$column['key']]['name'] ?? '';
+                    $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
                 @endphp
                 <div class="qc-user-approval-box {{ $isInspector ? '' : 'is-locked' }}" data-signature-card="{{ $column['key'] }}" @if ($isInspector) data-qc-inspector-approval @endif>
                     <div class="qc-approval-label-row">
                         <strong>{{ $column['label'] }}</strong>
                     </div>
                     <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $oldApproval[$column['key']]['name'] ?? ($isInspector ? $signerName : '') }}" placeholder="Nama" @if ($isInspector) readonly @endif>
+                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama" readonly>
                     @if ($isInspector)
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control disabled>
                     @else
@@ -400,7 +433,7 @@
             <p>Simpan draft bisa belum lengkap. Submit wajib header, body, dan Final Check lengkap.</p>
         </div>
         <div class="qc-form-actions">
-            <button type="submit" name="action" value="draft" class="btn btn-primary">Simpan Draft</button>
+            <button type="submit" name="action" value="draft" class="btn btn-primary" formnovalidate>Simpan Draft</button>
             <button type="submit" name="action" value="submit" class="btn btn-success">Submit QC</button>
         </div>
     </section>
@@ -423,12 +456,13 @@
                 const option = masterDataSelect?.selectedOptions?.[0];
                 if (!option || !option.value) return;
 
-                setHeaderValue('functional_location', option.dataset.functionalLocation);
+                setHeaderValue('plant', option.dataset.plant);
                 setHeaderValue('tahun', option.dataset.tahun);
+                setHeaderValue('functional_location', option.dataset.functionalLocation);
                 setHeaderValue('tag_num', option.dataset.tagNum);
                 setHeaderValue('area', option.dataset.area);
                 setHeaderValue('id_equipment', option.dataset.idEquipment);
-                setHeaderValue('alat', option.dataset.alat);
+                setHeaderValue('name_equipment', option.dataset.nameEquipment);
             };
 
             masterDataSelect?.addEventListener('change', syncMasterDataHeader);
@@ -445,7 +479,10 @@
 
             const allStatusesOk = () => {
                 const groups = statusGroups();
-                return groups.length > 0 && groups.every((group) => group.some((radio) => radio.checked && ['Ok', 'Baik'].includes(radio.value)));
+                const accepted = ['Ok', 'OK', 'Baik', 'Yes', 'Conventional', 'Low Cement', 'Visual', 'Sound', 'Good', 'Radial', 'Clear'];
+                return groups.length > 0 && groups.every((group) => group.some((radio) => {
+                    return radio.checked && (radio.dataset.finalCheckOk === '1' || accepted.includes(radio.value));
+                }));
             };
 
             const syncApprovalGate = () => {

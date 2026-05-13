@@ -23,20 +23,21 @@ class TemplateFormCommissioningController extends Controller
 
     public function index(Request $request): View
     {
+        $status = $request->string('status', 'all')->toString();
+
         $templates = CommissioningFormTemplate::query()
-            ->when(
-                in_array($request->query('status'), ['draft', 'active', 'inactive'], true),
-                fn ($query) => $query->where('status', $request->query('status'))
-            )
-            ->when($request->query('search'), function ($query, $search) {
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->string('search')->toString();
+
                 $query->where(function ($query) use ($search) {
                     $query->where('code', 'like', "%{$search}%")
                         ->orWhere('name', 'like', "%{$search}%")
                         ->orWhere('category', 'like', "%{$search}%");
                 });
             })
-            ->latest()
-            ->paginate(15)
+            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
+            ->latest('updated_at')
+            ->paginate(10)
             ->withQueryString();
 
         return view('admin.template-form-commissioning.index', [
@@ -83,7 +84,7 @@ class TemplateFormCommissioningController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.template-form-commissioning.edit', $template)
+            ->route('admin.template-form-commissioning.preview', $template)
             ->with('success', 'Template Form Commissioning berhasil dibuat.');
     }
 
@@ -227,6 +228,7 @@ class TemplateFormCommissioningController extends Controller
             'gearbox_test_fields' => ['nullable', 'array'],
             'gearbox_test_rows' => ['nullable', 'array'],
             'equipment_check_rows' => ['nullable', 'array'],
+            'approval_defaults' => ['nullable', 'array'],
         ]);
 
         return [
@@ -245,6 +247,7 @@ class TemplateFormCommissioningController extends Controller
                 'gearbox_test_fields' => $validated['gearbox_test_fields'] ?? [],
                 'gearbox_test_rows' => $validated['gearbox_test_rows'] ?? [],
                 'equipment_check_rows' => $validated['equipment_check_rows'] ?? [],
+                'approval_defaults' => $validated['approval_defaults'] ?? [],
             ]),
         ];
     }

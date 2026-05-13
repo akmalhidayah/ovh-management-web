@@ -56,7 +56,7 @@
                             </td>
                             <td>
                                 <div class="commissioning-main-text">{{ $submission->equipment ?: '-' }}</div>
-                                <small>{{ $submission->tag_num ?: 'Tanpa tag' }}</small>
+                                <small>{{ $submission->tag_num ?: 'Tanpa section' }}</small>
                             </td>
                             <td>
                                 <div class="commissioning-main-text">{{ $submission->area ?: '-' }}</div>

@@ -29,9 +29,6 @@
             <p>Kelola template form QC yang akan digunakan user QC untuk membuat laporan inspeksi.</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('admin.template-form-qc.import') }}" class="btn btn-outline-primary">
-                <i class="bi bi-file-earmark-excel me-1"></i>Import dari Excel
-            </a>
             <a href="{{ route('admin.template-form-qc.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i>Buat Template Manual
             </a>
@@ -96,7 +93,7 @@
             </form>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive template-table-wrap">
             <table class="table align-middle template-table">
                 <thead>
                     <tr>

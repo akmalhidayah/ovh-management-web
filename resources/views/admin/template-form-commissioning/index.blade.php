@@ -93,7 +93,7 @@
             </form>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive template-table-wrap">
             <table class="table align-middle template-table">
                 <thead>
                     <tr>
@@ -118,7 +118,7 @@
                                     <span>Commissioning</span>
                                     <span>{{ $rowsCount }} item check</span>
                                     <span>Versi {{ $template->version }}</span>
-                                    <span>Form Fixed</span>
+                                    <span>Template Manual</span>
                                 </div>
                                 @if ($template->status === 'draft')
                                     <div class="template-row-note">Perlu direview sebelum digunakan.</div>

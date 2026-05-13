@@ -50,7 +50,6 @@ class AdminTemplateFormQcTest extends TestCase
         foreach ([
             route('admin.template-form-qc.index'),
             route('admin.template-form-qc.create'),
-            route('admin.template-form-qc.import'),
             route('admin.template-form-qc.show', $template),
             route('admin.template-form-qc.edit', $template),
             route('admin.template-form-qc.preview', $template),
@@ -297,6 +296,7 @@ class AdminTemplateFormQcTest extends TestCase
             ->assertOk()
             ->assertSee('Fixed General QC')
             ->assertSee('Cek bearing')
+            ->assertSee('Inspector QC')
             ->assertSee('Final Check');
 
         $this->actingAs($user)

@@ -10,13 +10,14 @@ class FixedCommissioningTemplate
     {
         return [
             ['key' => 'doc_number', 'label' => 'Doc.Number', 'type' => 'text'],
-            ['key' => 'tahun', 'label' => 'Tahun', 'type' => 'text'],
+            ['key' => 'plant', 'label' => 'Plant', 'type' => 'text'],
+            ['key' => 'tag_num', 'label' => 'Section No.', 'type' => 'text'],
+            ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
+            ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
+            ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
             ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
             ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
-            ['key' => 'tag_num', 'label' => 'Tag.Num', 'type' => 'text'],
-            ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
-            ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
-            ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
+            ['key' => 'inspector_commissioning', 'label' => 'User Commissioning', 'type' => 'text'],
         ];
     }
 
@@ -41,36 +42,36 @@ class FixedCommissioningTemplate
                 'documentation_label' => 'Dokumentasi: (Wajib)',
             ],
             'motor_rating_fields' => [
-                ['key' => 'power_kw', 'label' => 'Power (kW)'],
-                ['key' => 'current_a', 'label' => 'Current (A)'],
-                ['key' => 'voltage_v', 'label' => 'Voltage (V)'],
-                ['key' => 'freq_hz', 'label' => 'Freq. (Hz)'],
-                ['key' => 'brand', 'label' => 'Brand/Merek'],
+                ['key' => 'power_kw', 'label' => 'Power', 'unit' => 'kW'],
+                ['key' => 'current_a', 'label' => 'Current', 'unit' => 'A'],
+                ['key' => 'voltage_v', 'label' => 'Voltage', 'unit' => 'V'],
+                ['key' => 'freq_hz', 'label' => 'Freq.', 'unit' => 'Hz'],
+                ['key' => 'brand', 'label' => 'Brand/Merek', 'unit' => null],
             ],
             'motor_test_fields' => [
-                ['key' => 'starting_current', 'label' => 'Starting Current'],
-                ['key' => 'time', 'label' => 'Time'],
-                ['key' => 'r', 'label' => 'R'],
-                ['key' => 's', 'label' => 'S'],
-                ['key' => 't', 'label' => 'T'],
-                ['key' => 'horizontal', 'label' => 'Horizontal'],
-                ['key' => 'vertical', 'label' => 'Vertical'],
-                ['key' => 'axial', 'label' => 'Axial'],
-                ['key' => 'remarks', 'label' => 'Remarks'],
+                ['key' => 'starting_current', 'label' => 'Starting Current', 'unit' => 'A'],
+                ['key' => 'time', 'label' => 'Time', 'unit' => 'min'],
+                ['key' => 'r', 'label' => 'R', 'unit' => 'A'],
+                ['key' => 's', 'label' => 'S', 'unit' => 'A'],
+                ['key' => 't', 'label' => 'T', 'unit' => 'A'],
+                ['key' => 'horizontal', 'label' => 'Horizontal', 'unit' => 'mm/s'],
+                ['key' => 'vertical', 'label' => 'Vertical', 'unit' => 'mm/s'],
+                ['key' => 'axial', 'label' => 'Axial', 'unit' => 'mm/s'],
+                ['key' => 'remarks', 'label' => 'Remarks', 'unit' => null],
             ],
             'motor_test_rows' => self::numberedRows(5),
             'gearbox_rating_fields' => [
-                ['key' => 'power_kw', 'label' => 'Power (kW)'],
-                ['key' => 'torque_nm', 'label' => 'Torque (Nm)'],
-                ['key' => 'brand', 'label' => 'Brand/Merek'],
+                ['key' => 'power_kw', 'label' => 'Power', 'unit' => 'kW'],
+                ['key' => 'torque_nm', 'label' => 'Torque', 'unit' => 'Nm'],
+                ['key' => 'brand', 'label' => 'Brand/Merek', 'unit' => null],
             ],
             'gearbox_test_fields' => [
-                ['key' => 'time', 'label' => 'Time'],
-                ['key' => 'temperature', 'label' => 'Temperature'],
-                ['key' => 'horizontal', 'label' => 'Horizontal'],
-                ['key' => 'vertical', 'label' => 'Vertical'],
-                ['key' => 'axial', 'label' => 'Axial'],
-                ['key' => 'remarks', 'label' => 'Remarks'],
+                ['key' => 'time', 'label' => 'Time', 'unit' => 'min'],
+                ['key' => 'temperature', 'label' => 'Temperature', 'unit' => 'C'],
+                ['key' => 'horizontal', 'label' => 'Horizontal', 'unit' => 'mm/s'],
+                ['key' => 'vertical', 'label' => 'Vertical', 'unit' => 'mm/s'],
+                ['key' => 'axial', 'label' => 'Axial', 'unit' => 'mm/s'],
+                ['key' => 'remarks', 'label' => 'Remarks', 'unit' => null],
             ],
             'gearbox_test_rows' => self::numberedRows(5),
             'equipment_check_rows' => [
@@ -79,6 +80,7 @@ class FixedCommissioningTemplate
                 ['no' => 3, 'item' => 'Check lubrication / cleanliness'],
                 ['no' => 4, 'item' => 'Check safety and guarding'],
             ],
+            'approval_defaults' => self::defaultApprovalDefaults(),
         ];
     }
 
@@ -96,7 +98,30 @@ class FixedCommissioningTemplate
             'gearbox_test_fields' => self::normalizeFields($schema['gearbox_test_fields'] ?? [], $defaults['gearbox_test_fields']),
             'gearbox_test_rows' => self::normalizeNumberedRows($schema['gearbox_test_rows'] ?? [], $defaults['gearbox_test_rows']),
             'equipment_check_rows' => self::normalizeEquipmentCheckRows($schema['equipment_check_rows'] ?? []),
+            'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? []),
         ];
+    }
+
+    public static function defaultApprovalDefaults(): array
+    {
+        return collect(self::approvalColumns())
+            ->mapWithKeys(fn ($column) => [$column['key'] => ['name' => '']])
+            ->all();
+    }
+
+    public static function normalizeApprovalDefaults(array $defaults): array
+    {
+        return collect(self::approvalColumns())
+            ->mapWithKeys(function ($column) use ($defaults) {
+                $data = Arr::get($defaults, $column['key'], []);
+
+                return [
+                    $column['key'] => [
+                        'name' => trim((string) Arr::get($data, 'name', '')),
+                    ],
+                ];
+            })
+            ->all();
     }
 
     public static function numberedRows(int $count): array
@@ -115,17 +140,67 @@ class FixedCommissioningTemplate
 
     public static function normalizeFields(array $fields, array $defaults): array
     {
-        $labelsByKey = collect($fields)
+        $fieldsByKey = collect($fields)
             ->filter(fn ($field) => Arr::get($field, 'key'))
-            ->mapWithKeys(fn ($field) => [Arr::get($field, 'key') => trim((string) Arr::get($field, 'label', ''))]);
+            ->keyBy(fn ($field) => Arr::get($field, 'key'));
 
         return collect($defaults)
-            ->map(fn ($field) => [
-                'key' => $field['key'],
-                'label' => $labelsByKey->get($field['key']) ?: $field['label'],
-            ])
+            ->map(function ($field) use ($fieldsByKey) {
+                $incoming = $fieldsByKey->get($field['key'], []);
+                $unit = self::normalizeUnit(Arr::get($incoming, 'unit', $field['unit'] ?? null));
+                $label = trim((string) Arr::get($incoming, 'label', '')) ?: $field['label'];
+
+                return [
+                    'key' => $field['key'],
+                    'label' => self::normalizeFieldLabel($label, $unit),
+                    'unit' => $unit,
+                ];
+            })
             ->values()
             ->all();
+    }
+
+    public static function fieldUnitLabel(array $field): ?string
+    {
+        $unit = self::normalizeUnit($field['unit'] ?? null);
+
+        return $unit ? "({$unit})" : null;
+    }
+
+    public static function valueWithUnit(mixed $value, array $field, string $default = ''): string
+    {
+        $text = trim((string) ($value ?? ''));
+
+        if ($text === '') {
+            return $default;
+        }
+
+        $unit = self::normalizeUnit($field['unit'] ?? null);
+
+        if (! $unit || preg_match('/\s*'.preg_quote($unit, '/').'\s*$/i', $text)) {
+            return $text;
+        }
+
+        return "{$text} {$unit}";
+    }
+
+    private static function normalizeUnit(mixed $unit): ?string
+    {
+        $unit = trim((string) $unit);
+
+        return $unit === '' ? null : $unit;
+    }
+
+    private static function normalizeFieldLabel(string $label, ?string $unit): string
+    {
+        if (! $unit) {
+            return $label;
+        }
+
+        $quotedUnit = preg_quote($unit, '/');
+        $label = preg_replace('/\s*\(\s*'.$quotedUnit.'\s*\)\s*$/i', '', $label) ?: $label;
+
+        return trim($label);
     }
 
     public static function normalizeNumberedRows(array $rows, array $defaults): array

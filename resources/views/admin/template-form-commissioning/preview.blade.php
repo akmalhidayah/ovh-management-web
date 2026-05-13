@@ -12,7 +12,7 @@
     <div class="page-header template-preview-header">
         <div>
             <h1>{{ $template->name }}</h1>
-            <p>Preview template commissioning dengan struktur fixed.</p>
+            <p>Preview template commissioning manual dengan struktur terarah.</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('admin.template-form-commissioning.index') }}" class="btn btn-outline-secondary">Kembali</a>

@@ -279,6 +279,10 @@ class FormController extends Controller
 
         foreach ($motorRows as $index => $row) {
             foreach ($schema['motor_test_fields'] as $field) {
+                if ($this->isRemarksField($field['key'] ?? null)) {
+                    continue;
+                }
+
                 if (blank($row[$field['key']] ?? null)) {
                     $errors["body.motor_test_rows.{$index}.{$field['key']}"] = "{$field['label']} motor test wajib diisi.";
                 }
@@ -298,6 +302,10 @@ class FormController extends Controller
 
         foreach ($gearboxRows as $index => $row) {
             foreach ($schema['gearbox_test_fields'] as $field) {
+                if ($this->isRemarksField($field['key'] ?? null)) {
+                    continue;
+                }
+
                 if (blank($row[$field['key']] ?? null)) {
                     $errors["body.gearbox_test_rows.{$index}.{$field['key']}"] = "{$field['label']} gearbox test wajib diisi.";
                 }
@@ -322,30 +330,12 @@ class FormController extends Controller
                 $errors["body.equipment_check_rows.{$index}.result"] = 'Result equipment wajib dipilih.';
             }
 
-            if (blank($row['remark'] ?? null)) {
-                $errors["body.equipment_check_rows.{$index}.remark"] = 'Remark equipment wajib diisi.';
-            }
-        }
-
-        if (blank($request->input('note'))) {
-            $errors['note'] = 'Notes/Finding wajib diisi.';
         }
 
         $hasNewAttachment = collect($request->file('attachments.dokumentasi', []))->filter()->isNotEmpty();
         $hasExistingAttachment = $submission?->attachments()->exists() ?? false;
         if (! $hasNewAttachment && ! $hasExistingAttachment) {
             $errors['attachments.dokumentasi'] = 'Dokumentasi wajib diupload. Hanya JPG atau PNG.';
-        }
-
-        $approval = $request->input('approval', []);
-        foreach (FixedCommissioningTemplate::approvalColumns() as $column) {
-            if (blank($approval[$column['key']]['name'] ?? null)) {
-                $errors["approval.{$column['key']}.name"] = "{$column['label']} wajib diisi.";
-            }
-
-            if (blank($approval[$column['key']]['date'] ?? null)) {
-                $errors["approval.{$column['key']}.date"] = "Tanggal {$column['label']} wajib diisi.";
-            }
         }
 
         if ($errors !== []) {
@@ -361,10 +351,12 @@ class FormController extends Controller
 
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: $this->generateDocumentNumber()));
+        $header['inspector_commissioning'] = $request->user()?->name;
 
         if ($record = $this->selectedMasterDataRecord($request)) {
             $header['master_data_record_id'] = $record->id;
             $header['tahun'] = $record->year;
+            $header['plant'] = $record->plant;
             $header['area'] = $record->area;
             $header['tag_num'] = $record->section_no;
             $header['functional_location'] = $record->func_location;
@@ -373,6 +365,11 @@ class FormController extends Controller
         }
 
         return $header;
+    }
+
+    private function isRemarksField(mixed $key): bool
+    {
+        return in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
     }
 
     private function bodyData(Request $request): array

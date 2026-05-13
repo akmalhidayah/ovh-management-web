@@ -38,7 +38,7 @@
     <div class="commissioning-grid">
         <label><span>Equipment Name</span><input type="text" class="form-control" value="{{ $record['motor_data']['equipment_name'] }}"></label>
         <label><span>Model/Type</span><input type="text" class="form-control" value="{{ $record['motor_data']['model_type'] }}"></label>
-        <label><span>Tag Number</span><input type="text" class="form-control" value="{{ $record['motor_data']['tag_number'] }}"></label>
+        <label><span>Section No.</span><input type="text" class="form-control" value="{{ $record['motor_data']['tag_number'] }}"></label>
         <label><span>IP</span><input type="text" class="form-control" value="{{ $record['motor_data']['ip'] }}"></label>
         <label><span>Function Of</span><input type="text" class="form-control" value="{{ $record['motor_data']['function_of'] }}"></label>
         <label><span>Brand</span><input type="text" class="form-control" value="{{ $record['motor_data']['brand'] }}"></label>
@@ -49,7 +49,7 @@
         <table class="commissioning-table compact">
             <thead>
                 <tr>
-                    <th>Tag. Number</th>
+                    <th>Section No.</th>
                     <th>Power (kW)</th>
                     <th>Current (A)</th>
                     <th>Voltage (V)</th>

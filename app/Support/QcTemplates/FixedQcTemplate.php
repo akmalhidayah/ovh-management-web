@@ -9,30 +9,88 @@ class FixedQcTemplate
 {
     public const TYPE_GENERAL = 'general';
     public const TYPE_WELDING = 'welding';
+    public const TYPE_CASTABLE = 'castable';
+    public const TYPE_BRICS = 'brics';
 
     public static function types(): array
     {
         return [
             self::TYPE_GENERAL => 'QC Umum',
             self::TYPE_WELDING => 'QC Welding',
+            self::TYPE_CASTABLE => 'QC Instalasi Castable',
+            self::TYPE_BRICS => 'QC Instalasi BRICS',
         ];
     }
 
-    public static function headerFields(): array
+    public static function headerFields(?string $type = null): array
     {
+        if (self::normalizeType($type) === self::TYPE_BRICS) {
+            return [
+                ['key' => 'doc_number', 'label' => 'Doc.Number', 'type' => 'text'],
+                ['key' => 'tahun', 'label' => 'Tahun', 'type' => 'text'],
+                ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
+                ['key' => 'tag_num', 'label' => 'Tag.Num', 'type' => 'text'],
+                ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
+                ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
+                ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
+            ];
+        }
+
+        if (self::normalizeType($type) === self::TYPE_CASTABLE) {
+            return [
+                ['key' => 'doc_number', 'label' => 'Doc.Number', 'type' => 'text'],
+                ['key' => 'tahun', 'label' => 'Tahun', 'type' => 'text'],
+                ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
+                ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
+                ['key' => 'tag_num', 'label' => 'Tag.Num', 'type' => 'text'],
+                ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
+                ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
+                ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
+                ['key' => 'alat', 'label' => 'Alat', 'type' => 'text'],
+                ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
+                ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
+                ['key' => 'durasi', 'label' => 'Durasi', 'type' => 'text'],
+            ];
+        }
+
         return [
             ['key' => 'doc_number', 'label' => 'Doc.Number', 'type' => 'text'],
+            ['key' => 'plant', 'label' => 'Plant', 'type' => 'text'],
+            ['key' => 'tag_num', 'label' => 'Section', 'type' => 'text'],
             ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
-            ['key' => 'tahun', 'label' => 'Tahun', 'type' => 'text'],
-            ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
-            ['key' => 'tag_num', 'label' => 'Tag.Num', 'type' => 'text'],
-            ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
-            ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
             ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
-            ['key' => 'alat', 'label' => 'Alat', 'type' => 'text'],
+            ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
+            ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
+            ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
+            ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
             ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
             ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
-            ['key' => 'durasi', 'label' => 'Durasi', 'type' => 'text'],
+            ['key' => 'durasi', 'label' => 'Durasi (menit)', 'type' => 'text'],
+        ];
+    }
+
+    public static function headerRows(?string $type = null): array
+    {
+        if (self::normalizeType($type) === self::TYPE_BRICS) {
+            return [
+                ['doc_number', 'tahun', 'area'],
+                ['tag_num', 'functional_location', 'name_equipment', 'id_equipment'],
+            ];
+        }
+
+        if (self::normalizeType($type) === self::TYPE_CASTABLE) {
+            return [
+                ['doc_number', 'tahun', 'area', 'date_time'],
+                ['tag_num', 'functional_location', 'name_equipment', 'id_equipment'],
+                ['alat', 'pekerjaan', 'unit_kerja', 'durasi'],
+            ];
+        }
+
+        return [
+            ['doc_number', 'plant', 'tag_num'],
+            ['functional_location', 'id_equipment', 'name_equipment'],
+            ['area', 'date_time', 'inspector_qc'],
+            ['pekerjaan', 'unit_kerja', 'durasi'],
         ];
     }
 
@@ -58,8 +116,28 @@ class FixedQcTemplate
         ];
     }
 
-    public static function approvalColumns(): array
+    public static function approvalColumns(?string $type = null): array
     {
+        $type = self::normalizeType($type);
+
+        if ($type === self::TYPE_CASTABLE) {
+            return [
+                ['key' => 'castable_filled_by', 'group' => 'Approval Castable', 'role' => 'QC Inspektor', 'label' => '*1 diisi'],
+                ['key' => 'castable_approved_1', 'group' => 'Approval Castable', 'role' => '*2 disetujui', 'label' => '*2 disetujui'],
+                ['key' => 'castable_approved_2', 'group' => 'Approval Castable', 'role' => '*3 disetujui', 'label' => '*3 disetujui'],
+            ];
+        }
+
+        if ($type === self::TYPE_BRICS) {
+            return [
+                ['key' => 'brics_report_by', 'group' => 'Report by', 'role' => 'QC Inspektor', 'label' => 'QC / SPV'],
+                ['key' => 'brics_vendor', 'group' => 'Vendor', 'role' => 'Vendor', 'label' => 'Vendor'],
+                ['key' => 'brics_customer_supervisor', 'group' => 'Customer Supervisor', 'role' => 'Customer Supervisor', 'label' => 'Customer Supervisor'],
+                ['key' => 'brics_name_unit', 'group' => 'Name / Unit', 'role' => 'Name / Unit', 'label' => 'Name / Unit'],
+                ['key' => 'brics_approve_by', 'group' => 'Approve by', 'role' => 'Approve by', 'label' => 'Approve by'],
+            ];
+        }
+
         $columns = [];
 
         foreach (self::approvalGroups() as $groupKey => $group) {
@@ -85,6 +163,13 @@ class FixedQcTemplate
                 'result_rows' => [
                     ['no' => 1, 'deskripsi' => 'Visual hasil pengelasan', 'keterangan' => ''],
                 ],
+                'approval_defaults' => self::defaultApprovalDefaults($type),
+            ];
+        }
+
+        if (in_array($type, [self::TYPE_CASTABLE, self::TYPE_BRICS], true)) {
+            return [
+                'approval_defaults' => self::defaultApprovalDefaults($type),
             ];
         }
 
@@ -92,6 +177,7 @@ class FixedQcTemplate
             'rows' => [
                 ['item_pengecekan' => '', 'standar' => '', 'actual_default' => '', 'urutan' => 1],
             ],
+            'approval_defaults' => self::defaultApprovalDefaults($type),
         ];
     }
 
@@ -104,12 +190,42 @@ class FixedQcTemplate
             return [
                 'welder_rows' => self::normalizeWelderRows($schema['welder_rows'] ?? []),
                 'result_rows' => self::normalizeWeldingResultRows($schema['result_rows'] ?? []),
+                'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? [], $type),
+            ];
+        }
+
+        if (in_array($type, [self::TYPE_CASTABLE, self::TYPE_BRICS], true)) {
+            return [
+                'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? [], $type),
             ];
         }
 
         return [
             'rows' => self::normalizeGeneralRows($schema['rows'] ?? []),
+            'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? [], $type),
         ];
+    }
+
+    public static function defaultApprovalDefaults(?string $type = null): array
+    {
+        return collect(self::approvalColumns($type))
+            ->mapWithKeys(fn ($column) => [$column['key'] => ['name' => '']])
+            ->all();
+    }
+
+    public static function normalizeApprovalDefaults(array $defaults, ?string $type = null): array
+    {
+        return collect(self::approvalColumns($type))
+            ->mapWithKeys(function ($column) use ($defaults) {
+                $data = Arr::get($defaults, $column['key'], []);
+
+                return [
+                    $column['key'] => [
+                        'name' => trim((string) Arr::get($data, 'name', '')),
+                    ],
+                ];
+            })
+            ->all();
     }
 
     public static function normalizeType(?string $type): string
@@ -120,6 +236,146 @@ class FixedQcTemplate
     public static function templateTypeLabel(?string $type): string
     {
         return self::types()[self::normalizeType($type)] ?? 'QC Umum';
+    }
+
+    public static function isLockedBodyType(?string $type): bool
+    {
+        return in_array(self::normalizeType($type), [self::TYPE_CASTABLE, self::TYPE_BRICS], true);
+    }
+
+    public static function castableCustomerRows(): array
+    {
+        return [
+            ['key' => 'company', 'no' => '1', 'label' => 'COMPANY', 'hint' => ''],
+            ['key' => 'address', 'no' => '2', 'label' => 'ADDRESS', 'hint' => ''],
+            ['key' => 'production', 'no' => '3', 'label' => 'PRODUCTION', 'hint' => ''],
+            ['key' => 'furnace_type', 'no' => '4', 'label' => 'FURNACE TYPE', 'hint' => ''],
+            ['key' => 'management', 'no' => '5', 'label' => 'MANAGEMENT', 'hint' => ''],
+            ['key' => 'install_date', 'no' => '6', 'label' => 'INSTALL DATE', 'hint' => ''],
+            ['key' => 'install_method', 'no' => '7', 'label' => 'INSTALL METHOD', 'hint' => 'CASTING / GUNNING / TROWELING / RAMMING / ...'],
+            ['key' => 'installation_section', 'no' => '8', 'label' => 'INSTALLATION SECTION', 'hint' => 'WALL / ROOF / BOTTOM / CYLINDER / DOOR / STACK / BURNER TILE / SPOUT / ...'],
+            ['key' => 'installation_design', 'no' => '9', 'label' => 'INSTALLATION DESIGN', 'hint' => 'VERTICAL / HORIZONTAL / ...'],
+            ['key' => 'drawing_no', 'no' => '10', 'label' => 'DRAWING NO', 'hint' => ''],
+        ];
+    }
+
+    public static function castableInspectionRows(): array
+    {
+        return [
+            ['key' => 'castable_type', 'no' => '1', 'label' => 'CASTABLE TYPE', 'options' => ['Conventional', 'Low Cement'], 'detail_label' => 'Brand'],
+            ['key' => 'paddle_mixer', 'no' => '2', 'label' => 'PADDLE MIXER', 'options' => ['Yes', 'No'], 'detail_label' => 'Mixer Capacity'],
+            ['key' => 'drinking_water', 'no' => '3', 'label' => 'DRINKING WATER', 'options' => ['Yes', 'No'], 'detail_label' => 'Other Water Quality'],
+            ['key' => 'former', 'no' => '4', 'label' => 'FORMER', 'options' => ['Yes', 'No'], 'detail_label' => 'Former Material'],
+            ['key' => 'vibro_casting', 'no' => '5', 'label' => 'VIBRO CASTING', 'options' => ['Yes', 'No'], 'detail_label' => 'Vibrator Type'],
+            ['key' => 'expantion_joint', 'no' => '6', 'label' => 'EXPANTION JOINT', 'options' => ['Yes', 'No'], 'detail_label' => 'Expantion Distance'],
+            ['key' => 'anchor', 'no' => '7', 'label' => 'ANCHOR', 'options' => ['Yes', 'No'], 'detail_label' => 'Anchor Type / Dia'],
+            ['key' => 'plastic_cup_for_anchor', 'no' => '8', 'label' => 'PLASTIC CUP FOR ANCHOR', 'options' => ['Yes', 'No']],
+            ['key' => 'sample', 'no' => '9', 'label' => 'SAMPLE*', 'options' => ['Yes', 'No']],
+            ['key' => 'sample_dimention', 'no' => '10', 'label' => 'SAMPLE DIMENTION', 'unit' => '( X X ) mm'],
+            ['key' => 'water_add', 'no' => '11', 'label' => 'WATER ADD', 'unit' => '% volume'],
+            ['key' => 'needle_add', 'no' => '12', 'label' => 'STAINLESS STEEL NEEDLE ADD', 'unit' => '% weight'],
+            ['key' => 'mixing_time', 'no' => '13', 'label' => 'MIXING TIME', 'unit' => 'mnt'],
+            ['key' => 'thickness', 'no' => '14', 'label' => 'THICKNESS', 'unit' => 'mm'],
+            ['key' => 'no_of_layer', 'no' => '15', 'label' => 'NO OF LAYER', 'unit' => 'layer'],
+            ['key' => 'no_of_segment', 'no' => '16', 'label' => 'NO OF SEGMENT', 'unit' => 'segment'],
+            ['key' => 'segment_area', 'no' => '17', 'label' => 'SEGMENT AREA', 'unit' => 'mm2'],
+            ['key' => 'total_installation_time', 'no' => '18', 'label' => 'TOTAL INSTALLATION TIME', 'unit' => 'mnt'],
+            ['key' => 'quantity_used', 'no' => '19', 'label' => 'QUANTITY USED', 'unit' => 'Kg'],
+        ];
+    }
+
+    public static function castableSampleRows(): array
+    {
+        return [
+            ['key' => 'sample_mixing_no', 'label' => 'Sample Mixing no'],
+            ['key' => 'batch_number', 'label' => 'Batch Number'],
+            ['key' => 'quantity', 'label' => 'Quantity'],
+            ['key' => 'qc_name', 'label' => 'QC NAME'],
+            ['key' => 'qc_sign_date', 'label' => 'QC SIGN / DATE'],
+        ];
+    }
+
+    public static function bricsCustomerRows(): array
+    {
+        return [
+            ['key' => 'company_name', 'no' => '1', 'label' => 'COMPANY NAME'],
+            ['key' => 'subject', 'no' => '2', 'label' => 'SUBJECT', 'default' => 'BRICK INSTALLATIONS'],
+            ['key' => 'locations', 'no' => '3', 'label' => 'LOCATIONS', 'default' => 'ROTARY KILN PLANT'],
+            ['key' => 'install_method', 'no' => '4', 'label' => 'INSTALL METHOD', 'default' => 'CLENCH LINING / MORTAR LINING'],
+            ['key' => 'installations_section', 'no' => '5', 'label' => 'INSTALLATIONS SECTION', 'default' => 'COOLING ZONE / LTZ / CBZ / UTZ / SAFETY / CALCINING ZONE'],
+            ['key' => 'drawing_no', 'no' => '6', 'label' => 'DRAWING No.'],
+        ];
+    }
+
+    public static function bricsTechnicalRows(): array
+    {
+        return [
+            ['key' => 'kiln_length', 'label' => 'Kiln Length'],
+            ['key' => 'starting_metering', 'label' => 'Starting Metering'],
+            ['key' => 'kiln_diameter', 'label' => 'Kiln Diameter'],
+            ['key' => 'finishing_metering', 'label' => 'Finishing Metering'],
+            ['key' => 'activity_date', 'label' => 'Activity Date'],
+            ['key' => 'start_finishing_ring', 'label' => 'Start & Finishing Ring'],
+        ];
+    }
+
+    public static function bricsManpowerRows(): array
+    {
+        return [
+            ['left' => 'SPV', 'right' => 'ME'],
+            ['left' => 'FOREMAN', 'right' => 'SAFETY'],
+            ['left' => 'BRICKLAYER', 'right' => 'QC / QA'],
+            ['left' => 'OPERATOR', 'right' => 'HELPER'],
+        ];
+    }
+
+    public static function bricsInspectionSections(): array
+    {
+        return [
+            ['title' => 'INSTALLATION RECORD / INSPECTION CHECK LIST', 'items' => [
+                ['key' => 'packing_bricks_quality', 'no' => '1', 'label' => 'PACKING / BRICKS QUALITY'],
+                ['key' => 'brick_quality_check', 'no' => '2', 'label' => 'BRICK QUALITY CHECK'],
+                ['key' => 'kiln_shell_check', 'no' => '3', 'label' => 'KILN SHELL CHECK'],
+                ['key' => 'marking', 'no' => '4', 'label' => 'MARKING'],
+            ]],
+            ['title' => 'BRICK INSTALLATION', 'number' => '5', 'items' => [
+                ['key' => 'lining_charts', 'no' => '5.1', 'label' => 'LINING CHARTS'],
+                ['key' => 'installation_mixing_ratio', 'no' => '5.2', 'label' => 'INSTALLATION MIXING RATIO'],
+                ['key' => 'first_brick_position', 'no' => '5.3', 'label' => '1ST BRICK POSITION'],
+                ['key' => 'joint_radial_brick', 'no' => '5.4', 'label' => 'JOINT RADIAL BRICK'],
+                ['key' => 'joint_axial_brick', 'no' => '5.5', 'label' => 'JOINT AXIAL BRICK'],
+                ['key' => 'radial_stepping', 'no' => '5.6', 'label' => 'RADIAL STEPPING'],
+                ['key' => 'axial_stepping', 'no' => '5.7', 'label' => 'AXIAL STEPPING'],
+                ['key' => 'bright_tightening', 'no' => '6.1', 'label' => 'BRIGHT TIGHTENING'],
+                ['key' => 'quality_of_closure', 'no' => '6.2', 'label' => 'QUALITY OF CLOSURE'],
+                ['key' => 'no_of_shim_plate', 'no' => '6.3', 'label' => 'NO. OF SHIM PLATE'],
+                ['key' => 'v_joint_at_closure_area', 'no' => '7', 'label' => 'V JOINT AT CLOSURE AREA'],
+                ['key' => 'joint_old_new_lining', 'no' => '8', 'label' => 'JOINT OLD-NEW LINING'],
+                ['key' => 'crack_brick', 'no' => '9', 'label' => 'CRACK BRICK'],
+            ]],
+            ['title' => 'CUT BRICK', 'number' => '10', 'items' => [
+                ['key' => 'avoid_mo_contact_water', 'no' => '10.1', 'label' => 'AVOID Mo CONTACT W/ WATER'],
+                ['key' => 'avoid_cut_140mm', 'no' => '10.2', 'label' => 'AVOID CUT < 140MM'],
+                ['key' => 'cut_brick_machine', 'no' => '10.3', 'label' => 'CUT BRICK MACHINE'],
+                ['key' => 'cut_all_alumina_water', 'no' => '10.4', 'label' => 'CUT ALL ALUMINA BRICK W/ WATER'],
+                ['key' => 'cut_straight', 'no' => '10.5', 'label' => 'CUT STRAIGHT'],
+            ]],
+            ['title' => 'TYRE / MASTER GEAR AREA', 'number' => '11', 'items' => [
+                ['key' => 'full_mortar', 'no' => '11.1', 'label' => 'FULL MORTAR'],
+                ['key' => 'mortar_as_per_brick_type', 'no' => '11.2', 'label' => 'MORTAR AS PER BRICK TYPE'],
+                ['key' => 'mortar_thickness', 'no' => '11.3', 'label' => 'MORTAR THICKNESS'],
+                ['key' => 'rings_minimum', 'no' => '11.4', 'label' => '20 RINGS MINIMUM'],
+            ]],
+            ['title' => 'FINAL CHECK', 'number' => '12', 'items' => [
+                ['key' => 'tightening_ring', 'no' => '12.1', 'label' => 'TIGHTENING RING'],
+                ['key' => 'knocking_every_ring', 'no' => '12.2', 'label' => 'KNOCKING EVERY RING FOR CHECKING'],
+                ['key' => 'no_of_ring_added_plate', 'no' => '12.3', 'label' => 'NO OF RING ADDED PLATE'],
+                ['key' => 'key_bricks_position', 'no' => '12.4', 'label' => 'KEY BRICKS POSITION'],
+                ['key' => 'no_of_steel_plate', 'no' => '12.5', 'label' => 'NO OF STEEL PLATE'],
+                ['key' => 'hot_face_position', 'no' => '12.6', 'label' => 'HOT FACE POSITION'],
+                ['key' => 'patch_job_old_lining', 'no' => '12.7', 'label' => 'PATCH JOB OLD LINING'],
+            ]],
+        ];
     }
 
     public static function schemaForTemplate(QcFormTemplate $template): array

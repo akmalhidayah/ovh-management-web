@@ -77,7 +77,7 @@ class FormController extends Controller
         try {
             $submission = DB::transaction(function () use ($request, $template, $validated) {
                 $isFixedTemplate = (bool) $template->template_type;
-                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, null, true) : $request->input('general_info', []);
+                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, null, true, $template) : $request->input('general_info', []);
                 $bodyData = $isFixedTemplate ? $this->fixedBodyData($request, $template) : null;
                 $formNumber = $generalInfo['doc_number'] ?? $generalInfo['report_no'] ?? null;
                 $formNumber = $formNumber ?: $this->generateFormNumber();
@@ -187,7 +187,7 @@ class FormController extends Controller
         try {
             $submission = DB::transaction(function () use ($request, $template, $validated, $submission) {
                 $isFixedTemplate = (bool) $template->template_type;
-                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, $submission->form_number) : $request->input('general_info', []);
+                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, $submission->form_number, false, $template) : $request->input('general_info', []);
                 $bodyData = $isFixedTemplate ? $this->fixedBodyData($request, $template) : null;
                 $formNumber = $generalInfo['doc_number'] ?? $generalInfo['report_no'] ?? null;
                 $formNumber = $formNumber ?: $submission->form_number ?: $this->generateFormNumber();
@@ -333,6 +333,8 @@ class FormController extends Controller
 
     public static function streamPdf(QcFormSubmission $submission)
     {
+        $submission->loadMissing(['template.blocks', 'rows', 'attachments', 'user']);
+
         $pdf = Pdf::loadView('pdf.qc-submission', [
             'submission' => $submission,
             'statusLabels' => self::statusLabels(),
@@ -396,23 +398,27 @@ class FormController extends Controller
         }
     }
 
-    private function fixedHeaderData(Request $request, ?string $existingDocNumber = null, bool $forceGeneratedDocNumber = false): array
+    private function fixedHeaderData(Request $request, ?string $existingDocNumber = null, bool $forceGeneratedDocNumber = false, ?QcFormTemplate $template = null): array
     {
-        $header = collect(FixedQcTemplate::headerFields())
+        $header = collect(FixedQcTemplate::headerFields($template?->template_type))
             ->mapWithKeys(fn ($field) => [$field['key'] => $request->input("header.{$field['key']}")])
             ->all();
 
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: $this->generateQcDocumentNumber()));
+        $header['inspector_qc'] = $request->user()?->name;
 
         if ($masterRecord = $this->selectedActiveQcMasterDataRecord($request)) {
             $header['master_data_record_id'] = $masterRecord->id;
+            $header['plant'] = $masterRecord->plant;
             $header['functional_location'] = $masterRecord->func_location;
             $header['tahun'] = $masterRecord->year;
             $header['tag_num'] = $masterRecord->section_no;
             $header['area'] = $masterRecord->area;
             $header['id_equipment'] = $masterRecord->equipment_no;
-            $header['alat'] = $masterRecord->description;
+            $header['name_equipment'] = $masterRecord->description;
+        } elseif ($header['date_time'] ?? null) {
+            $header['tahun'] = Carbon::parse($header['date_time'])->format('Y');
         }
 
         return $header;
@@ -464,6 +470,49 @@ class FormController extends Controller
             ];
         }
 
+        if ($type === FixedQcTemplate::TYPE_CASTABLE) {
+            return [
+                'final_check' => (bool) ($body['final_check'] ?? false),
+                'castable_customer' => $this->stringMap($body['castable_customer'] ?? []),
+                'castable_checks' => collect(FixedQcTemplate::castableInspectionRows())
+                    ->mapWithKeys(function ($definition) use ($body) {
+                        $row = $body['castable_checks'][$definition['key']] ?? [];
+
+                        return [$definition['key'] => [
+                            'label' => $definition['label'],
+                            'status' => trim((string) ($row['status'] ?? '')),
+                            'value' => trim((string) ($row['value'] ?? '')),
+                            'detail' => trim((string) ($row['detail'] ?? '')),
+                        ]];
+                    })
+                    ->all(),
+                'castable_sample' => $this->stringMap($body['castable_sample'] ?? []),
+            ];
+        }
+
+        if ($type === FixedQcTemplate::TYPE_BRICS) {
+            return [
+                'final_check' => (bool) ($body['final_check'] ?? false),
+                'brics_customer' => $this->stringMap($body['brics_customer'] ?? []),
+                'brics_meta' => $this->stringMap($body['brics_meta'] ?? []),
+                'brics_technical' => $this->stringMap($body['brics_technical'] ?? []),
+                'brics_manpower' => $this->stringMap($body['brics_manpower'] ?? []),
+                'brics_weather' => $this->stringMap($body['brics_weather'] ?? []),
+                'brics_checks' => collect(FixedQcTemplate::bricsInspectionSections())
+                    ->flatMap(fn ($section) => $section['items'])
+                    ->mapWithKeys(function ($definition) use ($body) {
+                        $row = $body['brics_checks'][$definition['key']] ?? [];
+
+                        return [$definition['key'] => [
+                            'label' => $definition['label'],
+                            'status' => trim((string) ($row['status'] ?? '')),
+                            'remark' => trim((string) ($row['remark'] ?? '')),
+                        ]];
+                    })
+                    ->all(),
+            ];
+        }
+
         return [
             'final_check' => (bool) ($body['final_check'] ?? false),
             'general_rows' => collect($body['general_rows'] ?? [])
@@ -483,9 +532,9 @@ class FormController extends Controller
     private function validateFixedSubmission(Request $request, QcFormTemplate $template): void
     {
         $errors = [];
-        $headerData = $this->fixedHeaderData($request);
+        $headerData = $this->fixedHeaderData($request, null, false, $template);
 
-        foreach (FixedQcTemplate::headerFields() as $field) {
+        foreach (FixedQcTemplate::headerFields($template->template_type) as $field) {
             if ($field['key'] === 'doc_number') {
                 continue;
             }
@@ -532,7 +581,7 @@ class FormController extends Controller
                     $errors["body.result_rows.{$index}.status"] = 'Final Check hanya bisa dicentang jika semua hasil QC berstatus Baik.';
                 }
             }
-        } else {
+        } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_GENERAL) {
             if (($body['general_rows'] ?? []) === []) {
                 $errors['body.general_rows'] = 'Minimal satu row QC Umum wajib diisi.';
             }
@@ -546,6 +595,12 @@ class FormController extends Controller
 
                 if (($row['status'] ?? null) && $row['status'] !== 'Ok') {
                     $errors["body.general_rows.{$index}.status"] = 'Final Check hanya bisa dicentang jika semua status berisi Ok.';
+                }
+            }
+        } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_BRICS) {
+            foreach ($body['brics_checks'] ?? [] as $key => $row) {
+                if (($row['status'] ?? null) && $row['status'] !== 'OK') {
+                    $errors["body.brics_checks.{$key}.status"] = 'Final Check hanya bisa dicentang jika semua status Brics berisi OK.';
                 }
             }
         }
@@ -580,6 +635,37 @@ class FormController extends Controller
             return;
         }
 
+        if (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_CASTABLE) {
+            foreach ($bodyData['castable_checks'] ?? [] as $key => $row) {
+                $submission->rows()->create([
+                    'block_type' => 'castable_check',
+                    'order_no' => (int) (collect(FixedQcTemplate::castableInspectionRows())->firstWhere('key', $key)['no'] ?? 0),
+                    'row_data' => $row + ['key' => $key],
+                    'status_value' => $row['status'] ?: null,
+                    'catatan' => $row['detail'] ?: null,
+                    'aktual' => $row['value'] ?: null,
+                ]);
+            }
+
+            return;
+        }
+
+        if (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_BRICS) {
+            $orderNo = 1;
+
+            foreach (($bodyData['brics_checks'] ?? []) as $key => $row) {
+                $submission->rows()->create([
+                    'block_type' => 'brics_check',
+                    'order_no' => $orderNo++,
+                    'row_data' => $row + ['key' => $key],
+                    'status_value' => $row['status'] ?: null,
+                    'catatan' => $row['remark'] ?: null,
+                ]);
+            }
+
+            return;
+        }
+
         foreach ($bodyData['general_rows'] ?? [] as $index => $row) {
             $submission->rows()->create([
                 'block_type' => 'general',
@@ -590,6 +676,13 @@ class FormController extends Controller
                 'aktual' => $row['actual'] ?? null,
             ]);
         }
+    }
+
+    private function stringMap(array $values): array
+    {
+        return collect($values)
+            ->map(fn ($value) => is_scalar($value) ? trim((string) $value) : '')
+            ->all();
     }
 
     private function storeAttachments(QcFormSubmission $submission, QcFormTemplate $template, array $attachments): void

@@ -3,6 +3,9 @@
 
     $type = FixedQcTemplate::normalizeType($template->template_type);
     $schema = FixedQcTemplate::schemaForTemplate($template);
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
+    $headerRows = FixedQcTemplate::headerRows($type);
+    $headerFieldMap = collect(FixedQcTemplate::headerFields($type))->keyBy('key');
 @endphp
 
 <div class="qc-block-preview">
@@ -12,11 +15,16 @@
             <span>Input manual user</span>
         </div>
         <div class="qc-info-grid">
-            @foreach (FixedQcTemplate::headerFields() as $field)
-                <div class="qc-info-field">
-                    <label>{{ $field['label'] }}</label>
-                    <input type="{{ $field['type'] }}" disabled>
-                </div>
+            @foreach ($headerRows as $row)
+                @foreach ($row as $fieldKey)
+                    @php
+                        $field = $headerFieldMap[$fieldKey];
+                    @endphp
+                    <div class="qc-info-field">
+                        <label>{{ $field['label'] }}</label>
+                        <input type="{{ $field['type'] }}" disabled>
+                    </div>
+                @endforeach
             @endforeach
         </div>
     </section>
@@ -110,6 +118,94 @@
                 </table>
             </div>
         </section>
+    @elseif ($type === FixedQcTemplate::TYPE_CASTABLE)
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Customer Data</h2>
+                <span>Fixed</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <tbody>
+                        @foreach (FixedQcTemplate::castableCustomerRows() as $row)
+                            <tr>
+                                <td style="width: 60px;">{{ $row['no'] }}</td>
+                                <td>{{ $row['label'] }}</td>
+                                <td class="text-muted">{{ $row['hint'] ?: 'Diisi user QC' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Installation Record / Inspection Check List</h2>
+                <span>Fixed</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <tbody>
+                        @foreach (FixedQcTemplate::castableInspectionRows() as $row)
+                            <tr>
+                                <td style="width: 60px;">{{ $row['no'] }}</td>
+                                <td>{{ $row['label'] }}</td>
+                                <td>{{ isset($row['options']) ? implode(' / ', $row['options']) : ($row['unit'] ?? 'Manual') }}</td>
+                                <td>{{ $row['detail_label'] ?? '' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @elseif ($type === FixedQcTemplate::TYPE_BRICS)
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Customer Data dan Kiln Technical Information</h2>
+                <span>Fixed</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <tbody>
+                        @foreach (FixedQcTemplate::bricsCustomerRows() as $row)
+                            <tr>
+                                <td style="width: 60px;">{{ $row['no'] }}</td>
+                                <td>{{ $row['label'] }}</td>
+                                <td>{{ $row['default'] ?? 'Diisi user QC' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Installation Record / Inspection Check List</h2>
+                <span>Fixed</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <tbody>
+                        @foreach (FixedQcTemplate::bricsInspectionSections() as $section)
+                            <tr class="table-light">
+                                <th colspan="5">{{ trim(($section['number'] ?? '').' '.$section['title']) }}</th>
+                            </tr>
+                            @foreach ($section['items'] as $row)
+                                <tr>
+                                    <td style="width: 60px;">{{ $row['no'] }}</td>
+                                    <td>{{ $row['label'] }}</td>
+                                    <td>OK</td>
+                                    <td>NO</td>
+                                    <td>Remark</td>
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
     @else
         <section class="qc-preview-section">
             <div class="qc-preview-section-head">
@@ -185,13 +281,16 @@
             <strong>Final Check</strong>
         </label>
         <div class="qc-approval-grid">
-            @foreach (FixedQcTemplate::approvalColumns() as $column)
+            @foreach (FixedQcTemplate::approvalColumns($type) as $column)
+                @php
+                    $approvalName = $approvalDefaults[$column['key']]['name'] ?? '';
+                @endphp
                 <div class="qc-approval-box">
                     <small>{{ $column['group'] }}</small>
                     <strong>{{ $column['label'] }}</strong>
-                    <input type="text" class="form-control mt-2" placeholder="Nama" disabled>
+                    <input type="text" class="form-control mt-2" value="{{ $approvalName }}" placeholder="Nama" disabled>
                     <input type="date" class="form-control mt-2" disabled>
-                    <span>{{ $column['key'] === 'qc_inspector_qc_inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
+                    <span>{{ ($column['role'] ?? null) === 'QC Inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>
                 </div>
             @endforeach
         </div>

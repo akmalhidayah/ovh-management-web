@@ -55,7 +55,7 @@
             <p>Silakan publish template dari halaman admin agar user QC bisa membuat form berdasarkan template tersebut.</p>
         </section>
     @else
-        <form method="POST" action="{{ isset($draftSubmission) ? route('user.qc.submissions.update', $draftSubmission) : route('user.qc.forms.store') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ isset($draftSubmission) ? route('user.qc.submissions.update', $draftSubmission) : route('user.qc.forms.store') }}" enctype="multipart/form-data" data-confirm-submit>
             @csrf
             @isset($draftSubmission)
                 @method('PATCH')
@@ -87,16 +87,62 @@
             let activeCard = null;
             let drawing = false;
             let hasDrawing = false;
+            let signatureBounds = null;
+
+            const includePointInBounds = (point) => {
+                signatureBounds = signatureBounds
+                    ? {
+                        minX: Math.min(signatureBounds.minX, point.x),
+                        minY: Math.min(signatureBounds.minY, point.y),
+                        maxX: Math.max(signatureBounds.maxX, point.x),
+                        maxY: Math.max(signatureBounds.maxY, point.y),
+                    }
+                    : { minX: point.x, minY: point.y, maxX: point.x, maxY: point.y };
+            };
 
             const resetCanvas = () => {
                 context.clearRect(0, 0, canvas.width, canvas.height);
                 context.fillStyle = '#ffffff';
                 context.fillRect(0, 0, canvas.width, canvas.height);
-                context.strokeStyle = '#102033';
-                context.lineWidth = 3;
+                context.strokeStyle = '#000000';
+                context.lineWidth = 6;
                 context.lineCap = 'round';
                 context.lineJoin = 'round';
                 hasDrawing = false;
+                signatureBounds = null;
+            };
+
+            const signatureDataUrl = () => {
+                if (!signatureBounds) {
+                    return canvas.toDataURL('image/png');
+                }
+
+                const padding = 26;
+                const minX = Math.max(Math.floor(signatureBounds.minX - padding), 0);
+                const minY = Math.max(Math.floor(signatureBounds.minY - padding), 0);
+                const maxX = Math.min(Math.ceil(signatureBounds.maxX + padding), canvas.width);
+                const maxY = Math.min(Math.ceil(signatureBounds.maxY + padding), canvas.height);
+                const cropped = document.createElement('canvas');
+
+                cropped.width = Math.max(maxX - minX, 1);
+                cropped.height = Math.max(maxY - minY, 1);
+
+                const croppedContext = cropped.getContext('2d');
+                croppedContext.fillStyle = '#ffffff';
+                croppedContext.fillRect(0, 0, cropped.width, cropped.height);
+                croppedContext.drawImage(
+                    canvas,
+                    minX,
+                    minY,
+                    cropped.width,
+                    cropped.height,
+                    0,
+                    0,
+                    cropped.width,
+                    cropped.height
+                );
+
+                return cropped.toDataURL('image/png');
             };
 
             const pointFromEvent = (event) => {
@@ -115,6 +161,7 @@
                 const point = pointFromEvent(event);
                 context.beginPath();
                 context.moveTo(point.x, point.y);
+                includePointInBounds(point);
             };
 
             const draw = (event) => {
@@ -127,6 +174,7 @@
                 context.lineTo(point.x, point.y);
                 context.stroke();
                 hasDrawing = true;
+                includePointInBounds(point);
             };
 
             const stopDrawing = () => {
@@ -157,7 +205,7 @@
                     return;
                 }
 
-                const dataUrl = canvas.toDataURL('image/png');
+                const dataUrl = signatureDataUrl();
                 const signedAt = new Date();
                 const signedText = signedAt.toLocaleString('id-ID', {
                     dateStyle: 'medium',

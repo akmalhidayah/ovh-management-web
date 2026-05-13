@@ -48,7 +48,7 @@
             <p>Silakan publish template dari halaman admin agar user Commissioning bisa membuat form.</p>
         </section>
     @else
-        <form method="POST" action="{{ isset($draftSubmission) ? route('user.commissioning.submissions.update', $draftSubmission) : route('user.commissioning.forms.store') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ isset($draftSubmission) ? route('user.commissioning.submissions.update', $draftSubmission) : route('user.commissioning.forms.store') }}" enctype="multipart/form-data" data-confirm-submit>
             @csrf
             @isset($draftSubmission) @method('PATCH') @endisset
             <input type="hidden" name="template_id" value="{{ $selectedTemplate->id }}">

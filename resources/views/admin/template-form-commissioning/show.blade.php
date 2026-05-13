@@ -14,7 +14,7 @@
     <div class="page-header">
         <div>
             <h1>{{ $template->name }}</h1>
-            <p>{{ $template->description ?: 'Template commissioning fixed.' }}</p>
+            <p>{{ $template->description ?: 'Template commissioning manual.' }}</p>
         </div>
         <div class="page-actions">
             <form action="{{ route('admin.template-form-commissioning.duplicate', $template) }}" method="POST">

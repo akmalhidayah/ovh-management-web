@@ -14,14 +14,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
 
 class TemplateFormQcController extends Controller
 {
     private const ERROR_STORE = 'QC-TPL-STORE-FAILED';
     private const ERROR_UPDATE = 'QC-TPL-UPDATE-FAILED';
-    private const ERROR_IMPORT = 'QC-TPL-IMPORT-FAILED';
     private const ERROR_DUPLICATE = 'QC-TPL-DUPLICATE-FAILED';
     private const ERROR_TOGGLE = 'QC-TPL-TOGGLE-FAILED';
     private const ERROR_PUBLISH = 'QC-TPL-PUBLISH-FAILED';
@@ -181,86 +179,6 @@ class TemplateFormQcController extends Controller
         return view('admin.template-form-qc.preview', compact('template'));
     }
 
-    public function import(): View
-    {
-        return view('admin.template-form-qc.import');
-    }
-
-    public function processImport(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'excel_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
-        ]);
-
-        try {
-            $file = $request->file('excel_file');
-            $storedPath = $file->store('template-form-qc/imports');
-            $spreadsheet = IOFactory::load($file->getRealPath());
-            $sheet = $spreadsheet->getActiveSheet();
-            $highestRow = min($sheet->getHighestDataRow(), 250);
-            $highestColumn = $sheet->getHighestDataColumn();
-            $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-
-            $template = DB::transaction(function () use ($file, $storedPath, $sheet, $highestRow, $highestColumnIndex, $request) {
-                $template = QcFormTemplate::create([
-                    'code' => null,
-                    'name' => Str::headline(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)),
-                    'category' => 'QC',
-                    'description' => 'Draft hasil import Excel. Silakan review dan rapikan bagian template sebelum dipublish.',
-                    'version' => '1.0',
-                    'status' => 'draft',
-                    // Import Excel lama bersifat semi-auto. Admin harus review sebelum publish.
-                    'layout_mode' => 'block_based',
-                    'source_file' => $storedPath,
-                    'created_by' => $request->user()?->id,
-                ]);
-
-                $this->createGeneralInfoBlock($template, 1);
-                $header = $this->detectChecklistHeader($sheet, $highestRow, $highestColumnIndex);
-
-                if ($header) {
-                    $block = $template->blocks()->create([
-                        'type' => 'checklist_table',
-                        'title' => 'Checklist QC',
-                        'order_no' => 2,
-                        'config' => ['columns' => ['No', 'Aktivitas', 'Standar', 'Aktual', 'Keterangan']],
-                    ]);
-
-                    $rows = $this->extractChecklistRows($sheet, $header['row'], $header['map'], $highestRow);
-                    foreach ($rows as $index => $row) {
-                        $block->tableRows()->create([
-                            'qc_form_template_id' => $template->id,
-                            'order_no' => $index + 1,
-                            'row_data' => $row,
-                        ]);
-                    }
-                }
-
-                $this->createApprovalBlock($template, $template->blocks()->count() + 1);
-
-                return $template;
-            });
-        } catch (Throwable $exception) {
-            $this->logError(self::ERROR_IMPORT, $exception, [
-                'file_name' => $request->file('excel_file')?->getClientOriginalName(),
-            ]);
-
-            return back()
-                ->withInput()
-                ->withErrors(['excel_file' => 'File Excel gagal diproses. Pastikan format file valid dan tidak sedang terkunci. Kode error: '.self::ERROR_IMPORT]);
-        }
-
-        $this->logStatus('qc_template_imported', [
-            'template_id' => $template->id,
-            'status' => $template->status,
-            'source_file' => $template->source_file,
-        ]);
-
-        return redirect()
-            ->route('admin.template-form-qc.edit', $template)
-            ->with('success', 'Draft template berhasil dibuat. Silakan review dan rapikan sebelum dipublish.');
-    }
-
     public function duplicate(QcFormTemplate $template): RedirectResponse
     {
         $template->load(['blocks.fields', 'blocks.tableRows', 'gridCells']);
@@ -371,6 +289,7 @@ class TemplateFormQcController extends Controller
             'version' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['draft', 'active', 'inactive'])],
             'template_type' => ['required', Rule::in(array_keys(FixedQcTemplate::types()))],
+            'approval_defaults' => ['nullable', 'array'],
         ]);
 
         $validated['version'] = ($validated['version'] ?? null) ?: '1.0';
@@ -390,11 +309,19 @@ class TemplateFormQcController extends Controller
             return [
                 'welder_rows' => $request->input('welding_welder_rows', []),
                 'result_rows' => $request->input('welding_result_rows', []),
+                'approval_defaults' => $request->input('approval_defaults', []),
+            ];
+        }
+
+        if (FixedQcTemplate::isLockedBodyType($templateType)) {
+            return [
+                'approval_defaults' => $request->input('approval_defaults', []),
             ];
         }
 
         return [
             'rows' => $request->input('general_rows', []),
+            'approval_defaults' => $request->input('approval_defaults', []),
         ];
     }
 
@@ -432,6 +359,17 @@ class TemplateFormQcController extends Controller
                     'row_data' => $row,
                 ]);
             }
+
+            return;
+        }
+
+        if (FixedQcTemplate::isLockedBodyType($template->template_type)) {
+            $template->blocks()->create([
+                'type' => $template->template_type.'_fixed_body',
+                'title' => FixedQcTemplate::templateTypeLabel($template->template_type),
+                'order_no' => 1,
+                'config' => ['fixed' => true],
+            ]);
 
             return;
         }
@@ -674,58 +612,6 @@ class TemplateFormQcController extends Controller
             'type' => $key === 'status' ? 'radio' : ($key === 'catatan' ? 'textarea' : 'text'),
             'options' => $key === 'status' ? ['OK', 'Not OK'] : null,
         ];
-    }
-
-    private function detectChecklistHeader($sheet, int $highestRow, int $highestColumnIndex): ?array
-    {
-        $required = ['no', 'aktivitas', 'standar', 'aktual', 'keterangan'];
-
-        for ($row = 1; $row <= $highestRow; $row++) {
-            $map = [];
-
-            for ($col = 1; $col <= $highestColumnIndex; $col++) {
-                $value = Str::lower(trim((string) $sheet->getCell([$col, $row])->getFormattedValue()));
-                $value = str_replace('aktifitas', 'aktivitas', $value);
-
-                if (in_array($value, $required, true)) {
-                    $map[$value] = $col;
-                }
-            }
-
-            if (count(array_intersect($required, array_keys($map))) >= 4) {
-                return ['row' => $row, 'map' => $map];
-            }
-        }
-
-        return null;
-    }
-
-    private function extractChecklistRows($sheet, int $headerRow, array $map, int $highestRow): array
-    {
-        $rows = [];
-
-        for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
-            $activity = trim((string) $sheet->getCell([$map['aktivitas'] ?? 2, $row])->getFormattedValue());
-            $standard = trim((string) $sheet->getCell([$map['standar'] ?? 3, $row])->getFormattedValue());
-
-            if ($activity === '' && $standard === '') {
-                if ($rows !== []) {
-                    break;
-                }
-
-                continue;
-            }
-
-            $rows[] = [
-                'no' => trim((string) $sheet->getCell([$map['no'] ?? 1, $row])->getFormattedValue()) ?: (string) (count($rows) + 1),
-                'aktivitas' => $activity,
-                'standar' => $standard,
-                'actual_type' => 'text',
-                'keterangan' => trim((string) $sheet->getCell([$map['keterangan'] ?? 5, $row])->getFormattedValue()),
-            ];
-        }
-
-        return $rows;
     }
 
     private function logStatus(string $event, array $context = []): void

@@ -12,7 +12,7 @@
     <div class="accordion-item">
         <h2 class="accordion-header">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#commissioningHeaderPreview">
-                Header Fixed
+                Header Manual
             </button>
         </h2>
         <div id="commissioningHeaderPreview" class="accordion-collapse collapse show" data-bs-parent="#commissioningPreviewAccordion">
@@ -21,7 +21,13 @@
                     @foreach (FixedCommissioningTemplate::headerFields() as $field)
                         <div class="col-12 col-md-4">
                             <label class="form-label">{{ $field['label'] }}</label>
-                            <input type="text" class="form-control" disabled>
+                            @if ($field['key'] === 'name_equipment')
+                                <select class="form-select" disabled>
+                                    <option>Pilih Name Equipment</option>
+                                </select>
+                            @else
+                                <input type="text" class="form-control" disabled>
+                            @endif
                         </div>
                     @endforeach
                 </div>

@@ -125,7 +125,7 @@ class QcFormSubmissionTest extends TestCase
                 ->get(route('user.qc.forms.create', ['template' => $template->id]))
                 ->assertOk()
                 ->assertSee('001/QC/05-2026')
-                ->assertSeeInOrder(['Doc.Number', 'Functional Location', 'Tahun', 'Date &amp; Time', 'Tag.Num', 'Area'], false);
+                ->assertSeeInOrder(['Doc.Number', 'Plant', 'Section', 'Functional Location', 'ID Equipment', 'Name Equipment'], false);
 
             $this->actingAs($user)
                 ->post(route('user.qc.forms.store'), [
@@ -143,7 +143,7 @@ class QcFormSubmissionTest extends TestCase
         }
     }
 
-    public function test_fixed_qc_functional_location_uses_active_qc_master_data(): void
+    public function test_fixed_qc_name_equipment_uses_active_qc_master_data(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();
 
@@ -186,19 +186,21 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.qc.forms.create', ['template' => $template->id]))
             ->assertOk()
-            ->assertSee('ST-ACTIVE-QC')
+            ->assertSee('Pilih Name Equipment')
+            ->assertSee('ACTIVE BELT CONVEYOR')
             ->assertSee('EQ-ACTIVE-001')
             ->assertDontSee('ST-INACTIVE-QC')
             ->assertDontSee('ST-COMMISSIONING');
 
         $payload = $this->fixedGeneralPayload($template);
         $payload['header']['master_data_record_id'] = $activeRecord->id;
+        $payload['header']['plant'] = 'PLANT-WRONG';
         $payload['header']['functional_location'] = 'MANUAL-WRONG';
-        $payload['header']['tahun'] = '1999';
         $payload['header']['tag_num'] = 'TAG-WRONG';
         $payload['header']['area'] = 'AREA-WRONG';
         $payload['header']['id_equipment'] = 'EQ-WRONG';
-        $payload['header']['alat'] = 'ALAT-WRONG';
+        $payload['header']['name_equipment'] = 'EQP-WRONG';
+        $payload['header']['inspector_qc'] = 'INSPECTOR-WRONG';
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)
@@ -207,12 +209,15 @@ class QcFormSubmissionTest extends TestCase
         $submission = QcFormSubmission::firstOrFail();
 
         $this->assertSame($activeRecord->id, $submission->general_info['master_data_record_id']);
+        $this->assertSame('TONASA 4', $submission->general_info['plant']);
         $this->assertSame('ST-ACTIVE-QC', $submission->general_info['functional_location']);
         $this->assertSame('2026', $submission->general_info['tahun']);
         $this->assertSame('SEC-ACTIVE-001', $submission->general_info['tag_num']);
         $this->assertSame('RAW MILL', $submission->general_info['area']);
         $this->assertSame('EQ-ACTIVE-001', $submission->general_info['id_equipment']);
-        $this->assertSame('ACTIVE BELT CONVEYOR', $submission->general_info['alat']);
+        $this->assertSame('ACTIVE BELT CONVEYOR', $submission->general_info['name_equipment']);
+        $this->assertSame($user->name, $submission->general_info['inspector_qc']);
+        $this->assertSame('TONASA 4', $submission->plant);
         $this->assertSame('SEC-ACTIVE-001', $submission->tag_num);
         $this->assertSame('RAW MILL', $submission->area);
     }
@@ -283,6 +288,7 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('submitted', $submission->status);
         $this->assertSame('Template Fixed General', $submission->template->name);
         $this->assertTrue($submission->body_data['final_check']);
+        $this->assertSame($user->name, $submission->general_info['inspector_qc']);
 
         $pdfUrl = route('user.qc.submissions.pdf', $submission);
         $this->assertStringContainsString(QcFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);
@@ -345,6 +351,7 @@ class QcFormSubmissionTest extends TestCase
         $submission = QcFormSubmission::firstOrFail();
         $this->assertSame('submitted', $submission->status);
         $this->assertContains('Final Check', $submission->body_data['check_steps']);
+        $this->assertSame($user->name, $submission->general_info['inspector_qc']);
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.pdf', $submission))
@@ -483,17 +490,17 @@ class QcFormSubmissionTest extends TestCase
     {
         return [
             'doc_number' => 'DOC-QC-001',
-            'tahun' => '2026',
-            'area' => 'Crusher Area',
-            'date_time' => '2026-05-08T10:00',
+            'plant' => 'TONASA 4',
             'tag_num' => 'TAG-01',
             'functional_location' => 'FL-001',
-            'name_equipment' => 'Bearing Conveyor',
             'id_equipment' => 'EQ-001',
-            'alat' => 'Conveyor',
+            'name_equipment' => 'Bearing Conveyor',
+            'area' => 'Crusher Area',
+            'date_time' => '2026-05-08T10:00',
+            'inspector_qc' => 'Manual Inspector',
             'pekerjaan' => 'Inspection',
             'unit_kerja' => 'Maintenance',
-            'durasi' => '4 Jam',
+            'durasi' => '240',
         ];
     }
 

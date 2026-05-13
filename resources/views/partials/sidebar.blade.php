@@ -30,12 +30,14 @@
                 $role === 'admin' ? 'admin.template-form-commissioning.*' : null,
             ]),
             'items' => [
-                ['label' => 'QC', 'route' => "{$role}.qc"],
-                ['label' => 'Commissioning', 'route' => "{$role}.commissioning"],
                 ...($role === 'admin' ? [
+                    ['label' => 'QC & Commissioning', 'route' => 'admin.qc', 'active' => 'admin.qc'],
                     ['label' => 'Template Form QC', 'route' => 'admin.template-form-qc.index', 'active' => 'admin.template-form-qc.*'],
                     ['label' => 'Template Form Commissioning', 'route' => 'admin.template-form-commissioning.index', 'active' => 'admin.template-form-commissioning.*'],
-                ] : []),
+                ] : [
+                    ['label' => 'QC', 'route' => "{$role}.qc"],
+                    ['label' => 'Commissioning', 'route' => "{$role}.commissioning"],
+                ]),
             ],
         ],
         ['label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],

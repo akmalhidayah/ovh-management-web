@@ -5,7 +5,23 @@
     $generalInfo = $submission->general_info ?? [];
     $bodyData = $submission->body_data ?? [];
     $approvalData = $submission->approval_data ?? [];
+    $schema = $submission->template ? FixedQcTemplate::schemaForTemplate($submission->template) : [];
+    $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
     $rows = $submission->rows->groupBy('block_type');
+    $headerRows = FixedQcTemplate::headerRows($type);
+    $headerFieldMap = collect(FixedQcTemplate::headerFields($type))->keyBy('key');
+    $headerValue = static function (string $key, mixed $fallback = '-') use ($generalInfo, $submission) {
+        return match ($key) {
+            'doc_number' => $generalInfo[$key] ?? $submission->report_no ?? $submission->form_number ?? $fallback,
+            'plant' => $generalInfo[$key] ?? $submission->plant ?? $fallback,
+            'date_time' => $generalInfo[$key] ?? optional($submission->submitted_at)->format('Y-m-d H:i') ?? $fallback,
+            'inspector_qc' => $generalInfo[$key] ?? $submission->user?->name ?? $fallback,
+            'unit_kerja' => $generalInfo[$key] ?? $submission->unit ?? $fallback,
+            'durasi' => $generalInfo[$key] ?? $submission->durasi ?? $fallback,
+            'pekerjaan' => $generalInfo[$key] ?? $submission->pekerjaan ?? $fallback,
+            default => $generalInfo[$key] ?? $fallback,
+        };
+    };
 @endphp
 
 <div class="qc-submission-detail">
@@ -26,11 +42,16 @@
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Header</h3></div>
         <div class="qc-user-field-grid">
-            @foreach (FixedQcTemplate::headerFields() as $field)
-                <div class="qc-user-field">
-                    <span>{{ $field['label'] }}</span>
-                    <div class="form-control bg-light">{{ $generalInfo[$field['key']] ?? '-' }}</div>
-                </div>
+            @foreach ($headerRows as $row)
+                @foreach ($row as $fieldKey)
+                    @php
+                        $field = $headerFieldMap[$fieldKey];
+                    @endphp
+                    <div class="qc-user-field">
+                        <span>{{ $field['label'] }}</span>
+                        <div class="form-control bg-light">{{ $headerValue($fieldKey) }}</div>
+                    </div>
+                @endforeach
             @endforeach
         </div>
     </section>
@@ -89,6 +110,67 @@
                 </table>
             </div>
         </section>
+    @elseif ($type === FixedQcTemplate::TYPE_CASTABLE)
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Customer Data</h3></div>
+            <div class="qc-user-table-wrap">
+                <table class="qc-user-checklist-table">
+                    <tbody>
+                        @foreach (FixedQcTemplate::castableCustomerRows() as $item)
+                            <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $bodyData['castable_customer'][$item['key']] ?? '-' }}</td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
+            <div class="qc-user-table-wrap">
+                <table class="qc-user-checklist-table">
+                    <thead><tr><th>No</th><th>Item</th><th>Status / Value</th><th>Detail</th></tr></thead>
+                    <tbody>
+                        @foreach (FixedQcTemplate::castableInspectionRows() as $item)
+                            @php
+                                $saved = $bodyData['castable_checks'][$item['key']] ?? [];
+                            @endphp
+                            <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $saved['status'] ?? $saved['value'] ?? '-' }}</td><td>{{ $saved['detail'] ?? '-' }}</td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @elseif ($type === FixedQcTemplate::TYPE_BRICS)
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Customer Data</h3></div>
+            <div class="qc-user-table-wrap">
+                <table class="qc-user-checklist-table">
+                    <tbody>
+                        @foreach (FixedQcTemplate::bricsCustomerRows() as $item)
+                            <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $bodyData['brics_customer'][$item['key']] ?? ($item['default'] ?? '-') }}</td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
+            <div class="qc-user-table-wrap">
+                <table class="qc-user-checklist-table">
+                    <thead><tr><th>No</th><th>Item</th><th>Status</th><th>Remark</th></tr></thead>
+                    <tbody>
+                        @foreach (FixedQcTemplate::bricsInspectionSections() as $section)
+                            <tr><th colspan="4">{{ trim(($section['number'] ?? '').' '.$section['title']) }}</th></tr>
+                            @foreach ($section['items'] as $item)
+                                @php
+                                    $saved = $bodyData['brics_checks'][$item['key']] ?? [];
+                                @endphp
+                                <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $saved['status'] ?? '-' }}</td><td>{{ $saved['remark'] ?? '-' }}</td></tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
     @else
         <section class="inspector-panel qc-form-card">
             <div><strong>Final Check:</strong> {{ ! empty($bodyData['final_check']) ? 'Ya' : 'Tidak' }}</div>
@@ -123,7 +205,9 @@
         <div class="qc-form-section-title"><h3>Lampiran Foto/Gambar</h3></div>
         <div class="qc-attachment-grid">
             @forelse ($submission->attachments as $attachment)
-                @php($attachmentUrl = route('user.qc.attachments.show', $attachment))
+                @php
+                    $attachmentUrl = route('user.qc.attachments.show', $attachment);
+                @endphp
                 <a href="{{ $attachmentUrl }}" target="_blank" class="qc-upload-box text-decoration-none text-reset">
                     <div class="qc-upload-box-head">
                         <div>
@@ -145,13 +229,16 @@
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
         <p class="text-muted">Baru bisa ter approve jika form sudah terisi semua & Final Check sudah tercentang:</p>
-        <div class="qc-user-approval-grid" style="--qc-approval-columns: 5">
-            @foreach (FixedQcTemplate::approvalColumns() as $column)
+        @php
+            $approvalColumns = FixedQcTemplate::approvalColumns($type);
+        @endphp
+        <div class="qc-user-approval-grid" style="--qc-approval-columns: {{ count($approvalColumns) }}">
+            @foreach ($approvalColumns as $column)
                 @php $approval = $approvalData[$column['key']] ?? []; @endphp
                 <div class="qc-user-approval-box">
                     <strong>{{ $column['label'] }}</strong>
                     <small class="text-muted d-block">{{ $column['group'] }}</small>
-                    <div>{{ $approval['name'] ?? '-' }}</div>
+                    <div>{{ $approval['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '-') ?: '-' }}</div>
                     <div>{{ $approval['date'] ?? '-' }}</div>
                     @if (! empty($approval['signature']))
                         <img src="{{ $approval['signature'] }}" alt="Tanda tangan" style="max-height: 54px;">
