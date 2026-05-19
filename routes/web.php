@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionContro
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PublicApprovalController;
 use App\Http\Controllers\User\Approval\DashboardController as ApprovalDashboardController;
 use App\Http\Controllers\User\Approval\DocumentController as ApprovalDocumentController;
@@ -42,6 +43,8 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+    Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('/register', [RegisterController::class, 'register'])->name('register.store');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])
