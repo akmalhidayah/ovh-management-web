@@ -159,6 +159,42 @@
                 </table>
             </div>
         </section>
+
+        <section class="qc-preview-section">
+            <div class="qc-preview-section-head">
+                <h2>Monitoring Installation Castable</h2>
+                <span>Fixed layout, row dinamis di user</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table qc-modern-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Quantity</th>
+                            <th>Batch Number</th>
+                            <th>Temp. Material</th>
+                            <th>Temp. Ruangan</th>
+                            <th>Waktu Aduk</th>
+                            <th>Air %</th>
+                            <th>PH</th>
+                            <th>Temp. Air</th>
+                            <th>Lokasi</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (FixedQcTemplate::defaultCastableMonitoringRows() as $row)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                @foreach (FixedQcTemplate::castableMonitoringColumns() as $column)
+                                    <td class="text-muted">{{ $column['placeholder'] }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
     @elseif ($type === FixedQcTemplate::TYPE_BRICS)
         <section class="qc-preview-section">
             <div class="qc-preview-section-head">

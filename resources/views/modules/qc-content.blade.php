@@ -14,16 +14,26 @@
         'approved' => 'text-bg-success',
         'revision' => 'text-bg-warning',
     ];
-    $typeTabs = [
-        'all' => ['label' => 'Semua', 'icon' => 'bi-grid-3x3-gap'],
-        'qc' => ['label' => 'QC', 'icon' => 'bi-shield-check'],
-        'commissioning' => ['label' => 'Commissioning', 'icon' => 'bi-tools'],
-    ];
+    $pageHeading = $pageTitle ?? 'QC & Commissioning';
+    $filterRoute = $filters['type'] === 'commissioning' ? 'admin.commissioning' : 'admin.qc';
+    $visibleCharts = match ($filters['type']) {
+        'qc' => [
+            ['key' => 'qc', 'label' => 'Quality Control', 'badge' => 'text-bg-info'],
+        ],
+        'commissioning' => [
+            ['key' => 'commissioning', 'label' => 'Commissioning', 'badge' => 'text-bg-success'],
+        ],
+        default => [
+            ['key' => 'overall', 'label' => 'Semua', 'badge' => 'text-bg-primary'],
+            ['key' => 'qc', 'label' => 'QC', 'badge' => 'text-bg-info'],
+            ['key' => 'commissioning', 'label' => 'Commissioning', 'badge' => 'text-bg-success'],
+        ],
+    };
 @endphp
 
 <div class="page-header">
     <div>
-        <h1>Inspection & Commissioning</h1>
+        <h1>{{ $pageHeading }}</h1>
     </div>
 </div>
 
@@ -35,51 +45,21 @@
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-lg-4">
-        <div class="content-card inspection-chart-card">
-            <div class="card-heading mb-2">
-                <span class="badge text-bg-primary">Semua</span>
-            </div>
-            <div class="inspection-chart-wrap">
-                <canvas data-admin-area-chart='@json($charts['overall'])'></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-4">
-        <div class="content-card inspection-chart-card">
-            <div class="card-heading mb-2">
-                <span class="badge text-bg-info">QC</span>
-            </div>
-            <div class="inspection-chart-wrap">
-                <canvas data-admin-area-chart='@json($charts['qc'])'></canvas>
+    @foreach ($visibleCharts as $chart)
+        <div class="col-12 {{ count($visibleCharts) === 1 ? '' : 'col-lg-4' }}">
+            <div class="content-card inspection-chart-card">
+                <div class="card-heading mb-2">
+                    <span class="badge {{ $chart['badge'] }}">{{ $chart['label'] }}</span>
+                </div>
+                <div class="inspection-chart-wrap">
+                    <canvas data-admin-area-chart='@json($charts[$chart['key']])'></canvas>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-12 col-lg-4">
-        <div class="content-card inspection-chart-card">
-            <div class="card-heading mb-2">
-                <span class="badge text-bg-success">Commissioning</span>
-            </div>
-            <div class="inspection-chart-wrap">
-                <canvas data-admin-area-chart='@json($charts['commissioning'])'></canvas>
-            </div>
-        </div>
-    </div>
+    @endforeach
 </div>
 
-<div class="template-toolbar">
-    <div class="template-tabs">
-        @foreach ($typeTabs as $type => $tab)
-            <a href="{{ route('admin.qc', array_merge(request()->except('page'), ['type' => $type])) }}"
-                class="template-tab {{ $filters['type'] === $type ? 'active' : '' }}">
-                <i class="bi {{ $tab['icon'] }} me-1"></i>{{ $tab['label'] }}
-            </a>
-        @endforeach
-    </div>
-</div>
-
-<form method="GET" action="{{ route('admin.qc') }}">
-    <input type="hidden" name="type" value="{{ $filters['type'] }}">
+<form method="GET" action="{{ route($filterRoute) }}">
     <x-filter-card>
         <div class="col-12 col-md-6 col-xl-2">
             <label class="form-label">Tahun</label>
@@ -129,7 +109,17 @@
 
 <div class="content-card">
     <div class="table-responsive">
-        <table class="table align-middle ovh-table template-table">
+        <table class="table align-middle ovh-table admin-submission-table">
+            <colgroup>
+                <col class="admin-submission-col-no">
+                <col class="admin-submission-col-type">
+                <col class="admin-submission-col-year">
+                <col class="admin-submission-col-plant">
+                <col class="admin-submission-col-area">
+                <col>
+                <col class="admin-submission-col-status">
+                <col class="admin-submission-col-action">
+            </colgroup>
             <thead>
                 <tr>
                     <th>No</th>
@@ -155,8 +145,8 @@
                         <td>{{ $submission->plant ?: '-' }}</td>
                         <td>{{ $submission->area ?: '-' }}</td>
                         <td>
-                            <div class="fw-semibold">{{ $submission->equipment ?: '-' }}</div>
-                            <div class="template-meta">
+                            <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
+                            <div class="admin-submission-meta">
                                 <span>{{ $submission->form_number ?: '-' }}</span>
                                 <span>{{ $submission->submitted_at?->format('d M Y H:i') ?: '-' }}</span>
                             </div>
@@ -167,13 +157,21 @@
                             </span>
                         </td>
                         <td class="text-end">
-                            @if ($submission->pdf_route)
-                                <a href="{{ $submission->pdf_route }}" target="_blank" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-filetype-pdf me-1"></i>PDF
-                                </a>
-                            @else
-                                <span class="text-muted small">Draft user</span>
-                            @endif
+                            <div class="d-inline-flex align-items-center gap-2">
+                                @if ($submission->model->approvalFlow)
+                                    <button type="button" class="btn btn-sm btn-outline-primary admin-inspection-icon-btn" data-bs-toggle="modal" data-bs-target="#adminApprovalProgressModal{{ $submission->type }}{{ $submission->model->id }}" title="Detail Approval" aria-label="Detail Approval">
+                                        <i class="bi bi-list-check"></i>
+                                    </button>
+                                @endif
+
+                                @if ($submission->pdf_route)
+                                    <a href="{{ $submission->pdf_route }}" target="_blank" class="btn btn-sm btn-primary admin-inspection-icon-btn" title="PDF" aria-label="PDF">
+                                        <i class="bi bi-filetype-pdf"></i>
+                                    </a>
+                                @else
+                                    <span class="text-muted small">Draft user</span>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -189,6 +187,22 @@
         {{ $submissions->links() }}
     </div>
 </div>
+
+@foreach ($submissions as $submission)
+    @php
+        $activeApprovalStep = $submission->model->approvalFlow?->steps->firstWhere('status', 'active');
+        $adminCopyApprovalLinkUrl = $submission->status === 'pending_approval' && $activeApprovalStep
+            ? ($submission->type === 'qc'
+                ? route('admin.qc.submissions.approval-link', $submission->model)
+                : route('admin.commissioning.submissions.approval-link', $submission->model))
+            : null;
+    @endphp
+    @include('approvals._progress', [
+        'submission' => $submission->model,
+        'modalId' => 'adminApprovalProgressModal'.$submission->type.$submission->model->id,
+        'copyApprovalLinkUrl' => $adminCopyApprovalLinkUrl,
+    ])
+@endforeach
 
 @push('scripts')
     <script>
@@ -256,3 +270,82 @@
         });
     </script>
 @endpush
+
+@push('styles')
+    <style>
+        .admin-submission-table {
+            min-width: 760px;
+            margin-bottom: 0;
+            font-size: .82rem;
+        }
+
+        .admin-submission-table thead th {
+            padding: .72rem .7rem;
+            font-size: .7rem;
+            letter-spacing: 0;
+        }
+
+        .admin-submission-table tbody td {
+            padding: .72rem .7rem;
+            border-bottom-color: #e8edf4;
+        }
+
+        .admin-submission-col-no { width: 42px; }
+        .admin-submission-col-type { width: 112px; }
+        .admin-submission-col-year { width: 62px; }
+        .admin-submission-col-plant { width: 104px; }
+        .admin-submission-col-area { width: 112px; }
+        .admin-submission-col-status { width: 138px; }
+        .admin-submission-col-action { width: 88px; }
+
+        .admin-submission-table .badge {
+            padding: .36rem .56rem;
+            border-radius: .48rem;
+            font-size: .68rem;
+            font-weight: 750;
+            letter-spacing: 0;
+        }
+
+        .admin-submission-equipment {
+            color: #172033;
+            font-size: .89rem;
+            font-weight: 750;
+            line-height: 1.2;
+        }
+
+        .admin-submission-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .2rem .55rem;
+            margin-top: .22rem;
+            color: #64748b;
+            font-size: .72rem;
+            line-height: 1.35;
+        }
+
+        .admin-submission-table td:not(:nth-child(6)) {
+            white-space: nowrap;
+        }
+
+        .admin-inspection-icon-btn {
+            width: 1.95rem;
+            height: 1.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        @media (max-width: 1199.98px) {
+            .admin-submission-table {
+                min-width: 720px;
+            }
+
+            .admin-submission-col-plant { width: 96px; }
+            .admin-submission-col-area { width: 96px; }
+            .admin-submission-col-status { width: 126px; }
+        }
+    </style>
+@endpush
+
+@include('approvals._copy-link-script')

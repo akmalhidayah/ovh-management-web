@@ -22,6 +22,17 @@
     if ($resultRows === []) {
         $resultRows = FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_WELDING)['result_rows'];
     }
+
+    $codeInputValue = old('code', $template->code);
+    $codeManualValue = $codeInputValue;
+    $codeNumberValue = '001';
+
+    if (preg_match('/^QCR-(.+)-(\d+)$/i', (string) $codeInputValue, $codeMatches) === 1) {
+        $codeManualValue = $codeMatches[1];
+        $codeNumberValue = $codeMatches[2];
+    } elseif (preg_match('/^QCR-.+-(\d+)$/i', (string) $template->code, $templateCodeMatches) === 1) {
+        $codeNumberValue = $templateCodeMatches[1];
+    }
 @endphp
 
 <form action="{{ $action }}" method="POST">
@@ -34,12 +45,16 @@
         <div class="row g-3">
             <div class="col-12 col-md-4">
                 <label class="form-label">Kode Form</label>
-                <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code', $template->code) }}" placeholder="QCR-BC-001">
+                <div class="input-group">
+                    <span class="input-group-text">QCR-</span>
+                    <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ $codeManualValue }}" placeholder="BC">
+                    <span class="input-group-text">-{{ $codeNumberValue }}</span>
+                </div>
                 @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-8">
                 <label class="form-label">Nama Template</label>
-                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $template->name) }}" required placeholder="Standard QCR Penggantian Belt Conveyor">
+                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $template->name) }}" required placeholder="Contoh: Standard QCR Penggantian Belt Conveyor">
                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-3">

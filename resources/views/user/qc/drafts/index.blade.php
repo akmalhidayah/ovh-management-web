@@ -3,12 +3,6 @@
 @section('title', 'Draft Form QC')
 
 @section('content')
-    <x-user.page-header title="Draft Form QC" subtitle="Lanjutkan draft form QC yang sudah disimpan." eyebrow="Draft Workspace">
-        <a href="{{ route('user.qc.forms.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Buat Form Baru
-        </a>
-    </x-user.page-header>
-
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
@@ -19,7 +13,12 @@
                 <h2>Draft Aktif</h2>
                 <p>{{ $submissions->total() }} draft QC menunggu dilanjutkan.</p>
             </div>
-            <span class="commissioning-list-badge is-draft"><i class="bi bi-journal-richtext"></i>Draft</span>
+            <div class="commissioning-toolbar-actions">
+                <span class="commissioning-list-badge is-draft"><i class="bi bi-journal-richtext"></i>Draft</span>
+                <a href="{{ route('user.qc.forms.create') }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Buat Form Baru
+                </a>
+            </div>
         </div>
         <form method="GET" action="{{ route('user.qc.drafts.index') }}" class="commissioning-filter-bar">
             <label for="qc-draft-area">Area</label>
@@ -109,6 +108,7 @@
     .commissioning-list-toolbar { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-bottom: 1rem; }
     .commissioning-list-toolbar h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #172033; }
     .commissioning-list-toolbar p { margin: .2rem 0 0; color: #64748b; }
+    .commissioning-toolbar-actions { display: inline-flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
     .commissioning-list-badge { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .7rem; border-radius: 999px; background: #f1f5f9; color: #475569; font-weight: 700; }
     .commissioning-list-badge.is-draft { background: #fff7ed; color: #9a3412; }
     .commissioning-filter-bar { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; margin-bottom: 1rem; }

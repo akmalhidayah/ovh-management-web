@@ -3,8 +3,6 @@
 @section('title', 'Riwayat QC')
 
 @section('content')
-    <x-user.page-header title="Riwayat QC" subtitle="Daftar form QC yang sudah disubmit." eyebrow="History Workspace" />
-
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
@@ -47,8 +45,21 @@
                     @forelse ($submissions as $submission)
                         <tr>
                             <td>
+                                @php
+                                    $approvalSteps = $submission->approvalFlow?->steps ?? collect();
+                                    $approvedSteps = $approvalSteps->where('status', 'approved')->count();
+                                    $activeStep = $approvalSteps->firstWhere('status', 'active');
+                                @endphp
                                 <div class="commissioning-form-no">{{ $submission->form_number }}</div>
                                 <span class="commissioning-status-pill is-submitted">{{ $statusLabels[$submission->status] ?? $submission->status }}</span>
+                                @if ($approvalSteps->isNotEmpty())
+                                    <small class="approval-summary d-block mt-2">
+                                        TTD {{ $approvedSteps }}/{{ $approvalSteps->count() }}
+                                        @if ($activeStep)
+                                            · Aktif: {{ $activeStep->label }}
+                                        @endif
+                                    </small>
+                                @endif
                             </td>
                             <td>
                                 <div class="commissioning-main-text">{{ $submission->template?->name ?: '-' }}</div>
@@ -68,12 +79,28 @@
                             </td>
                             <td class="text-end">
                                 <div class="commissioning-actions">
-                                    <a href="{{ route('user.qc.submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary commissioning-icon-btn" title="Detail" aria-label="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
+                                    @if ($submission->approvalFlow)
+                                        <button type="button" class="btn btn-sm btn-outline-primary commissioning-icon-btn" data-bs-toggle="modal" data-bs-target="#approvalProgressModal{{ $submission->id }}" title="Detail Approval" aria-label="Detail Approval">
+                                            <i class="bi bi-list-check"></i>
+                                        </button>
+                                    @endif
                                     <a href="{{ route('user.qc.submissions.pdf', $submission) }}" class="btn btn-sm btn-success commissioning-icon-btn" target="_blank" title="PDF" aria-label="PDF">
                                         <i class="bi bi-file-earmark-pdf"></i>
                                     </a>
+                                    @if ($submission->status === 'pending_approval' && $submission->approvalFlow?->steps->firstWhere('status', 'active'))
+                                        <button type="button" class="btn btn-sm btn-warning commissioning-icon-btn" data-copy-approval-link-url="{{ route('user.qc.submissions.approval-link', $submission) }}" title="Salin Link Approval" aria-label="Salin Link Approval">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                    @endif
+                                    @if ($submission->status !== 'approved')
+                                        <form method="POST" action="{{ route('user.qc.submissions.destroy', $submission) }}" data-delete-submission-form>
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger commissioning-icon-btn" title="Hapus Form" aria-label="Hapus Form">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -90,6 +117,10 @@
             {{ $submissions->links() }}
         </div>
     </section>
+
+    @foreach ($submissions as $submission)
+        @include('approvals._progress', ['submission' => $submission, 'modalId' => 'approvalProgressModal'.$submission->id])
+    @endforeach
 @endsection
 
 @push('styles')
@@ -109,8 +140,11 @@
     .commissioning-list-table small { color: #64748b; }
     .commissioning-status-pill { display: inline-flex; margin-top: .4rem; padding: .22rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 800; }
     .commissioning-status-pill.is-submitted { background: #dcfce7; color: #166534; }
+    .approval-summary { max-width: 210px; color: #64748b; font-size: .76rem; line-height: 1.35; }
     .commissioning-actions { display: inline-flex; flex-wrap: nowrap; justify-content: flex-end; gap: .4rem; }
     .commissioning-icon-btn { width: 2.15rem; height: 2.15rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
     @media (max-width: 767.98px) { .commissioning-list-toolbar { align-items: flex-start; flex-direction: column; } .commissioning-filter-bar { justify-content: flex-start; flex-wrap: wrap; } }
 </style>
 @endpush
+
+@include('approvals._copy-link-script')

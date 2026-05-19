@@ -25,7 +25,7 @@ class HistoryController extends Controller
             ->pluck('area');
 
         $submissions = $baseQuery
-            ->with('template')
+            ->with(['template', 'approvalFlow.steps'])
             ->when($selectedArea !== 'all' && $selectedArea !== '', fn ($query) => $query->where('area', $selectedArea))
             ->latest('submitted_at')
             ->paginate(10)

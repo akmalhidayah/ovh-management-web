@@ -99,14 +99,8 @@ class UserRoleUiData
                 ['label' => 'Form Terkirim', 'value' => '28', 'icon' => 'bi-send-check', 'accent' => 'success'],
                 ['label' => 'Riwayat PDF', 'value' => '14', 'icon' => 'bi-file-earmark-pdf', 'accent' => 'secondary'],
             ],
-            'tasks_title' => 'Tugas QC Hari Ini',
             'drafts_title' => 'Draft QC Saya',
             'history_title' => 'Riwayat QC Terbaru',
-            'tasks' => [
-                ['equipment' => 'Heat Exchanger E-101', 'plant' => 'Cement Plant 1', 'area' => 'Kiln & Clinker Cooler', 'type' => 'QC', 'schedule' => '22 Mei 2025 08:00', 'status' => 'Terjadwal'],
-                ['equipment' => 'Pump P-204', 'plant' => 'Cement Plant 1', 'area' => 'Raw Mill Area', 'type' => 'QC', 'schedule' => '22 Mei 2025 09:30', 'status' => 'Terjadwal'],
-                ['equipment' => 'Bucket Elevator BE-05', 'plant' => 'Cement Plant 1', 'area' => 'Coal Mill Area', 'type' => 'QC', 'schedule' => '22 Mei 2025 13:00', 'status' => 'Terjadwal'],
-            ],
             'drafts' => [
                 ['category' => 'QC', 'title' => 'QC - Gearbox GB-301', 'equipment' => 'Gearbox GB-301', 'plant' => 'Cement Plant 1', 'area' => 'Kiln Drive', 'status' => 'Dalam Proses', 'updated_at' => '21 Mei 2025 15:05'],
                 ['category' => 'QC', 'title' => 'QC - Vibrating Screen VS-01', 'equipment' => 'Vibrating Screen VS-01', 'plant' => 'Cement Plant 1', 'area' => 'Crusher Area', 'status' => 'Perlu Revisi', 'updated_at' => '20 Mei 2025 16:40'],
@@ -138,14 +132,8 @@ class UserRoleUiData
                 ['label' => 'Form Terkirim', 'value' => '22', 'icon' => 'bi-send-check', 'accent' => 'success'],
                 ['label' => 'Riwayat PDF', 'value' => '11', 'icon' => 'bi-file-earmark-pdf', 'accent' => 'secondary'],
             ],
-            'tasks_title' => 'Tugas Commissioning Hari Ini',
             'drafts_title' => 'Draft Commissioning Saya',
             'history_title' => 'Riwayat Commissioning Terbaru',
-            'tasks' => [
-                ['equipment' => 'Cooling Tower CT-01', 'plant' => 'Cement Plant 2', 'area' => 'Utilities Area', 'type' => 'Commissioning', 'schedule' => '22 Mei 2025 11:00', 'status' => 'Terjadwal'],
-                ['equipment' => 'Air Compressor AC-02', 'plant' => 'Cement Plant 2', 'area' => 'Compressor Room', 'type' => 'Commissioning', 'schedule' => '22 Mei 2025 14:30', 'status' => 'Terjadwal'],
-                ['equipment' => 'Boiler Feed Pump BFP-01', 'plant' => 'Cement Plant 1', 'area' => 'Utilities Area', 'type' => 'Commissioning', 'schedule' => '22 Mei 2025 16:00', 'status' => 'Terjadwal'],
-            ],
             'drafts' => [
                 ['category' => 'Commissioning', 'title' => 'Commissioning - ID Fan IF-02', 'equipment' => 'ID Fan IF-02', 'plant' => 'Cement Plant 2', 'area' => 'Raw Mill Area', 'status' => 'Menunggu Data', 'updated_at' => '21 Mei 2025 13:10'],
                 ['category' => 'Commissioning', 'title' => 'Commissioning - Cooling Tower CT-01', 'equipment' => 'Cooling Tower CT-01', 'plant' => 'Cement Plant 2', 'area' => 'Utilities Area', 'status' => 'Dalam Proses', 'updated_at' => '21 Mei 2025 09:55'],
@@ -573,10 +561,8 @@ class UserRoleUiData
                 'actions' => $config['actions'],
             ],
             'stats' => $config['stats'],
-            'tasksTitle' => $config['tasks_title'],
             'draftsTitle' => $config['drafts_title'],
             'historyTitle' => $config['history_title'],
-            'tasks' => $config['tasks'],
             'drafts' => $config['drafts'],
             'history' => $config['history'],
         ];

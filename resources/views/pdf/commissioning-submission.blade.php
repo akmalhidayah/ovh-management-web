@@ -1,23 +1,53 @@
 @php
     use App\Support\Commissioning\FixedCommissioningTemplate;
     use App\Support\Pdf\SignatureImage;
+    use App\Models\ApprovalStep;
+    use Illuminate\Support\Facades\Storage;
     $header = $submission->header_data ?? [];
     $body = $submission->body_data ?? [];
+    $templateSnapshot = $submission->template_snapshot ?? [];
+    $templateName = $submission->template_name ?? $templateSnapshot['name'] ?? $submission->template?->name;
+    $templateBodySchema = $templateSnapshot['body_schema'] ?? $submission->template?->body_schema ?? [];
     $value = fn ($key, $default = '-') => $header[$key] ?? $default;
     $logoSig = public_path('assets/images/logo/logo-sig.png');
     $logoSt = public_path('assets/images/logo/logo-st2.png');
-    $titleDetail = $submission->template?->name ?: 'Form Commissioning';
-    $schema = FixedCommissioningTemplate::normalizeSchema($submission->template?->body_schema);
+    $titleDetail = $templateName ?: 'Form Commissioning';
+    $schema = FixedCommissioningTemplate::normalizeSchema($templateBodySchema);
     $labels = $schema['labels'];
     $motorRatingFields = $schema['motor_rating_fields'];
     $motorTestFields = $schema['motor_test_fields'];
     $gearboxRatingFields = $schema['gearbox_rating_fields'];
     $gearboxTestFields = $schema['gearbox_test_fields'];
     $approvalDefaults = $schema['approval_defaults'] ?? FixedCommissioningTemplate::defaultApprovalDefaults();
+    $legacyApprovalData = $submission->approval_data ?? [];
+    $approvalSignatureSource = static function ($step) {
+        if (! empty($step?->signature_path) && Storage::disk('public')->exists($step->signature_path)) {
+            return Storage::disk('public')->path($step->signature_path);
+        }
+
+        return $step?->signature_data;
+    };
+    $flowSteps = $submission->approvalFlow?->steps ?? collect();
+    $approvalData = $flowSteps->isNotEmpty() ? [] : $legacyApprovalData;
+    if ($flowSteps->isNotEmpty()) {
+        foreach (array_values(FixedCommissioningTemplate::approvalColumns()) as $index => $column) {
+            $step = $flowSteps->firstWhere('step_order', $index + 1);
+            if (! $step || $step->status !== ApprovalStep::STATUS_APPROVED) {
+                continue;
+            }
+
+            $approvalData[$column['key']] = [
+                'name' => $step->approver_name ?? '',
+                'role' => $step->approver_position ?? $column['label'],
+                'signature' => $approvalSignatureSource($step),
+                'date' => $step->acted_at?->format('Y-m-d') ?? '',
+            ];
+        }
+    }
     $imageAttachments = $submission->attachments
         ->where('type', 'image')
         ->values();
-    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
     $check = fn (bool $checked) => $checked ? '<img src="'.$checkMarkSvg.'" class="pdf-check-mark" alt="check">' : '';
     $signature = fn (?string $source) => SignatureImage::forPdf($source);
     $headerRows = [
@@ -44,11 +74,18 @@
     <meta charset="utf-8">
     <title>Commissioning - {{ $titleDetail }}</title>
     <style>
-        @page { margin: 8mm; }
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
+        }
         body { margin: 0; font-family: DejaVu Sans, sans-serif; font-size: 8.5px; color: #111; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #111; padding: 4px; text-align: center; vertical-align: middle; line-height: 1.35; }
-        th { font-weight: bold; text-align: center; }
+        th {
+            background: #e5e2d8;
+            font-weight: bold;
+            text-align: center;
+        }
         .top-table td {
             height: 26mm;
             border: 1px solid #000;
@@ -75,11 +112,11 @@
         .st-logo { width: 21mm; height: 21mm; object-fit: contain; }
         .section { font-size: 10px; font-weight: bold; margin-top: 16px; margin-bottom: 5px; text-align: left; }
         .no-border td { border: 0; }
-        .black { background: #000; color: #fff; }
+        .black { background: #000 !important; color: #fff; }
         .approval td { text-align: center; vertical-align: top; }
-        .approval .approval-group td { height: 18px; padding: 2px 3px; }
+        .approval .approval-group td { height: 18px; padding: 2px 3px; background: #e5e2d8; }
         .approval .approval-role th { height: 18px; padding: 3px; }
-        .approval .approval-sign td { height: 30mm; font-size: 10px; font-weight: 700; }
+        .approval .approval-sign td { height: 24mm; padding: 1mm; font-size: 9px; font-weight: 700; overflow: hidden; vertical-align: middle; }
         .approval .approval-date td { height: 16px; text-align: left; }
         .approval-block {
             page-break-inside: avoid;
@@ -100,8 +137,28 @@
         .info-value { font-style: italic; }
         .notes-table td { text-align: left; vertical-align: top; }
         .notes-table td { height: 108px; }
-        .doc-image-list { display: block; padding-top: 4mm; }
-        .doc-image { display: inline-block; max-width: 30%; max-height: 100px; margin: 2mm 1.5mm 0 0; object-fit: contain; border: 1px solid #bbb; vertical-align: top; }
+        .doc-image-grid {
+            width: auto;
+            margin-top: 4mm;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 2mm;
+        }
+        .doc-image-grid td {
+            width: 28mm;
+            height: 28mm;
+            padding: 1mm;
+            border: 1px solid #bbb;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .doc-image {
+            display: block;
+            max-width: 26mm;
+            max-height: 26mm;
+            margin: 0 auto;
+            object-fit: contain;
+        }
         .motor-table { table-layout: fixed; }
         .pdf-table-gap { height: 4mm; }
         .gearbox-rating-table { width: 100%; margin-bottom: 5mm; table-layout: fixed; }
@@ -109,17 +166,20 @@
         .field-unit { display: block; font-size: 7px; font-weight: normal; }
         .pdf-check-mark {
             display: block;
-            width: 6.4mm;
-            height: 5mm;
+            width: 4.6mm;
+            height: 3.6mm;
             margin: 0 auto;
         }
         .sig-img {
             display: block;
-            width: 36mm;
-            max-width: 100%;
-            max-height: 19mm;
-            margin: 0 auto 1mm;
-            object-fit: contain;
+            width: auto;
+            height: 9mm;
+            max-width: 28mm;
+            margin: 0 auto .7mm;
+        }
+        .sig-name {
+            display: block;
+            text-align: center;
         }
     </style>
 </head>
@@ -279,16 +339,34 @@
             <td style="width: 50%;"><strong>{{ $labels['note_label'] }}:</strong><br>{{ $submission->note ?: '-' }}</td>
             <td style="width: 50%;">
                 <strong>{{ $labels['documentation_label'] }}</strong><br>
-                <div class="doc-image-list">
-                    @forelse ($imageAttachments->take(6) as $attachment)
-                        @php($path = \Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path) ? \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path) : storage_path('app/public/'.$attachment->file_path))
-                        @if (file_exists($path))
-                            <img src="{{ $path }}" class="doc-image" alt="{{ $attachment->original_name }}">
-                        @endif
-                    @empty
-                        -
-                    @endforelse
-                </div>
+                @php
+                    $documentationImages = $imageAttachments->take(6)
+                        ->map(function ($attachment) {
+                            $path = \Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)
+                                ? \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path)
+                                : storage_path('app/public/'.$attachment->file_path);
+
+                            return file_exists($path) ? ['path' => $path, 'name' => $attachment->original_name] : null;
+                        })
+                        ->filter()
+                        ->values();
+                @endphp
+                @if ($documentationImages->isNotEmpty())
+                    <table class="doc-image-grid">
+                        @foreach ($documentationImages->chunk(3) as $row)
+                            <tr>
+                                @foreach ($row as $image)
+                                    <td><img src="{{ $image['path'] }}" class="doc-image" alt="{{ $image['name'] }}"></td>
+                                @endforeach
+                                @for ($empty = $row->count(); $empty < 3; $empty++)
+                                    <td></td>
+                                @endfor
+                            </tr>
+                        @endforeach
+                    </table>
+                @else
+                    -
+                @endif
             </td>
         </tr>
     </table>
@@ -307,18 +385,18 @@
             </tr>
             <tr class="approval-sign">
                 @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
-                    @php($data = $submission->approval_data[$column['key']] ?? [])
+                    @php($data = $approvalData[$column['key']] ?? [])
                     <td>
                         @if (! empty($data['signature']))
                             <img src="{{ $signature($data['signature']) }}" class="sig-img" alt="Tanda tangan">
                         @endif
-                        {{ $data['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '') }}
+                        <span class="sig-name">{{ $data['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '') }}</span>
                     </td>
                 @endforeach
             </tr>
             <tr class="approval-date">
                 @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
-                    @php($data = $submission->approval_data[$column['key']] ?? [])
+                    @php($data = $approvalData[$column['key']] ?? [])
                     <td>Date : {{ $data['date'] ?? '' }}</td>
                 @endforeach
             </tr>

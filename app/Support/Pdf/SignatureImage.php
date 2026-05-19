@@ -10,6 +10,12 @@ class SignatureImage
             return $source;
         }
 
+        if (is_file($source)) {
+            $binary = @file_get_contents($source);
+
+            return is_string($binary) ? self::cropBinary($binary, $source) : $source;
+        }
+
         if (! preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/', $source, $matches)) {
             return $source;
         }
@@ -19,9 +25,14 @@ class SignatureImage
             return $source;
         }
 
+        return self::cropBinary($binary, $source);
+    }
+
+    private static function cropBinary(string $binary, string $fallback): string
+    {
         $image = @imagecreatefromstring($binary);
         if (! $image) {
-            return $source;
+            return $fallback;
         }
 
         $width = imagesx($image);
@@ -31,7 +42,7 @@ class SignatureImage
         if (! $bounds) {
             imagedestroy($image);
 
-            return $source;
+            return $fallback;
         }
 
         $padding = 18;
@@ -49,17 +60,41 @@ class SignatureImage
         imagedestroy($image);
 
         if (! $cropped) {
-            return $source;
+            return $fallback;
         }
 
-        self::embolden($cropped);
+        self::makeWhiteTransparent($cropped);
 
         ob_start();
         imagepng($cropped);
         $png = ob_get_clean();
         imagedestroy($cropped);
 
-        return $png ? 'data:image/png;base64,'.base64_encode($png) : $source;
+        return $png ? 'data:image/png;base64,'.base64_encode($png) : $fallback;
+    }
+
+    private static function makeWhiteTransparent($image): void
+    {
+        imagepalettetotruecolor($image);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        $transparent = imagecolorallocatealpha($image, 255, 255, 255, 127);
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $color = imagecolorat($image, $x, $y);
+                $red = ($color >> 16) & 0xFF;
+                $green = ($color >> 8) & 0xFF;
+                $blue = $color & 0xFF;
+
+                if ($red > 246 && $green > 246 && $blue > 246) {
+                    imagesetpixel($image, $x, $y, $transparent);
+                }
+            }
+        }
     }
 
     private static function signatureBounds($image, int $width, int $height): ?array
@@ -84,36 +119,6 @@ class SignatureImage
         }
 
         return $bounds;
-    }
-
-    private static function embolden($image): void
-    {
-        $width = imagesx($image);
-        $height = imagesy($image);
-        $inkPixels = [];
-
-        for ($y = 0; $y < $height; $y++) {
-            for ($x = 0; $x < $width; $x++) {
-                if (self::isInkPixel($image, $x, $y)) {
-                    $inkPixels[] = [$x, $y];
-                }
-            }
-        }
-
-        $black = imagecolorallocate($image, 0, 0, 0);
-
-        foreach ($inkPixels as [$x, $y]) {
-            for ($offsetY = -1; $offsetY <= 1; $offsetY++) {
-                for ($offsetX = -1; $offsetX <= 1; $offsetX++) {
-                    $nextX = $x + $offsetX;
-                    $nextY = $y + $offsetY;
-
-                    if ($nextX >= 0 && $nextY >= 0 && $nextX < $width && $nextY < $height) {
-                        imagesetpixel($image, $nextX, $nextY, $black);
-                    }
-                }
-            }
-        }
     }
 
     private static function isInkPixel($image, int $x, int $y): bool

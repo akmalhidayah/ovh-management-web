@@ -258,7 +258,7 @@
                 <div class="qc-user-approval-box is-locked">
                     <strong>{{ $column['label'] }}</strong>
                     <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    <input type="text" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" class="form-control mb-2" placeholder="Nama" readonly>
+                    <input type="text" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" class="form-control mb-2" placeholder="Nama">
                     <input type="date" name="approval[{{ $column['key'] }}][date]" value="{{ $approval[$column['key']]['date'] ?? '' }}" class="form-control" disabled>
                     <div class="qc-signature-locked mt-2"><i class="bi bi-lock"></i><span>Tanda tangan terkunci.</span></div>
                 </div>

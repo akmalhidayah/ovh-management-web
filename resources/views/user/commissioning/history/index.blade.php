@@ -3,12 +3,6 @@
 @section('title', 'Riwayat Commissioning')
 
 @section('content')
-    <x-user.page-header title="Riwayat Commissioning" eyebrow="History Workspace">
-        <a href="{{ route('user.commissioning.forms.create') }}" class="btn btn-sm btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Buat Form Baru
-        </a>
-    </x-user.page-header>
-
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
@@ -19,7 +13,12 @@
                 <h2>Submission Terbaru</h2>
                 <p>{{ $submissions->total() }} form commissioning tersimpan.</p>
             </div>
-            <span class="commissioning-list-badge"><i class="bi bi-clock-history"></i>Submitted</span>
+            <div class="commissioning-toolbar-actions">
+                <span class="commissioning-list-badge"><i class="bi bi-clock-history"></i>Submitted</span>
+                <a href="{{ route('user.commissioning.forms.create') }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Buat Form Baru
+                </a>
+            </div>
         </div>
         <form method="GET" action="{{ route('user.commissioning.history.index') }}" class="commissioning-filter-bar">
             <label for="commissioning-history-area">Area</label>
@@ -42,8 +41,21 @@
                     @forelse ($submissions as $submission)
                         <tr>
                             <td>
+                                @php
+                                    $approvalSteps = $submission->approvalFlow?->steps ?? collect();
+                                    $approvedSteps = $approvalSteps->where('status', 'approved')->count();
+                                    $activeStep = $approvalSteps->firstWhere('status', 'active');
+                                @endphp
                                 <div class="commissioning-form-no">{{ $submission->form_number }}</div>
-                                <span class="commissioning-status-pill is-submitted">Submitted</span>
+                                <span class="commissioning-status-pill is-submitted">{{ $statusLabels[$submission->status] ?? Str::headline($submission->status) }}</span>
+                                @if ($approvalSteps->isNotEmpty())
+                                    <small class="approval-summary d-block mt-2">
+                                        TTD {{ $approvedSteps }}/{{ $approvalSteps->count() }}
+                                        @if ($activeStep)
+                                            · Aktif: {{ $activeStep->label }}
+                                        @endif
+                                    </small>
+                                @endif
                             </td>
                             <td>
                                 <div class="commissioning-main-text">{{ $submission->template?->name ?: '-' }}</div>
@@ -63,12 +75,28 @@
                             </td>
                             <td class="text-end">
                                 <div class="commissioning-actions">
-                                    <a href="{{ route('user.commissioning.submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary commissioning-icon-btn" title="Detail" aria-label="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
+                                    @if ($submission->approvalFlow)
+                                        <button type="button" class="btn btn-sm btn-outline-primary commissioning-icon-btn" data-bs-toggle="modal" data-bs-target="#approvalProgressModal{{ $submission->id }}" title="Detail Approval" aria-label="Detail Approval">
+                                            <i class="bi bi-list-check"></i>
+                                        </button>
+                                    @endif
                                     <a href="{{ route('user.commissioning.submissions.pdf', $submission) }}" class="btn btn-sm btn-success commissioning-icon-btn" target="_blank" title="PDF" aria-label="PDF">
                                         <i class="bi bi-file-earmark-pdf"></i>
                                     </a>
+                                    @if ($submission->status === 'pending_approval' && $submission->approvalFlow?->steps->firstWhere('status', 'active'))
+                                        <button type="button" class="btn btn-sm btn-warning commissioning-icon-btn" data-copy-approval-link-url="{{ route('user.commissioning.submissions.approval-link', $submission) }}" title="Salin Link Approval" aria-label="Salin Link Approval">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                    @endif
+                                    @if ($submission->status !== 'approved')
+                                        <form method="POST" action="{{ route('user.commissioning.submissions.destroy', $submission) }}" data-delete-submission-form>
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger commissioning-icon-btn" title="Hapus Form" aria-label="Hapus Form">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -80,6 +108,10 @@
         </div>
         <div class="mt-3">{{ $submissions->links() }}</div>
     </section>
+
+    @foreach ($submissions as $submission)
+        @include('approvals._progress', ['submission' => $submission, 'modalId' => 'approvalProgressModal'.$submission->id])
+    @endforeach
 @endsection
 
 @push('styles')
@@ -88,6 +120,7 @@
     .commissioning-list-toolbar { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-bottom: 1rem; }
     .commissioning-list-toolbar h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #172033; }
     .commissioning-list-toolbar p { margin: .2rem 0 0; color: #64748b; }
+    .commissioning-toolbar-actions { display: inline-flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
     .commissioning-list-badge { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .7rem; border-radius: 999px; background: #f1f5f9; color: #475569; font-weight: 700; }
     .commissioning-filter-bar { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; margin-bottom: 1rem; }
     .commissioning-filter-bar label { color: #475569; font-size: .82rem; font-weight: 800; }
@@ -99,8 +132,11 @@
     .commissioning-list-table small { color: #64748b; }
     .commissioning-status-pill { display: inline-flex; margin-top: .4rem; padding: .22rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 800; }
     .commissioning-status-pill.is-submitted { background: #dcfce7; color: #166534; }
+    .approval-summary { max-width: 210px; color: #64748b; font-size: .76rem; line-height: 1.35; }
     .commissioning-actions { display: inline-flex; flex-wrap: nowrap; justify-content: flex-end; gap: .4rem; }
     .commissioning-icon-btn { width: 2.15rem; height: 2.15rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
     @media (max-width: 767.98px) { .commissioning-list-toolbar { align-items: flex-start; flex-direction: column; } .commissioning-filter-bar { justify-content: flex-start; flex-wrap: wrap; } }
 </style>
 @endpush
+
+@include('approvals._copy-link-script')

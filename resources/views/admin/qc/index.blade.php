@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Inspection & Commissioning')
-@section('page_title', 'Inspection & Commissioning')
+@section('title', $pageTitle ?? 'QC & Commissioning')
+@section('page_title', $pageTitle ?? 'QC & Commissioning')
 
 @section('content')
     @include('modules.qc-content')

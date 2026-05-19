@@ -1,10 +1,31 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
+    use Illuminate\Support\Str;
 
     $customer = $bodyData['brics_customer'] ?? [];
     $meta = $bodyData['brics_meta'] ?? [];
     $technical = $bodyData['brics_technical'] ?? [];
     $manpower = $bodyData['brics_manpower'] ?? [];
+    $manpowerRows = collect($bodyData['brics_manpower_rows'] ?? [])
+        ->map(fn ($row) => [
+            'left_label' => $row['left_label'] ?? '',
+            'left_value' => $row['left_value'] ?? '',
+            'right_label' => $row['right_label'] ?? '',
+            'right_value' => $row['right_value'] ?? '',
+        ])
+        ->filter(fn ($row) => collect($row)->filter()->isNotEmpty())
+        ->values();
+
+    if ($manpowerRows->isEmpty()) {
+        $manpowerRows = collect(FixedQcTemplate::bricsManpowerRows())
+            ->map(fn ($row) => [
+                'left_label' => $row['left'],
+                'left_value' => $manpower[Str::slug($row['left'], '_')] ?? $manpower[str($row['left'])->snake()->toString()] ?? '',
+                'right_label' => $row['right'],
+                'right_value' => $manpower[Str::slug($row['right'], '_')] ?? $manpower[str($row['right'])->snake()->toString()] ?? '',
+            ]);
+    }
+
     $weather = $bodyData['brics_weather'] ?? [];
     $checks = $bodyData['brics_checks'] ?? [];
 @endphp
@@ -32,7 +53,7 @@
     </tbody>
 </table>
 
-<div class="fixed-section-title">Kiln Technical Information</div>
+<div class="fixed-section-title brics-section-gap">Kiln Technical Information</div>
 <table class="fixed-form-table">
     <tr>
         @foreach (FixedQcTemplate::bricsTechnicalRows() as $row)
@@ -42,20 +63,17 @@
     </tr>
 </table>
 
-<table class="fixed-form-table" style="margin-top: 2mm;">
+<table class="fixed-form-table brics-section-gap">
     <tr>
         <th colspan="4" style="width: 66%;">MANPOWER</th>
         <th colspan="3">WEATHER</th>
     </tr>
-    @foreach (FixedQcTemplate::bricsManpowerRows() as $index => $row)
+    @foreach ($manpowerRows as $index => $row)
         <tr>
-            @foreach (['left', 'right'] as $side)
-                @php
-                    $label = $row[$side];
-                @endphp
-                <td style="width: 16%;">{{ $label }}</td>
-                <td style="width: 17%;">{{ $manpower[str($label)->snake()->toString()] ?? '' }}</td>
-            @endforeach
+            <td style="width: 16%;">{{ $row['left_label'] }}</td>
+            <td style="width: 17%;">{{ $row['left_value'] }}</td>
+            <td style="width: 16%;">{{ $row['right_label'] }}</td>
+            <td style="width: 17%;">{{ $row['right_value'] }}</td>
             @if ($index < 2)
                 @php
                     $time = $index === 0 ? 'day' : 'night';
@@ -70,7 +88,7 @@
     @endforeach
 </table>
 
-<div class="fixed-section-title">Installation Record / Inspection Check List</div>
+<div class="fixed-section-title brics-section-gap">Installation Record / Inspection Check List</div>
 <table class="fixed-form-table">
     <tbody>
         @foreach (FixedQcTemplate::bricsInspectionSections() as $section)

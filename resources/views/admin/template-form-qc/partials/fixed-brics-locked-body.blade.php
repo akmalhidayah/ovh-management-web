@@ -35,7 +35,7 @@
                 <tr>
                     @foreach ($rowPair as $row)
                         <td class="fw-semibold" style="width: 20%;">{{ $row['label'] }}</td>
-                        <td><input type="text" class="form-control form-control-sm" disabled></td>
+                        <td><input type="{{ $row['type'] ?? 'text' }}" class="form-control form-control-sm" disabled></td>
                     @endforeach
                 </tr>
             @endforeach

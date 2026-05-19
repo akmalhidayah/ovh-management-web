@@ -7,10 +7,14 @@ use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormSubmissionAttachment;
 use App\Models\QcFormTemplate;
+use App\Services\DocumentNumberGenerator;
+use App\Services\ApprovalFlowService;
 use App\Support\QcTemplates\FixedQcTemplate;
+use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +31,7 @@ class FormController extends Controller
     private const ERROR_UPDATE = 'QC-SUB-UPDATE-FAILED';
     private const ERROR_PDF = 'QC-SUB-PDF-FAILED';
     private const ERROR_DESTROY = 'QC-SUB-DESTROY-FAILED';
+    private const ERROR_APPROVAL_LINK = 'QC-APPROVAL-LINK-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
 
     public function create(Request $request): View
@@ -57,7 +62,7 @@ class FormController extends Controller
         return view('user.qc.forms.create', array_merge(UserRoleUiData::qcForm(), [
             'templates' => $templates,
             'selectedTemplate' => $selectedTemplate,
-            'autoDocNumber' => $this->generateQcDocumentNumber(),
+            'autoDocNumber' => $this->previewQcDocumentNumber(),
             'activeQcMasterDataRecords' => $this->activeQcMasterDataRecords(),
         ]));
     }
@@ -81,16 +86,21 @@ class FormController extends Controller
                 $bodyData = $isFixedTemplate ? $this->fixedBodyData($request, $template) : null;
                 $formNumber = $generalInfo['doc_number'] ?? $generalInfo['report_no'] ?? null;
                 $formNumber = $formNumber ?: $this->generateFormNumber();
-                $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
+                $status = $validated['action'] === 'submit' ? 'pending_approval' : 'draft';
                 $templateMeta = collect($template->blocks)->pluck('config')->pluck('meta')->filter()->first() ?? [];
+                $templateSnapshot = TemplateSnapshot::forQc($template);
                 $dateTime = $generalInfo['date_time'] ?? null;
 
                 $submission = QcFormSubmission::create([
                     'qc_form_template_id' => $template->id,
+                    'template_code' => $templateSnapshot['code'] ?? null,
+                    'template_name' => $templateSnapshot['name'] ?? null,
+                    'template_version' => TemplateSnapshot::majorVersion($templateSnapshot['version'] ?? null),
+                    'template_snapshot' => $templateSnapshot,
                     'user_id' => $request->user()?->id,
                     'form_number' => $formNumber,
                     'status' => $status,
-                    'submitted_at' => $status === 'submitted' ? now() : null,
+                    'submitted_at' => $validated['action'] === 'submit' ? now() : null,
                     'year' => $generalInfo['tahun'] ?? null,
                     'plant' => $generalInfo['plant'] ?? $generalInfo['ovh_plant'] ?? null,
                     'area' => $generalInfo['area'] ?? null,
@@ -116,12 +126,16 @@ class FormController extends Controller
 
                 $this->storeAttachments($submission, $template, $request->file('attachments', []));
 
+                if ($validated['action'] === 'submit') {
+                    app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
+                }
+
                 return $submission;
             });
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_STORE, $exception, [
                 'template_id' => $template->id,
-                'requested_status' => $validated['action'] === 'submit' ? 'submitted' : 'draft',
+                'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
             ]);
 
             return back()
@@ -135,7 +149,7 @@ class FormController extends Controller
             'status' => $submission->status,
         ]);
 
-        if ($submission->status === 'submitted') {
+        if ($submission->status !== 'draft') {
             return redirect()
                 ->route('user.qc.history.index')
                 ->with('success', 'Form QC berhasil disubmit.');
@@ -150,7 +164,7 @@ class FormController extends Controller
     {
         $this->authorizeSubmission($submission);
 
-        abort_unless($submission->status === 'draft', 403);
+        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
 
         $submission->load(['template.blocks.fields', 'template.blocks.tableRows', 'template.fields', 'template.tableRows', 'rows', 'attachments']);
 
@@ -172,7 +186,7 @@ class FormController extends Controller
     {
         $this->authorizeSubmission($submission);
 
-        abort_unless($submission->status === 'draft', 403);
+        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
 
         $validated = $this->validateSubmissionRequest($request);
         abort_unless((int) $validated['template_id'] === (int) $submission->qc_form_template_id, 422);
@@ -191,14 +205,19 @@ class FormController extends Controller
                 $bodyData = $isFixedTemplate ? $this->fixedBodyData($request, $template) : null;
                 $formNumber = $generalInfo['doc_number'] ?? $generalInfo['report_no'] ?? null;
                 $formNumber = $formNumber ?: $submission->form_number ?: $this->generateFormNumber();
-                $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
+                $status = $validated['action'] === 'submit' ? 'pending_approval' : 'draft';
                 $templateMeta = collect($template->blocks)->pluck('config')->pluck('meta')->filter()->first() ?? [];
+                $templateSnapshot = $submission->template_snapshot ?: TemplateSnapshot::forQc($template);
                 $dateTime = $generalInfo['date_time'] ?? null;
 
                 $submission->update([
+                    'template_code' => $submission->template_code ?: ($templateSnapshot['code'] ?? null),
+                    'template_name' => $submission->template_name ?: ($templateSnapshot['name'] ?? null),
+                    'template_version' => $submission->template_version ?: TemplateSnapshot::majorVersion($templateSnapshot['version'] ?? null),
+                    'template_snapshot' => $templateSnapshot,
                     'form_number' => $formNumber,
                     'status' => $status,
-                    'submitted_at' => $status === 'submitted' ? now() : null,
+                    'submitted_at' => $validated['action'] === 'submit' ? now() : null,
                     'year' => $generalInfo['tahun'] ?? null,
                     'plant' => $generalInfo['plant'] ?? $generalInfo['ovh_plant'] ?? null,
                     'area' => $generalInfo['area'] ?? null,
@@ -226,13 +245,17 @@ class FormController extends Controller
 
                 $this->storeAttachments($submission, $template, $request->file('attachments', []));
 
+                if ($validated['action'] === 'submit') {
+                    app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
+                }
+
                 return $submission;
             });
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_UPDATE, $exception, [
                 'submission_id' => $submission->id,
                 'template_id' => $template->id,
-                'requested_status' => $validated['action'] === 'submit' ? 'submitted' : 'draft',
+                'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
             ]);
 
             return back()
@@ -246,7 +269,7 @@ class FormController extends Controller
             'status' => $submission->status,
         ]);
 
-        if ($submission->status === 'submitted') {
+        if ($submission->status !== 'draft') {
             return redirect()
                 ->route('user.qc.history.index')
                 ->with('success', 'Form QC berhasil disubmit.');
@@ -260,12 +283,39 @@ class FormController extends Controller
     public function show(QcFormSubmission $submission): View
     {
         $this->authorizeSubmission($submission);
-        $submission->load(['template.blocks', 'rows', 'attachments', 'user']);
+        $submission->load(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
 
         return view('user.qc.submissions.show', array_merge(UserRoleUiData::qcForm(), [
             'submission' => $submission,
             'statusLabels' => $this->statusLabels(),
+            'canCopyApprovalLink' => $submission->status === 'pending_approval'
+                && (bool) $submission->approvalFlow?->steps->firstWhere('status', 'active'),
         ]));
+    }
+
+    public function approvalLink(QcFormSubmission $submission): JsonResponse
+    {
+        $this->authorizeSubmission($submission);
+
+        if ($submission->status !== 'pending_approval') {
+            return response()->json(['message' => 'Submission tidak sedang menunggu approval.'], 409);
+        }
+
+        try {
+            $url = app(ApprovalFlowService::class)->getActiveLinkForSubmission($submission);
+        } catch (Throwable $exception) {
+            $this->logError(self::ERROR_APPROVAL_LINK, $exception, ['submission_id' => $submission->id]);
+
+            return response()->json([
+                'message' => 'Link approval gagal dibuat. Kode error: '.self::ERROR_APPROVAL_LINK,
+            ], 500);
+        }
+
+        if (! $url) {
+            return response()->json(['message' => 'Tidak ada step approval aktif.'], 404);
+        }
+
+        return response()->json(['url' => $url]);
     }
 
     public function pdf(QcFormSubmission $submission)
@@ -309,16 +359,18 @@ class FormController extends Controller
     {
         $this->authorizeSubmission($submission);
 
-        abort_unless($submission->status === 'draft', 403);
+        abort_if($submission->status === 'approved', 403);
 
         $submissionId = $submission->id;
+        $redirectRoute = $submission->status === 'draft' ? 'user.qc.drafts.index' : 'user.qc.history.index';
 
         try {
+            app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission deleted by owner');
             $submission->delete();
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_DESTROY, $exception, ['submission_id' => $submissionId]);
 
-            return back()->withErrors(['submission' => 'Draft QC gagal dihapus. Kode error: '.self::ERROR_DESTROY]);
+            return back()->withErrors(['submission' => 'Form QC gagal dihapus. Kode error: '.self::ERROR_DESTROY]);
         }
 
         $this->logStatus('qc_submission_deleted', [
@@ -327,13 +379,13 @@ class FormController extends Controller
         ]);
 
         return redirect()
-            ->route('user.qc.drafts.index')
-            ->with('success', 'Draft QC berhasil dihapus.');
+            ->route($redirectRoute)
+            ->with('success', 'Form QC berhasil dihapus.');
     }
 
     public static function streamPdf(QcFormSubmission $submission)
     {
-        $submission->loadMissing(['template.blocks', 'rows', 'attachments', 'user']);
+        $submission->loadMissing(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
 
         $pdf = Pdf::loadView('pdf.qc-submission', [
             'submission' => $submission,
@@ -352,8 +404,12 @@ class FormController extends Controller
         return [
             'draft' => 'Draft',
             'submitted' => 'Menunggu Review',
+            'pending_approval' => 'Menunggu Approval',
             'approved' => 'Disetujui',
             'revision' => 'Perlu Revisi',
+            'revision_required' => 'Perlu Revisi',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
         ];
     }
 
@@ -405,7 +461,7 @@ class FormController extends Controller
             ->all();
 
         $header['doc_number'] = $existingDocNumber
-            ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: $this->generateQcDocumentNumber()));
+            ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_qc'] = $request->user()?->name;
 
         if ($masterRecord = $this->selectedActiveQcMasterDataRecord($request)) {
@@ -477,26 +533,43 @@ class FormController extends Controller
                 'castable_checks' => collect(FixedQcTemplate::castableInspectionRows())
                     ->mapWithKeys(function ($definition) use ($body) {
                         $row = $body['castable_checks'][$definition['key']] ?? [];
+                        $dimensions = $this->castableDimensionValues($row['dimensions'] ?? []);
+                        $value = trim((string) ($row['value'] ?? ''));
+
+                        if (($definition['input'] ?? null) === 'dimension') {
+                            $filledDimensions = collect($dimensions)->filter(fn ($dimension) => $dimension !== '');
+                            $value = $filledDimensions->isNotEmpty()
+                                ? $filledDimensions->implode(' x ')
+                                : $value;
+                        }
 
                         return [$definition['key'] => [
                             'label' => $definition['label'],
                             'status' => trim((string) ($row['status'] ?? '')),
-                            'value' => trim((string) ($row['value'] ?? '')),
+                            'value' => $value,
+                            'dimensions' => $dimensions,
                             'detail' => trim((string) ($row['detail'] ?? '')),
                         ]];
                     })
                     ->all(),
-                'castable_sample' => $this->stringMap($body['castable_sample'] ?? []),
+                'castable_sample' => $this->castableSampleData($body['castable_sample'] ?? []),
+                'castable_monitoring_type' => trim((string) ($body['castable_monitoring_type'] ?? '')),
+                'castable_monitoring_note' => trim((string) ($body['castable_monitoring_note'] ?? '')),
+                'castable_monitoring_rows' => $this->castableMonitoringRows($body),
+                'castable_monitoring_signatures' => $this->castableMonitoringSignatures($body),
             ];
         }
 
         if ($type === FixedQcTemplate::TYPE_BRICS) {
+            $bricsManpowerRows = $this->bricsManpowerRows($body);
+
             return [
                 'final_check' => (bool) ($body['final_check'] ?? false),
                 'brics_customer' => $this->stringMap($body['brics_customer'] ?? []),
                 'brics_meta' => $this->stringMap($body['brics_meta'] ?? []),
                 'brics_technical' => $this->stringMap($body['brics_technical'] ?? []),
-                'brics_manpower' => $this->stringMap($body['brics_manpower'] ?? []),
+                'brics_manpower' => $this->bricsManpowerMap($bricsManpowerRows),
+                'brics_manpower_rows' => $bricsManpowerRows,
                 'brics_weather' => $this->stringMap($body['brics_weather'] ?? []),
                 'brics_checks' => collect(FixedQcTemplate::bricsInspectionSections())
                     ->flatMap(fn ($section) => $section['items'])
@@ -577,8 +650,6 @@ class FormController extends Controller
 
                 if (blank($row['status'] ?? null)) {
                     $errors["body.result_rows.{$index}.status"] = 'Status hasil QC wajib dipilih.';
-                } elseif (($row['status'] ?? null) !== 'Baik') {
-                    $errors["body.result_rows.{$index}.status"] = 'Final Check hanya bisa dicentang jika semua hasil QC berstatus Baik.';
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_GENERAL) {
@@ -592,15 +663,35 @@ class FormController extends Controller
                         $errors["body.general_rows.{$index}.{$key}"] = 'Item pengecekan, standar, actual, dan status wajib diisi.';
                     }
                 }
+            }
+        } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_CASTABLE) {
+            foreach (FixedQcTemplate::castableInspectionRows() as $definition) {
+                $row = $body['castable_checks'][$definition['key']] ?? [];
 
-                if (($row['status'] ?? null) && $row['status'] !== 'Ok') {
-                    $errors["body.general_rows.{$index}.status"] = 'Final Check hanya bisa dicentang jika semua status berisi Ok.';
+                if (($definition['input'] ?? null) === 'dimension') {
+                    foreach (['length', 'width', 'height'] as $dimensionKey) {
+                        $value = $row['dimensions'][$dimensionKey] ?? '';
+
+                        if (blank($value)) {
+                            $errors["body.castable_checks.{$definition['key']}.dimensions.{$dimensionKey}"] = "{$definition['label']} wajib diisi angka.";
+                        } elseif (! is_numeric($value)) {
+                            $errors["body.castable_checks.{$definition['key']}.dimensions.{$dimensionKey}"] = "{$definition['label']} wajib berupa angka.";
+                        }
+                    }
+                } elseif (($definition['input'] ?? null) === 'number') {
+                    $value = $row['value'] ?? '';
+
+                    if (blank($value)) {
+                        $errors["body.castable_checks.{$definition['key']}.value"] = "{$definition['label']} wajib diisi angka.";
+                    } elseif (! is_numeric($value)) {
+                        $errors["body.castable_checks.{$definition['key']}.value"] = "{$definition['label']} wajib berupa angka.";
+                    }
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_BRICS) {
             foreach ($body['brics_checks'] ?? [] as $key => $row) {
-                if (($row['status'] ?? null) && $row['status'] !== 'OK') {
-                    $errors["body.brics_checks.{$key}.status"] = 'Final Check hanya bisa dicentang jika semua status Brics berisi OK.';
+                if (blank($row['status'] ?? null)) {
+                    $errors["body.brics_checks.{$key}.status"] = 'Status Brics wajib dipilih.';
                 }
             }
         }
@@ -647,6 +738,16 @@ class FormController extends Controller
                 ]);
             }
 
+            foreach ($bodyData['castable_monitoring_rows'] ?? [] as $index => $row) {
+                $submission->rows()->create([
+                    'block_type' => 'castable_monitoring',
+                    'order_no' => $index + 1,
+                    'row_data' => $row,
+                    'catatan' => $row['remark'] ?: null,
+                    'aktual' => $row['quantity'] ?: null,
+                ]);
+            }
+
             return;
         }
 
@@ -683,6 +784,148 @@ class FormController extends Controller
         return collect($values)
             ->map(fn ($value) => is_scalar($value) ? trim((string) $value) : '')
             ->all();
+    }
+
+    private function castableMonitoringRows(array $body): array
+    {
+        $columns = collect(FixedQcTemplate::castableMonitoringColumns())->pluck('key');
+
+        return collect($body['castable_monitoring_rows'] ?? [])
+            ->map(function ($row, $index) use ($columns) {
+                $data = [
+                    'no' => (string) ($index + 1),
+                ];
+
+                foreach ($columns as $key) {
+                    $data[$key] = trim((string) ($row[$key] ?? ''));
+                }
+
+                return $data;
+            })
+            ->filter(fn ($row) => collect($row)->except('no')->filter(fn ($value) => $value !== '')->isNotEmpty())
+            ->values()
+            ->all();
+    }
+
+    private function castableDimensionValues(mixed $dimensions): array
+    {
+        $dimensions = is_array($dimensions) ? $dimensions : [];
+
+        return [
+            'length' => trim((string) ($dimensions['length'] ?? '')),
+            'width' => trim((string) ($dimensions['width'] ?? '')),
+            'height' => trim((string) ($dimensions['height'] ?? '')),
+        ];
+    }
+
+    private function castableSampleData(array $values): array
+    {
+        $sample = [];
+
+        foreach (FixedQcTemplate::castableSampleRows() as $row) {
+            if ($row['key'] === 'qc_sign_date') {
+                $signature = is_array($values['qc_sign_date'] ?? null) ? $values['qc_sign_date'] : [];
+                $sample['qc_sign_date'] = [
+                    'name' => trim((string) ($signature['name'] ?? '')),
+                    'date' => trim((string) ($signature['date'] ?? '')),
+                    'signature' => trim((string) ($signature['signature'] ?? '')),
+                    'signed_at' => trim((string) ($signature['signed_at'] ?? '')),
+                ];
+
+                continue;
+            }
+
+            $sample[$row['key']] = is_scalar($values[$row['key']] ?? null)
+                ? trim((string) $values[$row['key']])
+                : '';
+        }
+
+        return $sample;
+    }
+
+    private function castableMonitoringSignatures(array $body): array
+    {
+        return collect(FixedQcTemplate::castableMonitoringSignatures())
+            ->mapWithKeys(function ($definition) use ($body) {
+                if ((bool) ($definition['locked'] ?? false)) {
+                    return [$definition['key'] => [
+                        'name' => '',
+                        'date' => '',
+                        'signature' => '',
+                        'role' => $definition['role'],
+                        'signed_at' => '',
+                    ]];
+                }
+
+                $row = $body['castable_monitoring_signatures'][$definition['key']] ?? [];
+
+                return [$definition['key'] => [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'date' => trim((string) ($row['date'] ?? '')),
+                    'signature' => trim((string) ($row['signature'] ?? '')),
+                    'role' => $definition['role'],
+                    'signed_at' => trim((string) ($row['signed_at'] ?? '')),
+                ]];
+            })
+            ->all();
+    }
+
+    private function bricsManpowerRows(array $body): array
+    {
+        $rows = collect($body['brics_manpower_rows'] ?? [])
+            ->map(fn ($row) => [
+                'left_label' => trim((string) ($row['left_label'] ?? '')),
+                'left_value' => trim((string) ($row['left_value'] ?? '')),
+                'right_label' => trim((string) ($row['right_label'] ?? '')),
+                'right_value' => trim((string) ($row['right_value'] ?? '')),
+            ])
+            ->filter(fn ($row) => collect($row)->filter(fn ($value) => $value !== '')->isNotEmpty())
+            ->values()
+            ->all();
+
+        if ($rows !== []) {
+            return $rows;
+        }
+
+        $legacyManpower = $this->stringMap($body['brics_manpower'] ?? []);
+
+        return collect(FixedQcTemplate::bricsManpowerRows())
+            ->map(function (array $row) use ($legacyManpower) {
+                $leftLabel = $row['left'];
+                $rightLabel = $row['right'];
+
+                return [
+                    'left_label' => $leftLabel,
+                    'left_value' => $legacyManpower[$this->bricsManpowerKey($leftLabel)] ?? $legacyManpower[Str::snake($leftLabel)] ?? '',
+                    'right_label' => $rightLabel,
+                    'right_value' => $legacyManpower[$this->bricsManpowerKey($rightLabel)] ?? $legacyManpower[Str::snake($rightLabel)] ?? '',
+                ];
+            })
+            ->all();
+    }
+
+    private function bricsManpowerMap(array $rows): array
+    {
+        $map = [];
+
+        foreach ($rows as $row) {
+            foreach (['left', 'right'] as $side) {
+                $label = $row["{$side}_label"] ?? '';
+
+                if ($label === '') {
+                    continue;
+                }
+
+                $map[$this->bricsManpowerKey($label)] = $row["{$side}_value"] ?? '';
+            }
+        }
+
+        return $map;
+    }
+
+    private function bricsManpowerKey(string $label): string
+    {
+        return Str::slug($label, '_');
     }
 
     private function storeAttachments(QcFormSubmission $submission, QcFormTemplate $template, array $attachments): void
@@ -722,21 +965,61 @@ class FormController extends Controller
 
     private function generateFormNumber(): string
     {
-        $date = now()->format('Ymd');
-        $count = QcFormSubmission::whereDate('created_at', now()->toDateString())->count() + 1;
-
-        return 'QC-'.$date.'-'.str_pad((string) $count, 3, '0', STR_PAD_LEFT);
+        return $this->generateQcDocumentNumber();
     }
 
     private function generateQcDocumentNumber(): string
     {
         $period = now()->format('m-Y');
-        $count = QcFormSubmission::where(function ($query) use ($period) {
-            $query->where('report_no', 'like', "%/QC/{$period}")
-                ->orWhere('form_number', 'like', "%/QC/{$period}");
-        })->count() + 1;
 
-        return str_pad((string) $count, 3, '0', STR_PAD_LEFT)."/QC/{$period}";
+        return app(DocumentNumberGenerator::class)->generate(
+            'qc',
+            'QC',
+            $period,
+            $this->maxExistingQcDocumentNumber($period)
+        );
+    }
+
+    private function previewQcDocumentNumber(): string
+    {
+        $period = now()->format('m-Y');
+
+        return app(DocumentNumberGenerator::class)->preview(
+            'qc',
+            'QC',
+            $period,
+            $this->maxExistingQcDocumentNumber($period)
+        );
+    }
+
+    private function maxExistingQcDocumentNumber(string $period): int
+    {
+        $documents = QcFormSubmission::query()
+            ->where(function ($query) use ($period) {
+                $query->where('report_no', 'like', "%/QC/{$period}")
+                    ->orWhere('form_number', 'like', "%/QC/{$period}");
+            })
+            ->get(['report_no', 'form_number'])
+            ->flatMap(fn (QcFormSubmission $submission) => [
+                $submission->report_no,
+                $submission->form_number,
+            ]);
+
+        return $this->maxDocumentSequence($documents, 'QC', $period);
+    }
+
+    private function maxDocumentSequence(iterable $documents, string $prefix, string $period): int
+    {
+        $pattern = '/^(\d+)\/'.preg_quote($prefix, '/').'\/'.preg_quote($period, '/').'$/';
+        $max = 0;
+
+        foreach ($documents as $document) {
+            if (preg_match($pattern, trim((string) $document), $matches) === 1) {
+                $max = max($max, (int) $matches[1]);
+            }
+        }
+
+        return $max;
     }
 
     private function activeQcMasterDataRecords()

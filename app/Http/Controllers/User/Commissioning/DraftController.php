@@ -15,7 +15,7 @@ class DraftController extends Controller
         $selectedArea = $request->query('area', 'all');
         $baseQuery = CommissioningFormSubmission::query()
             ->where('user_id', auth()->id())
-            ->where('status', 'draft');
+            ->whereIn('status', ['draft', 'revision_required']);
 
         $areaOptions = (clone $baseQuery)
             ->whereNotNull('area')
@@ -33,6 +33,10 @@ class DraftController extends Controller
                 ->withQueryString(),
             'areaOptions' => $areaOptions,
             'selectedArea' => $selectedArea,
+            'statusLabels' => [
+                'draft' => 'Draft',
+                'revision_required' => 'Perlu Revisi',
+            ],
         ]));
     }
 }

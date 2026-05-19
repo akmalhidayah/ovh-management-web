@@ -1,10 +1,31 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
+    use Illuminate\Support\Str;
 
     $bricsCustomer = $oldBody['brics_customer'] ?? [];
     $bricsMeta = $oldBody['brics_meta'] ?? [];
     $bricsTechnical = $oldBody['brics_technical'] ?? [];
     $bricsManpower = $oldBody['brics_manpower'] ?? [];
+    $bricsManpowerRows = collect($oldBody['brics_manpower_rows'] ?? [])
+        ->map(fn ($row) => [
+            'left_label' => $row['left_label'] ?? '',
+            'left_value' => $row['left_value'] ?? '',
+            'right_label' => $row['right_label'] ?? '',
+            'right_value' => $row['right_value'] ?? '',
+        ])
+        ->filter(fn ($row) => collect($row)->filter()->isNotEmpty())
+        ->values();
+
+    if ($bricsManpowerRows->isEmpty()) {
+        $bricsManpowerRows = collect(FixedQcTemplate::bricsManpowerRows())
+            ->map(fn ($row) => [
+                'left_label' => $row['left'],
+                'left_value' => $bricsManpower[Str::slug($row['left'], '_')] ?? $bricsManpower[str($row['left'])->snake()->toString()] ?? '',
+                'right_label' => $row['right'],
+                'right_value' => $bricsManpower[Str::slug($row['right'], '_')] ?? $bricsManpower[str($row['right'])->snake()->toString()] ?? '',
+            ]);
+    }
+
     $bricsWeather = $oldBody['brics_weather'] ?? [];
     $bricsChecks = $oldBody['brics_checks'] ?? [];
 @endphp
@@ -69,7 +90,7 @@
         @foreach (FixedQcTemplate::bricsTechnicalRows() as $row)
             <label class="qc-user-field">
                 <span>{{ $row['label'] }}</span>
-                <input type="text"
+                <input type="{{ $row['type'] ?? 'text' }}"
                        name="body[brics_technical][{{ $row['key'] }}]"
                        value="{{ $bricsTechnical[$row['key']] ?? '' }}"
                        class="form-control">
@@ -82,25 +103,67 @@
     <div class="qc-form-section-title"><h3>Manpower & Weather</h3></div>
     <div class="qc-user-table-wrap mb-3">
         <table class="qc-user-checklist-table qc-user-fixed-table">
-            <tbody>
-                @foreach (FixedQcTemplate::bricsManpowerRows() as $row)
-                    <tr>
-                        @foreach (['left', 'right'] as $side)
-                            @php
-                                $label = $row[$side];
-                            @endphp
-                            <td>{{ $label }}</td>
-                            <td>
-                                <input type="text"
-                                       name="body[brics_manpower][{{ str($label)->snake() }}]"
-                                       value="{{ $bricsManpower[str($label)->snake()->toString()] ?? '' }}"
-                                       class="form-control form-control-sm">
-                            </td>
-                        @endforeach
+            <colgroup>
+                <col style="width: 22%">
+                <col style="width: 28%">
+                <col style="width: 22%">
+                <col style="width: 23%">
+                <col style="width: 5%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Manpower</th>
+                    <th>Nama / Jumlah</th>
+                    <th>Manpower</th>
+                    <th>Nama / Jumlah</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody data-brics-manpower-list>
+                @foreach ($bricsManpowerRows as $index => $row)
+                    <tr data-brics-manpower-row>
+                        <td>
+                            <input type="text"
+                                   name="body[brics_manpower_rows][{{ $index }}][left_label]"
+                                   value="{{ $row['left_label'] }}"
+                                   class="form-control form-control-sm"
+                                   placeholder="Contoh: SPV">
+                        </td>
+                        <td>
+                            <input type="text"
+                                   name="body[brics_manpower_rows][{{ $index }}][left_value]"
+                                   value="{{ $row['left_value'] }}"
+                                   class="form-control form-control-sm"
+                                   placeholder="Contoh: Andi / 4 orang">
+                        </td>
+                        <td>
+                            <input type="text"
+                                   name="body[brics_manpower_rows][{{ $index }}][right_label]"
+                                   value="{{ $row['right_label'] }}"
+                                   class="form-control form-control-sm"
+                                   placeholder="Contoh: ME">
+                        </td>
+                        <td>
+                            <input type="text"
+                                   name="body[brics_manpower_rows][{{ $index }}][right_value]"
+                                   value="{{ $row['right_value'] }}"
+                                   class="form-control form-control-sm"
+                                   placeholder="Contoh: Budi / 2 orang">
+                        </td>
+                        <td class="text-center" style="width: 56px;">
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-brics-manpower-remove title="Hapus row">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
+    </div>
+    <div class="mb-4">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-brics-manpower-add>
+            <i class="bi bi-plus-lg me-1"></i>Tambah Row Manpower
+        </button>
     </div>
     <div class="qc-user-table-wrap">
         <table class="qc-user-checklist-table qc-user-fixed-table">
@@ -125,6 +188,52 @@
     </div>
 </section>
 
+@push('scripts')
+    <script>
+        (() => {
+            const list = document.querySelector('[data-brics-manpower-list]');
+            const addButton = document.querySelector('[data-brics-manpower-add]');
+
+            if (!list || !addButton) return;
+
+            const rowTemplate = (index) => `
+                <tr data-brics-manpower-row>
+                    <td><input type="text" name="body[brics_manpower_rows][${index}][left_label]" class="form-control form-control-sm" placeholder="Contoh: SPV"></td>
+                    <td><input type="text" name="body[brics_manpower_rows][${index}][left_value]" class="form-control form-control-sm" placeholder="Contoh: Andi / 4 orang"></td>
+                    <td><input type="text" name="body[brics_manpower_rows][${index}][right_label]" class="form-control form-control-sm" placeholder="Contoh: ME"></td>
+                    <td><input type="text" name="body[brics_manpower_rows][${index}][right_value]" class="form-control form-control-sm" placeholder="Contoh: Budi / 2 orang"></td>
+                    <td class="text-center" style="width: 56px;">
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-brics-manpower-remove title="Hapus row">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            const reindexRows = () => {
+                list.querySelectorAll('[data-brics-manpower-row]').forEach((row, index) => {
+                    ['left_label', 'left_value', 'right_label', 'right_value'].forEach((key) => {
+                        const input = row.querySelector(`[name$="[${key}]"]`);
+                        if (input) input.name = `body[brics_manpower_rows][${index}][${key}]`;
+                    });
+                });
+            };
+
+            addButton.addEventListener('click', () => {
+                list.insertAdjacentHTML('beforeend', rowTemplate(list.querySelectorAll('[data-brics-manpower-row]').length));
+            });
+
+            list.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-brics-manpower-remove]');
+                if (!button) return;
+
+                button.closest('[data-brics-manpower-row]')?.remove();
+                reindexRows();
+            });
+        })();
+    </script>
+@endpush
+
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
     <div class="qc-user-table-wrap">
@@ -136,6 +245,14 @@
                 <col style="width: 12%">
                 <col style="width: 40%">
             </colgroup>
+            <thead>
+                <tr>
+                    <th colspan="2">Item</th>
+                    <th class="text-center">OK</th>
+                    <th class="text-center">NO</th>
+                    <th>Remark</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach (FixedQcTemplate::bricsInspectionSections() as $section)
                     <tr>

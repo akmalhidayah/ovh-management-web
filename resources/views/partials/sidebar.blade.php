@@ -20,18 +20,20 @@
             ],
         ],
         [
-            'label' => 'Inspection & Commissioning',
+            'label' => 'QC & Commissioning',
             'icon' => 'bi-shield-check',
             'routes' => array_filter([
                 "{$role}.qc",
                 "{$role}.commissioning",
                 $role === 'admin' ? 'admin.qc.submissions.*' : null,
+                $role === 'admin' ? 'admin.commissioning.submissions.*' : null,
                 $role === 'admin' ? 'admin.template-form-qc.*' : null,
                 $role === 'admin' ? 'admin.template-form-commissioning.*' : null,
             ]),
             'items' => [
                 ...($role === 'admin' ? [
-                    ['label' => 'QC & Commissioning', 'route' => 'admin.qc', 'active' => 'admin.qc'],
+                    ['label' => 'Quality Control', 'route' => 'admin.qc', 'active' => ['admin.qc', 'admin.qc.submissions.*']],
+                    ['label' => 'Commissioning', 'route' => 'admin.commissioning', 'active' => ['admin.commissioning', 'admin.commissioning.submissions.*']],
                     ['label' => 'Template Form QC', 'route' => 'admin.template-form-qc.index', 'active' => 'admin.template-form-qc.*'],
                     ['label' => 'Template Form Commissioning', 'route' => 'admin.template-form-commissioning.index', 'active' => 'admin.template-form-commissioning.*'],
                 ] : [
@@ -91,8 +93,11 @@
                     </button>
                     <div class="sidebar-submenu" id="{{ $groupId }}">
                         @foreach ($item['items'] as $child)
-                            @php($href = route($child['route']).(isset($child['hash']) ? '#'.$child['hash'] : ''))
-                            <a href="{{ $href }}" class="sidebar-sublink {{ request()->routeIs($child['active'] ?? $child['route']) && ! isset($child['hash']) ? 'active' : '' }}">
+                            @php
+                                $href = route($child['route']).(isset($child['hash']) ? '#'.$child['hash'] : '');
+                                $activeRoutes = (array) ($child['active'] ?? $child['route']);
+                            @endphp
+                            <a href="{{ $href }}" class="sidebar-sublink {{ request()->routeIs(...$activeRoutes) && ! isset($child['hash']) ? 'active' : '' }}">
                                 {{ $child['label'] }}
                             </a>
                         @endforeach

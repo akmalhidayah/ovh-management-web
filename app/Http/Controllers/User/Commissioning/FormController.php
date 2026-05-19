@@ -7,9 +7,13 @@ use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormSubmissionAttachment;
 use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataRecord;
+use App\Services\DocumentNumberGenerator;
+use App\Services\ApprovalFlowService;
 use App\Support\Commissioning\FixedCommissioningTemplate;
+use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,6 +30,8 @@ class FormController extends Controller
     private const ERROR_STORE = 'COM-SUB-STORE-FAILED';
     private const ERROR_UPDATE = 'COM-SUB-UPDATE-FAILED';
     private const ERROR_PDF = 'COM-SUB-PDF-FAILED';
+    private const ERROR_APPROVAL_LINK = 'COM-APPROVAL-LINK-FAILED';
+    private const ERROR_DESTROY = 'COM-SUB-DESTROY-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
 
     public function create(Request $request): View
@@ -42,7 +48,7 @@ class FormController extends Controller
         return view('user.commissioning.forms.create', array_merge(UserRoleUiData::commissioningForm(), [
             'templates' => $templates,
             'selectedTemplate' => $selectedTemplate,
-            'autoDocNumber' => $this->generateDocumentNumber(),
+            'autoDocNumber' => $this->previewDocumentNumber(),
             'activeMasterDataRecords' => $this->activeMasterDataRecords(),
         ]));
     }
@@ -60,14 +66,19 @@ class FormController extends Controller
             $submission = DB::transaction(function () use ($request, $template, $validated) {
                 $header = $this->headerData($request, null, true);
                 $body = $this->bodyData($request);
-                $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
+                $status = $validated['action'] === 'submit' ? 'pending_approval' : 'draft';
+                $templateSnapshot = TemplateSnapshot::forCommissioning($template);
 
                 $submission = CommissioningFormSubmission::create([
                     'commissioning_form_template_id' => $template->id,
+                    'template_code' => $templateSnapshot['code'] ?? null,
+                    'template_name' => $templateSnapshot['name'] ?? null,
+                    'template_version' => TemplateSnapshot::majorVersion($templateSnapshot['version'] ?? null),
+                    'template_snapshot' => $templateSnapshot,
                     'user_id' => $request->user()?->id,
                     'form_number' => $header['doc_number'],
                     'status' => $status,
-                    'submitted_at' => $status === 'submitted' ? now() : null,
+                    'submitted_at' => $validated['action'] === 'submit' ? now() : null,
                     'year' => $header['tahun'] ?? null,
                     'area' => $header['area'] ?? null,
                     'equipment' => $header['name_equipment'] ?? null,
@@ -82,12 +93,16 @@ class FormController extends Controller
 
                 $this->storeAttachments($submission, $request->file('attachments', []));
 
+                if ($validated['action'] === 'submit') {
+                    app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
+                }
+
                 return $submission;
             });
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_STORE, $exception, [
                 'template_id' => $template->id,
-                'requested_status' => $validated['action'] === 'submit' ? 'submitted' : 'draft',
+                'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
             ]);
 
             return back()
@@ -102,14 +117,14 @@ class FormController extends Controller
         ]);
 
         return redirect()
-            ->route($submission->status === 'submitted' ? 'user.commissioning.history.index' : 'user.commissioning.drafts.index')
-            ->with('success', $submission->status === 'submitted' ? 'Form Commissioning berhasil disubmit.' : 'Draft Commissioning berhasil disimpan.');
+            ->route($submission->status !== 'draft' ? 'user.commissioning.history.index' : 'user.commissioning.drafts.index')
+            ->with('success', $submission->status !== 'draft' ? 'Form Commissioning berhasil disubmit.' : 'Draft Commissioning berhasil disimpan.');
     }
 
     public function edit(CommissioningFormSubmission $submission): View
     {
         $this->authorizeSubmission($submission);
-        abort_unless($submission->status === 'draft', 403);
+        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
 
         return view('user.commissioning.forms.create', array_merge(UserRoleUiData::commissioningForm(), [
             'templates' => CommissioningFormTemplate::where('status', 'active')->orderBy('name')->get(),
@@ -123,7 +138,7 @@ class FormController extends Controller
     public function update(Request $request, CommissioningFormSubmission $submission): RedirectResponse
     {
         $this->authorizeSubmission($submission);
-        abort_unless($submission->status === 'draft', 403);
+        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
 
         $validated = $this->validateRequest($request);
         abort_unless((int) $validated['template_id'] === (int) $submission->commissioning_form_template_id, 422);
@@ -135,14 +150,19 @@ class FormController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $submission, $validated) {
+            DB::transaction(function () use ($request, $submission, $validated, $template) {
                 $header = $this->headerData($request, $submission->form_number);
-                $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
+                $status = $validated['action'] === 'submit' ? 'pending_approval' : 'draft';
+                $templateSnapshot = $submission->template_snapshot ?: TemplateSnapshot::forCommissioning($template);
 
                 $submission->update([
+                    'template_code' => $submission->template_code ?: ($templateSnapshot['code'] ?? null),
+                    'template_name' => $submission->template_name ?: ($templateSnapshot['name'] ?? null),
+                    'template_version' => $submission->template_version ?: TemplateSnapshot::majorVersion($templateSnapshot['version'] ?? null),
+                    'template_snapshot' => $templateSnapshot,
                     'form_number' => $header['doc_number'],
                     'status' => $status,
-                    'submitted_at' => $status === 'submitted' ? now() : null,
+                    'submitted_at' => $validated['action'] === 'submit' ? now() : null,
                     'year' => $header['tahun'] ?? null,
                     'area' => $header['area'] ?? null,
                     'equipment' => $header['name_equipment'] ?? null,
@@ -156,12 +176,16 @@ class FormController extends Controller
                 ]);
 
                 $this->storeAttachments($submission, $request->file('attachments', []));
+
+                if ($validated['action'] === 'submit') {
+                    app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
+                }
             });
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_UPDATE, $exception, [
                 'submission_id' => $submission->id,
                 'template_id' => $submission->commissioning_form_template_id,
-                'requested_status' => $validated['action'] === 'submit' ? 'submitted' : 'draft',
+                'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
             ]);
 
             return back()
@@ -176,18 +200,45 @@ class FormController extends Controller
         ]);
 
         return redirect()
-            ->route($submission->status === 'submitted' ? 'user.commissioning.history.index' : 'user.commissioning.drafts.index')
-            ->with('success', $submission->status === 'submitted' ? 'Form Commissioning berhasil disubmit.' : 'Draft Commissioning berhasil diperbarui.');
+            ->route($submission->status !== 'draft' ? 'user.commissioning.history.index' : 'user.commissioning.drafts.index')
+            ->with('success', $submission->status !== 'draft' ? 'Form Commissioning berhasil disubmit.' : 'Draft Commissioning berhasil diperbarui.');
     }
 
     public function show(CommissioningFormSubmission $submission): View
     {
         $this->authorizeSubmission($submission);
-        $submission->load(['template', 'attachments']);
+        $submission->load(['template', 'attachments', 'approvalFlow.steps']);
 
         return view('user.commissioning.submissions.show', array_merge(UserRoleUiData::commissioningForm(), [
             'submission' => $submission,
+            'canCopyApprovalLink' => $submission->status === 'pending_approval'
+                && (bool) $submission->approvalFlow?->steps->firstWhere('status', 'active'),
         ]));
+    }
+
+    public function approvalLink(CommissioningFormSubmission $submission): JsonResponse
+    {
+        $this->authorizeSubmission($submission);
+
+        if ($submission->status !== 'pending_approval') {
+            return response()->json(['message' => 'Submission tidak sedang menunggu approval.'], 409);
+        }
+
+        try {
+            $url = app(ApprovalFlowService::class)->getActiveLinkForSubmission($submission);
+        } catch (Throwable $exception) {
+            $this->logError(self::ERROR_APPROVAL_LINK, $exception, ['submission_id' => $submission->id]);
+
+            return response()->json([
+                'message' => 'Link approval gagal dibuat. Kode error: '.self::ERROR_APPROVAL_LINK,
+            ], 500);
+        }
+
+        if (! $url) {
+            return response()->json(['message' => 'Tidak ada step approval aktif.'], 404);
+        }
+
+        return response()->json(['url' => $url]);
     }
 
     public function pdf(CommissioningFormSubmission $submission)
@@ -227,8 +278,38 @@ class FormController extends Controller
         ]);
     }
 
+    public function destroy(CommissioningFormSubmission $submission): RedirectResponse
+    {
+        $this->authorizeSubmission($submission);
+        abort_if($submission->status === 'approved', 403);
+
+        $submissionId = $submission->id;
+        $redirectRoute = $submission->status === 'draft' ? 'user.commissioning.drafts.index' : 'user.commissioning.history.index';
+
+        try {
+            app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission deleted by owner');
+            $submission->attachments()->delete();
+            $submission->delete();
+        } catch (Throwable $exception) {
+            $this->logError(self::ERROR_DESTROY, $exception, ['submission_id' => $submissionId]);
+
+            return back()->withErrors(['submission' => 'Form Commissioning gagal dihapus. Kode error: '.self::ERROR_DESTROY]);
+        }
+
+        $this->logStatus('commissioning_submission_deleted', [
+            'submission_id' => $submissionId,
+            'status' => 'deleted',
+        ]);
+
+        return redirect()
+            ->route($redirectRoute)
+            ->with('success', 'Form Commissioning berhasil dihapus.');
+    }
+
     public static function streamPdf(CommissioningFormSubmission $submission)
     {
+        $submission->loadMissing(['template', 'attachments', 'user', 'approvalFlow.steps']);
+
         return Pdf::loadView('pdf.commissioning-submission', ['submission' => $submission])
             ->setPaper('a4', 'portrait')
             ->stream('Commissioning - '.Str::slug($submission->form_number).'.pdf');
@@ -338,6 +419,10 @@ class FormController extends Controller
             $errors['attachments.dokumentasi'] = 'Dokumentasi wajib diupload. Hanya JPG atau PNG.';
         }
 
+        if (blank($request->input('note'))) {
+            $errors['note'] = 'Notes/Finding wajib diisi.';
+        }
+
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
@@ -350,7 +435,7 @@ class FormController extends Controller
             ->all();
 
         $header['doc_number'] = $existingDocNumber
-            ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: $this->generateDocumentNumber()));
+            ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_commissioning'] = $request->user()?->name;
 
         if ($record = $this->selectedMasterDataRecord($request)) {
@@ -440,9 +525,43 @@ class FormController extends Controller
     private function generateDocumentNumber(): string
     {
         $period = now()->format('m-Y');
-        $count = CommissioningFormSubmission::where('form_number', 'like', "%/COM/{$period}")->count() + 1;
 
-        return str_pad((string) $count, 3, '0', STR_PAD_LEFT)."/COM/{$period}";
+        return app(DocumentNumberGenerator::class)->generate(
+            'commissioning',
+            'COM',
+            $period,
+            $this->maxExistingDocumentNumber($period)
+        );
+    }
+
+    private function previewDocumentNumber(): string
+    {
+        $period = now()->format('m-Y');
+
+        return app(DocumentNumberGenerator::class)->preview(
+            'commissioning',
+            'COM',
+            $period,
+            $this->maxExistingDocumentNumber($period)
+        );
+    }
+
+    private function maxExistingDocumentNumber(string $period): int
+    {
+        $documents = CommissioningFormSubmission::query()
+            ->where('form_number', 'like', "%/COM/{$period}")
+            ->pluck('form_number');
+
+        $pattern = '/^(\d+)\/COM\/'.preg_quote($period, '/').'$/';
+        $max = 0;
+
+        foreach ($documents as $document) {
+            if (preg_match($pattern, trim((string) $document), $matches) === 1) {
+                $max = max($max, (int) $matches[1]);
+            }
+        }
+
+        return $max;
     }
 
     private function authorizeSubmission(CommissioningFormSubmission $submission): void

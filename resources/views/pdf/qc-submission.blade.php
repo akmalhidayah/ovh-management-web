@@ -1,26 +1,61 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
     use App\Support\Pdf\SignatureImage;
+    use App\Models\ApprovalStep;
+    use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
 
-    $isFixed = (bool) $submission->template?->template_type;
-    $type = FixedQcTemplate::normalizeType($submission->template?->template_type);
+    $templateSnapshot = $submission->template_snapshot ?? [];
+    $templateType = $templateSnapshot['template_type'] ?? $submission->template?->template_type;
+    $templateName = $submission->template_name ?? $templateSnapshot['name'] ?? $submission->template?->name;
+    $templateBodySchema = $templateSnapshot['body_schema'] ?? $submission->template?->body_schema ?? [];
+    $isFixed = (bool) $templateType;
+    $type = FixedQcTemplate::normalizeType($templateType);
     $generalInfo = $submission->general_info ?? [];
     $bodyData = $submission->body_data ?? [];
-    $approvalData = $submission->approval_data ?? [];
-    $templateSchema = $submission->template ? FixedQcTemplate::schemaForTemplate($submission->template) : [];
+    $legacyApprovalData = $submission->approval_data ?? [];
+    $templateSchema = $isFixed ? FixedQcTemplate::normalizeSchema($type, $templateBodySchema) : [];
     $approvalDefaults = $templateSchema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
     $approvalColumns = FixedQcTemplate::approvalColumns($type);
     $rowsByBlock = $submission->rows->groupBy($isFixed ? 'block_type' : 'qc_form_template_block_id');
     $generalRows = $rowsByBlock->get('general', collect());
     $weldingWelderRows = $rowsByBlock->get('welding_welder', collect());
     $weldingResultRows = $rowsByBlock->get('welding_result', collect());
-    $legacyBlocks = $submission->template?->blocks ?? collect();
+    $legacyBlocks = collect($templateSnapshot['blocks'] ?? [])
+        ->map(fn ($block) => (object) $block);
+    if ($legacyBlocks->isEmpty()) {
+        $legacyBlocks = $submission->template?->blocks ?? collect();
+    }
     $logoSig = public_path('assets/images/logo/logo-sig.png');
     $logoSt = public_path('assets/images/logo/logo-st2.png');
     $value = fn (string $key, string $fallback = '') => $generalInfo[$key] ?? $fallback;
     $dateTime = $value('date_time') ?: $submission->submitted_at?->format('Y-m-d H:i');
     $attachments = $submission->attachments->groupBy('field_key');
+    $approvalSignatureSource = static function ($step) {
+        if (! empty($step?->signature_path) && Storage::disk('public')->exists($step->signature_path)) {
+            return Storage::disk('public')->path($step->signature_path);
+        }
+
+        return $step?->signature_data;
+    };
+    $flowSteps = $submission->approvalFlow?->steps ?? collect();
+    $approvalData = $flowSteps->isNotEmpty() ? [] : $legacyApprovalData;
+    if ($flowSteps->isNotEmpty()) {
+        foreach (array_values($approvalColumns) as $index => $column) {
+            $step = $flowSteps->firstWhere('step_order', $index + 1);
+            if (! $step || $step->status !== ApprovalStep::STATUS_APPROVED) {
+                continue;
+            }
+
+            $approvalData[$column['key']] = [
+                'name' => $step->approver_name ?? '',
+                'role' => $step->approver_position ?? $column['label'],
+                'signature' => $approvalSignatureSource($step),
+                'date' => $step->acted_at?->format('Y-m-d') ?? '',
+                'signed_at' => $step->acted_at?->toISOString(),
+            ];
+        }
+    }
     $approvalByRole = collect($approvalColumns)->mapWithKeys(function ($column) use ($approvalData, $approvalDefaults) {
         $approval = $approvalData[$column['key']] ?? [];
 
@@ -40,7 +75,7 @@
 
         return [$column['key'] => $approval];
     });
-    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
     $check = fn (bool $checked) => $checked ? '<img src="'.$checkMarkSvg.'" class="pdf-check-mark" alt="check">' : '';
     $signature = fn (?string $source) => SignatureImage::forPdf($source);
     $pdfTitlePekerjaan = $type === FixedQcTemplate::TYPE_BRICS
@@ -65,7 +100,10 @@
     <meta charset="utf-8">
     <title>Quality Control - {{ $pdfTitlePekerjaan }}</title>
     <style>
-        @page { margin: 8mm; }
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
+        }
         * { box-sizing: border-box; }
         body {
             margin: 0;
@@ -82,6 +120,9 @@
                 linear-gradient(#e2e2e2 1px, transparent 1px),
                 linear-gradient(90deg, #e2e2e2 1px, transparent 1px);
             background-size: 18mm 7mm;
+        }
+        .top-table {
+            margin-bottom: 4mm;
         }
         .top-table td {
             height: 26mm;
@@ -107,14 +148,32 @@
         }
         .sig-logo { width: 31mm; }
         .st-logo { width: 21mm; height: 21mm; object-fit: contain; }
+        .info-table {
+            table-layout: fixed;
+        }
         .info-table td {
-            height: 8mm;
-            padding: 1.2mm 1.5mm;
+            height: 6.8mm;
+            padding: 1mm 1.2mm;
             border: 1px solid #000;
             background: #fff;
+            font-size: 7.2px;
         }
-        .info-label { font-weight: 700; }
-        .info-value { font-style: italic; }
+        .info-label-cell {
+            width: 12%;
+            font-family: DejaVu Serif, serif;
+            font-weight: 700;
+            white-space: nowrap;
+            word-break: keep-all;
+        }
+        .info-value-cell {
+            width: 21.33%;
+        }
+        .info-label {
+            display: inline-block;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .info-value { font-style: normal; }
         .section-gap { height: 4mm; }
         .welding-section-gap { height: 6.5mm; }
         .page-break { page-break-before: always; }
@@ -126,6 +185,7 @@
         .data-table th {
             height: 7mm;
             padding: 1mm;
+            background: #e5e2d8;
             text-align: center;
             font-size: 9px;
             font-weight: 700;
@@ -147,8 +207,8 @@
         .center { text-align: center; }
         .pdf-check-mark {
             display: block;
-            width: 6.4mm;
-            height: 5mm;
+            width: 4.6mm;
+            height: 3.6mm;
             margin: 0 auto;
         }
         .note-box {
@@ -173,6 +233,9 @@
             min-height: 270mm;
             padding-top: 0;
         }
+        .attachment-grid {
+            page-break-inside: avoid;
+        }
         .attachment-grid th,
         .attachment-grid td {
             width: 50%;
@@ -183,19 +246,20 @@
         .attachment-grid th {
             height: 8mm;
             padding-top: 2mm;
+            background: #e5e2d8;
             font-size: 10px;
             font-style: italic;
             font-weight: 400;
         }
         .attachment-grid td {
-            height: 155mm;
-            padding: 8mm 4mm 4mm;
+            height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '125mm' : '155mm' }};
+            padding: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '5mm 3mm 3mm' : '8mm 4mm 4mm' }};
             vertical-align: top;
         }
         .attachment-img {
             display: block;
             max-width: 82mm;
-            max-height: 132mm;
+            max-height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '108mm' : '132mm' }};
             margin: 0 auto 3mm;
             border: 1px solid #999;
         }
@@ -208,14 +272,17 @@
         .approval-table th {
             height: 13mm;
             padding: 1mm;
+            background: #e5e2d8;
             font-size: 7.3px;
             font-weight: 700;
         }
         .approval-sign-row td {
-            height: 30mm;
+            height: 24mm;
             padding: 1mm;
             font-size: 9.5px;
             font-weight: 700;
+            overflow: hidden;
+            vertical-align: middle;
         }
         .approval-date-row td {
             height: 5mm;
@@ -229,11 +296,14 @@
         }
         .sig-img {
             display: block;
-            width: 36mm;
-            max-width: 100%;
-            max-height: 19mm;
-            margin: 0 auto 1mm;
-            object-fit: contain;
+            width: auto;
+            height: 9mm;
+            max-width: 28mm;
+            margin: 0 auto 0.7mm;
+        }
+        .sig-name {
+            display: block;
+            text-align: center;
         }
         .legacy-table th,
         .legacy-table td {
@@ -247,6 +317,9 @@
             font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
+        }
+        .brics-section-gap {
+            margin-top: 3mm;
         }
         .fixed-form-table th,
         .fixed-form-table td {
@@ -271,10 +344,322 @@
             border: 1px solid #000;
             vertical-align: middle;
         }
+        .castable-monitor-page {
+            page-break-inside: auto;
+            background: #fff;
+        }
+        .castable-monitor-head {
+            margin-bottom: 3mm;
+        }
+        .castable-monitor-head td {
+            height: 18mm;
+            border: 1px solid #000;
+            background: #fff;
+        }
+        .castable-monitor-logo {
+            width: 18mm;
+            display: block;
+            margin: 0 auto;
+        }
+        .castable-monitor-meta {
+            width: 32%;
+            padding: 1mm;
+            font-size: 7px;
+            font-weight: 700;
+        }
+        .castable-monitor-meta table td {
+            height: auto;
+            border: 0;
+            padding: 0.3mm 0;
+            text-align: left;
+        }
+        .castable-monitor-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+        .castable-monitor-table {
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-top: 3mm;
+        }
+        .castable-monitor-table th,
+        .castable-monitor-table td {
+            border: 1px solid #000;
+            background: #fff;
+            padding: 0.35mm;
+            font-size: 5px;
+            line-height: 1.05;
+            vertical-align: middle;
+            word-break: break-word;
+        }
+        .castable-monitor-table th {
+            text-align: center;
+            font-weight: 700;
+        }
+        .castable-monitor-table td {
+            height: 4.8mm;
+        }
+        .castable-monitor-note-sign {
+            margin-top: 2mm;
+            table-layout: fixed;
+        }
+        .castable-monitor-note-sign td {
+            border: 0;
+            vertical-align: top;
+            font-size: 7px;
+        }
+        .castable-note-lines div {
+            margin-top: 1.2mm;
+            border-bottom: 1px dotted #000;
+            height: 2.7mm;
+        }
+        .castable-monitor-sign-cell {
+            text-align: center;
+        }
+        .castable-monitor-sign-space {
+            height: 9mm;
+            display: block;
+        }
+        .castable-monitor-sign-img {
+            display: block;
+            max-width: 24mm;
+            max-height: 10mm;
+            margin: 1mm auto;
+            object-fit: contain;
+        }
+        .castable-one-sheet {
+            background: #fff;
+            font-size: 7px;
+            line-height: 1.18;
+        }
+        .castable-sheet {
+            background: #fff;
+            background-image: none;
+        }
+        .castable-one-sheet table {
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+        .castable-one-sheet th,
+        .castable-one-sheet td {
+            border: 0.45px solid #000;
+            background: #fff;
+            padding: 0.65mm 0.8mm;
+            vertical-align: middle;
+            word-break: break-word;
+        }
+        .castable-one-sheet th {
+            font-weight: 800;
+            text-align: center;
+        }
+        .castable-title-table td {
+            height: 22mm;
+            padding: 1.5mm;
+        }
+        .castable-title-table .title-cell {
+            font-size: 16px;
+        }
+        .castable-rule {
+            height: 6mm;
+            border-bottom: 0.45px solid #000;
+        }
+        .castable-installation-section {
+            page-break-inside: avoid;
+        }
+        .castable-section-title {
+            background: #e5e2d8 !important;
+            font-size: 8px;
+            font-weight: 900;
+        }
+        .castable-customer,
+        .castable-inspection,
+        .castable-detail,
+        .castable-sample {
+            table-layout: auto !important;
+        }
+        .castable-customer th,
+        .castable-monitor-compact th,
+        .castable-inspection th,
+        .castable-detail th,
+        .castable-sample th,
+        .castable-approval th {
+            background: #e5e2d8 !important;
+        }
+        .castable-customer td {
+            height: 4.3mm;
+            font-weight: 700;
+        }
+        .castable-no-cell {
+            width: 8mm !important;
+            min-width: 8mm !important;
+            max-width: 8mm !important;
+            text-align: center;
+        }
+        .castable-customer .castable-label-cell {
+            width: 55mm !important;
+        }
+        .castable-inspection .castable-label-cell {
+            width: 52mm !important;
+        }
+        .castable-detail .castable-label-cell,
+        .castable-sample .castable-label-cell {
+            width: 42% !important;
+        }
+        .castable-value-cell {
+            width: auto !important;
+        }
+        .castable-customer td:last-child {
+            font-weight: 400;
+        }
+        .castable-title-row {
+            height: 5mm;
+            font-size: 8px;
+        }
+        .castable-monitor-compact th {
+            height: 5mm;
+            font-size: 6.2px;
+            line-height: 1.12;
+        }
+        .castable-monitor-compact td {
+            height: 5.2mm;
+            font-size: 6.2px;
+        }
+        .castable-monitor-location,
+        .castable-monitor-compact th:nth-child(10),
+        .castable-monitor-compact td:nth-child(10) {
+            border-left: 0.45px solid #000 !important;
+        }
+        .text-left {
+            text-align: left !important;
+        }
+        .castable-section-heading {
+            margin-top: 4mm;
+            border-top: 0.45px solid #000;
+            border-bottom: 0.45px solid #000;
+            border-left: 0.45px solid #000;
+            border-right: 0.45px solid #000;
+            background: #e5e2d8;
+            padding: 1.2mm 0.6mm;
+            font-size: 9.5px;
+            font-weight: 900;
+        }
+        .castable-body-grid > tbody > tr > td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+        }
+        .castable-body-left {
+            width: 70%;
+            padding-right: 3mm !important;
+        }
+        .castable-body-right {
+            width: 30%;
+        }
+        .castable-inspection td,
+        .castable-detail td,
+        .castable-sample td,
+        .castable-sample th,
+        .castable-inspection th,
+        .castable-detail th {
+            height: 4.3mm;
+            font-size: 6.8px;
+        }
+        .castable-inspection td:nth-child(2),
+        .castable-detail td:first-child,
+        .castable-sample td:first-child {
+            font-weight: 800;
+        }
+        .castable-customer td:first-child,
+        .castable-inspection td:first-child,
+        .castable-inspection th:first-child {
+            width: 8mm;
+            min-width: 8mm;
+            max-width: 8mm;
+        }
+        .option-gap {
+            display: inline-block;
+            width: 5mm;
+        }
+        .castable-small-note {
+            margin-top: 1.5mm;
+            font-size: 6.8px;
+            font-style: italic;
+        }
+        .castable-sample {
+            margin-top: 2.2mm;
+        }
+        .castable-sample th {
+            font-size: 8.5px;
+        }
+        .castable-sample-sign {
+            display: block;
+            width: 14mm;
+            max-width: 14mm;
+            max-height: 6mm;
+            margin-bottom: 0.7mm;
+            object-fit: contain;
+        }
+        .castable-footer-grid {
+            margin-top: 6mm;
+        }
+        .castable-footer-grid > tbody > tr > td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+        }
+        .castable-note-lines {
+            min-height: 12mm;
+            padding-top: 1mm;
+            white-space: pre-line;
+        }
+        .castable-approval-caption {
+            font-size: 6.4px;
+            font-style: italic;
+            margin-bottom: 0.8mm;
+        }
+        .castable-approval th,
+        .castable-approval td {
+            height: 5.2mm;
+            text-align: center;
+            font-size: 5.8px;
+            line-height: 1.05;
+        }
+        .castable-approval-sign td {
+            height: 13mm;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+        .castable-approval-mark {
+            display: block;
+            height: 8mm;
+            text-align: center;
+        }
+        .castable-approval-img {
+            display: block;
+            width: auto;
+            height: 6mm;
+            max-width: 15mm;
+            margin: 0 auto;
+        }
+        .castable-approval-name {
+            display: block;
+            clear: both;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-@if ($isFixed)
+@if ($isFixed && $type === FixedQcTemplate::TYPE_CASTABLE)
+    <div class="sheet castable-sheet">
+        @include('pdf.qc-castable-sheet', ['bodyData' => $bodyData])
+
+        <div class="page-break"></div>
+
+        @include('pdf.qc-attachments')
+    </div>
+@elseif ($isFixed)
     <div class="sheet">
         <table class="top-table">
             <tr>
@@ -296,15 +681,7 @@
         </table>
 
         @if ($type !== FixedQcTemplate::TYPE_BRICS)
-            <table class="info-table">
-                @foreach ($headerRows as $row)
-                    <tr>
-                        @foreach ($row as $cell)
-                            <td><span class="info-label">{{ $cell['label'] }}</span> : <span class="info-value">{{ $cell['value'] }}</span></td>
-                        @endforeach
-                    </tr>
-                @endforeach
-            </table>
+            @include('pdf.partials.qc-info-table', ['rows' => $headerRows])
 
             <div class="section-gap"></div>
         @endif
@@ -389,8 +766,6 @@
                     <tr><td colspan="6">&nbsp;</td></tr>
                 @endforelse
             </table>
-        @elseif ($type === FixedQcTemplate::TYPE_CASTABLE)
-            @include('pdf.qc-castable-body', ['bodyData' => $bodyData])
         @elseif ($type === FixedQcTemplate::TYPE_BRICS)
             @include('pdf.qc-brics-body', ['bodyData' => $bodyData])
         @else
@@ -451,7 +826,7 @@
                                 @if (! empty($ap['signature']))
                                     <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
                                 @endif
-                                <div>{{ $ap['name'] ?? '' }}</div>
+                                <span class="sig-name">{{ $ap['name'] ?? '' }}</span>
                             </td>
                         @endforeach
                     </tr>
@@ -480,7 +855,7 @@
                                 @if (! empty($ap['signature']))
                                     <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
                                 @endif
-                                <div>{{ $ap['name'] ?? '' }}</div>
+                                <span class="sig-name">{{ $ap['name'] ?? '' }}</span>
                             </td>
                         @endforeach
                     </tr>
@@ -510,7 +885,7 @@
                                 @if (! empty($ap['signature']))
                                     <img src="{{ $signature($ap['signature']) }}" class="sig-img" alt="Tanda tangan">
                                 @endif
-                                <div>{{ $ap['name'] ?? '' }}</div>
+                                <span class="sig-name">{{ $ap['name'] ?? '' }}</span>
                             </td>
                         @endforeach
                     </tr>
@@ -526,77 +901,8 @@
 
         <div class="page-break"></div>
 
-        <div class="attachment-page">
-            <table class="top-table">
-                <tr>
-                    <td class="logo-cell">
-                        @if (file_exists($logoSig))
-                            <img src="{{ $logoSig }}" class="sig-logo" alt="SIG">
-                        @endif
-                    </td>
-                    <td class="title-cell">
-                        FORM QUALITY CONTROL
-                        <span class="title-work">{{ $pdfTitlePekerjaan }}</span>
-                    </td>
-                    <td class="logo-cell">
-                        @if (file_exists($logoSt))
-                            <img src="{{ $logoSt }}" class="st-logo" alt="ST">
-                        @endif
-                    </td>
-                </tr>
-            </table>
+        @include('pdf.qc-attachments')
 
-            @if ($type !== FixedQcTemplate::TYPE_BRICS)
-                <table class="info-table">
-                    @foreach ($headerRows as $row)
-                        <tr>
-                            @foreach ($row as $cell)
-                                <td><span class="info-label">{{ $cell['label'] }}</span> : <span class="info-value">{{ $cell['value'] }}</span></td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                </table>
-            @endif
-
-            <div class="section-gap"></div>
-            <div class="attachment-label">Lampiran</div>
-
-            <table class="attachment-grid">
-                <tr>
-                    <th>Foto Before</th>
-                    <th>Foto After</th>
-                </tr>
-                <tr>
-                    @foreach (['foto_before', 'foto_after'] as $key)
-                        <td>
-                        @foreach (($attachments[$key] ?? collect())->take(2) as $attachment)
-                            @php
-                                $path = null;
-
-                                if (\Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)) {
-                                    $path = \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path);
-                                } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
-                                    $path = \Illuminate\Support\Facades\Storage::disk('public')->path($attachment->file_path);
-                                } else {
-                                    $publicPath = storage_path('app/public/'.$attachment->file_path);
-                                    $path = file_exists($publicPath) ? $publicPath : null;
-                                }
-
-                                $imageSource = null;
-                                if ($attachment->type === 'image' && $path && file_exists($path)) {
-                                    $mime = $attachment->mime_type ?: 'image/jpeg';
-                                    $imageSource = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($path));
-                                }
-                            @endphp
-                            @if ($imageSource)
-                                <img src="{{ $imageSource }}" class="attachment-img" alt="{{ $attachment->original_name }}">
-                            @endif
-                        @endforeach
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
-        </div>
     </div>
 @else
     <table>
@@ -610,7 +916,7 @@
                 @endif
             </td>
             <td style="text-align:center; font-size:17px; font-weight:800;">Quality Control Record</td>
-            <td style="width: 28%;">{{ $submission->template?->name ?: '-' }}<br>{{ $submission->report_no ?: $submission->form_number }}</td>
+            <td style="width: 28%;">{{ $templateName ?: '-' }}<br>{{ $submission->report_no ?: $submission->form_number }}</td>
         </tr>
     </table>
 

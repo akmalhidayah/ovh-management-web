@@ -8,6 +8,7 @@ use App\Support\Commissioning\FixedCommissioningTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Throwable;
@@ -232,7 +233,7 @@ class TemplateFormCommissioningController extends Controller
         ]);
 
         return [
-            'code' => $validated['code'] ?? null,
+            'code' => $this->resolveTemplateCode($validated['code'] ?? null, $template),
             'name' => $validated['name'],
             'category' => $validated['category'] ?: 'Commissioning',
             'version' => $validated['version'],
@@ -250,6 +251,60 @@ class TemplateFormCommissioningController extends Controller
                 'approval_defaults' => $validated['approval_defaults'] ?? [],
             ]),
         ];
+    }
+
+    private function resolveTemplateCode(?string $code, ?CommissioningFormTemplate $template = null): ?string
+    {
+        $manualSegment = $this->templateCodeManualSegment($code);
+
+        if ($manualSegment === null) {
+            return null;
+        }
+
+        $currentManualSegment = $this->templateCodeManualSegment($template?->code);
+
+        if ($template && $template->code && $manualSegment === $currentManualSegment) {
+            return $template->code;
+        }
+
+        return sprintf('COM-%s-%03d', $manualSegment, $this->nextTemplateCodeNumber($manualSegment, $template));
+    }
+
+    private function templateCodeManualSegment(?string $code): ?string
+    {
+        $code = trim((string) $code);
+
+        if ($code === '') {
+            return null;
+        }
+
+        if (preg_match('/^COM-(.+)-\d+$/i', $code, $matches) === 1) {
+            $code = $matches[1];
+        }
+
+        $manualSegment = Str::upper(Str::slug($code, '-'));
+
+        return $manualSegment !== '' ? $manualSegment : null;
+    }
+
+    private function nextTemplateCodeNumber(string $manualSegment, ?CommissioningFormTemplate $template = null): int
+    {
+        $codes = CommissioningFormTemplate::query()
+            ->where('code', 'like', "COM-{$manualSegment}-%")
+            ->when($template, fn ($query) => $query->whereKeyNot($template->id))
+            ->pluck('code');
+
+        $highest = $codes
+            ->map(function (?string $code) use ($manualSegment) {
+                if (preg_match('/^COM-'.preg_quote($manualSegment, '/').'-(\d+)$/i', (string) $code, $matches) !== 1) {
+                    return 0;
+                }
+
+                return (int) $matches[1];
+            })
+            ->max() ?? 0;
+
+        return $highest + 1;
     }
 
     private function logStatus(string $event, array $context = []): void

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Support\AdminInspectionSubmissionPageData;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -35,17 +34,18 @@ class DashboardController extends Controller
         return view('admin.schedule');
     }
 
-    public function commissioning(Request $request): RedirectResponse
+    public function commissioning(Request $request): View
     {
-        return redirect()->route('admin.qc', array_merge(
-            $request->query(),
-            ['type' => $request->query('type', 'commissioning')]
-        ));
+        $request->merge(['type' => 'commissioning']);
+
+        return view('admin.qc.index', AdminInspectionSubmissionPageData::make($request, 'commissioning'));
     }
 
     public function qc(Request $request): View
     {
-        return view('admin.qc.index', AdminInspectionSubmissionPageData::make($request));
+        $request->merge(['type' => 'qc']);
+
+        return view('admin.qc.index', AdminInspectionSubmissionPageData::make($request, 'qc'));
     }
 
     public function equipment(): View

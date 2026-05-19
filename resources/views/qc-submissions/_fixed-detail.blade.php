@@ -1,11 +1,15 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
 
-    $type = FixedQcTemplate::normalizeType($submission->template?->template_type);
+    $templateSnapshot = $submission->template_snapshot ?? [];
+    $templateType = $templateSnapshot['template_type'] ?? $submission->template?->template_type;
+    $templateName = $submission->template_name ?? $templateSnapshot['name'] ?? $submission->template?->name;
+    $templateBodySchema = $templateSnapshot['body_schema'] ?? $submission->template?->body_schema ?? [];
+    $type = FixedQcTemplate::normalizeType($templateType);
     $generalInfo = $submission->general_info ?? [];
     $bodyData = $submission->body_data ?? [];
     $approvalData = $submission->approval_data ?? [];
-    $schema = $submission->template ? FixedQcTemplate::schemaForTemplate($submission->template) : [];
+    $schema = $templateType ? FixedQcTemplate::normalizeSchema($type, $templateBodySchema) : [];
     $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
     $rows = $submission->rows->groupBy('block_type');
     $headerRows = FixedQcTemplate::headerRows($type);
@@ -29,7 +33,7 @@
         <div class="qc-form-card-head">
             <div>
                 <span>{{ $submission->form_number }}</span>
-                <h2>{{ $submission->template?->name }}</h2>
+                <h2>{{ $templateName }}</h2>
                 <p>{{ FixedQcTemplate::templateTypeLabel($type) }} - {{ $statusLabels[$submission->status] ?? $submission->status }}</p>
             </div>
             <div class="qc-form-code">
@@ -132,8 +136,17 @@
                         @foreach (FixedQcTemplate::castableInspectionRows() as $item)
                             @php
                                 $saved = $bodyData['castable_checks'][$item['key']] ?? [];
+                                $dimensions = $saved['dimensions'] ?? [];
+                                $dimensionValue = collect([
+                                    $dimensions['length'] ?? '',
+                                    $dimensions['width'] ?? '',
+                                    $dimensions['height'] ?? '',
+                                ])->filter()->implode(' x ');
+                                $displayValue = ($item['input'] ?? null) === 'dimension'
+                                    ? ($dimensionValue ? "( {$dimensionValue} )" : ($saved['value'] ?? '-'))
+                                    : ($saved['status'] ?? $saved['value'] ?? '-');
                             @endphp
-                            <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $saved['status'] ?? $saved['value'] ?? '-' }}</td><td>{{ $saved['detail'] ?? '-' }}</td></tr>
+                            <tr><td>{{ $item['no'] }}</td><td>{{ $item['label'] }}</td><td>{{ $displayValue }}</td><td>{{ $saved['detail'] ?? '-' }}</td></tr>
                         @endforeach
                     </tbody>
                 </table>

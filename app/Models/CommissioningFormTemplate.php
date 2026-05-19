@@ -26,4 +26,11 @@ class CommissioningFormTemplate extends Model
     {
         return $this->hasMany(CommissioningFormSubmission::class);
     }
+
+    public function approvalSteps(): HasMany
+    {
+        return $this->hasMany(TemplateApprovalStep::class, 'template_id')
+            ->where('template_type', 'commissioning')
+            ->orderBy('step_order');
+    }
 }

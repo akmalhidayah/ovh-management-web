@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionContro
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\PublicApprovalController;
 use App\Http\Controllers\User\Approval\DashboardController as ApprovalDashboardController;
 use App\Http\Controllers\User\Approval\DocumentController as ApprovalDocumentController;
 use App\Http\Controllers\User\Approval\HistoryController as ApprovalHistoryController;
@@ -47,6 +48,22 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+Route::get('/approval/{token}', [PublicApprovalController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('public.approval.show');
+Route::get('/approval/{token}/pdf', [PublicApprovalController::class, 'pdf'])
+    ->middleware('throttle:20,1')
+    ->name('public.approval.pdf');
+Route::get('/approval/signed-pdf/{step}', [PublicApprovalController::class, 'signedPdf'])
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('public.approval.signed-pdf');
+Route::post('/approval/{token}/approve', [PublicApprovalController::class, 'approve'])
+    ->middleware('throttle:10,1')
+    ->name('public.approval.approve');
+Route::post('/approval/{token}/reject', [PublicApprovalController::class, 'reject'])
+    ->middleware('throttle:10,1')
+    ->name('public.approval.reject');
+
 Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
     Route::get('/overview', [AdminDashboardController::class, 'overview'])->name('overview');
@@ -55,10 +72,12 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
     Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf');
+    Route::post('/commissioning/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('commissioning.submissions.approval-link');
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
     Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
         Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
         Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf');
+        Route::post('/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('approval-link');
     });
     Route::prefix('template-form-qc')->name('template-form-qc.')->group(function () {
         Route::get('/', [TemplateFormQcController::class, 'index'])->name('index');
@@ -109,6 +128,7 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/submissions/{submission}/edit', [QcFormController::class, 'edit'])->name('submissions.edit');
         Route::patch('/submissions/{submission}', [QcFormController::class, 'update'])->name('submissions.update');
         Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show');
+        Route::post('/submissions/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('submissions.approval-link');
         Route::get('/submissions/{submission}/pdf', [QcFormController::class, 'pdf'])->name('submissions.pdf');
         Route::get('/attachments/{attachment}', [QcFormController::class, 'attachment'])->name('attachments.show');
         Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy');
@@ -127,8 +147,10 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/submissions/{submission}/edit', [CommissioningFormController::class, 'edit'])->name('submissions.edit');
         Route::patch('/submissions/{submission}', [CommissioningFormController::class, 'update'])->name('submissions.update');
         Route::get('/submissions/{submission}', [CommissioningFormController::class, 'show'])->name('submissions.show');
+        Route::post('/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('submissions.approval-link');
         Route::get('/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('submissions.pdf');
         Route::get('/attachments/{attachment}', [CommissioningFormController::class, 'attachment'])->name('attachments.show');
+        Route::delete('/submissions/{submission}', [CommissioningFormController::class, 'destroy'])->name('submissions.destroy');
         Route::get('/profile', [CommissioningProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [CommissioningProfileController::class, 'update'])->name('profile.update');
     });

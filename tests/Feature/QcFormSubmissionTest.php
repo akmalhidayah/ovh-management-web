@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApprovalStep;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\MasterDataRecord;
@@ -48,23 +49,168 @@ class QcFormSubmissionTest extends TestCase
             ->assertSessionHas('success', 'Form QC berhasil disubmit.');
 
         $submission = QcFormSubmission::firstOrFail();
-        $this->assertSame('submitted', $submission->status);
+        $this->assertSame('pending_approval', $submission->status);
         $this->assertNotNull($submission->submitted_at);
+        $this->assertNotNull($submission->approvalFlow);
 
         $this->actingAs($user)
             ->get(route('user.qc.history.index'))
             ->assertOk()
             ->assertSee($submission->form_number)
-            ->assertSee('Menunggu Review');
+            ->assertSee('Menunggu Approval');
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.show', $submission))
             ->assertOk()
-            ->assertSee('Tidak Retak');
+            ->assertSee($submission->form_number)
+            ->assertDontSee('Tidak Retak');
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.pdf', $submission))
             ->assertOk();
+    }
+
+    public function test_qc_general_submit_creates_auto_inspector_and_four_approver_steps(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedGeneralPayload($template))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::with('approvalFlow.steps.links')->firstOrFail();
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertCount(5, $steps);
+        $this->assertTrue($steps[0]->is_submitter_signature);
+        $this->assertFalse($steps[0]->requires_magic_link);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
+        $this->assertSame(1, $steps[1]->links->whereNull('used_at')->whereNull('revoked_at')->count());
+        $this->assertSame(0, $steps[2]->links->count());
+    }
+
+    public function test_qc_castable_submit_creates_three_step_approval_flow(): void
+    {
+        [$user, $template] = $this->makeFixedCastableTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedCastablePayload($template))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::with('approvalFlow.steps.links')->firstOrFail();
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertCount(3, $steps);
+        $this->assertSame('*1 diisi', $steps[0]->label);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
+        $this->assertSame(ApprovalStep::STATUS_PENDING, $steps[2]->status);
+    }
+
+    public function test_public_approval_approve_advances_qc_flow_and_invalidates_token(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['approval']['checked_by_q_c_leader']['name'] = 'Leader From Form';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $url = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+        $token = $this->tokenFromUrl($url);
+
+        $this->get(route('public.approval.show', $token))
+            ->assertOk()
+            ->assertSee('Preview PDF')
+            ->assertSee('Tanda Tangani Dokumen')
+            ->assertSee('value="Leader From Form"', false)
+            ->assertSee(route('public.approval.pdf', $token), false);
+
+        $this->get(route('public.approval.pdf', $token))
+            ->assertOk();
+
+        $approveResponse = $this->post(route('public.approval.approve', $token), [
+            'approver_name' => 'Leader QC',
+            'approver_position' => 'QC Leader',
+            'signature' => $this->validSignatureData(),
+        ])->assertRedirect();
+
+        $this->get($approveResponse->headers->get('Location'))
+            ->assertOk();
+
+        $submission->refresh()->load('approvalFlow.steps.links');
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[1]->status);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
+        $this->assertSame(1, $steps[1]->links->whereNotNull('used_at')->count());
+
+        $this->get(route('public.approval.show', $token))
+            ->assertNotFound()
+            ->assertSee('Link approval sudah digunakan');
+    }
+
+    public function test_public_approval_reject_marks_qc_submission_revision_required(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedGeneralPayload($template))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $url = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.reject', $this->tokenFromUrl($url)), [
+            'reject_reason' => 'Data belum sesuai',
+        ])->assertOk();
+
+        $submission->refresh()->load('approvalFlow.steps');
+
+        $this->assertSame('revision_required', $submission->status);
+        $this->assertSame('revision_required', $submission->approvalFlow->status);
+        $this->assertSame(ApprovalStep::STATUS_REJECTED, $submission->approvalFlow->steps[1]->status);
+        $this->assertSame('Data belum sesuai', $submission->approvalFlow->steps[1]->reject_reason);
+    }
+
+    public function test_expired_public_approval_link_shows_expired_message(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedGeneralPayload($template))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $url = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+        $token = $this->tokenFromUrl($url);
+
+        $submission->approvalFlow
+            ->steps()
+            ->where('status', ApprovalStep::STATUS_ACTIVE)
+            ->firstOrFail()
+            ->links()
+            ->update(['expires_at' => now()->subMinute()]);
+
+        $this->get(route('public.approval.show', $token))
+            ->assertNotFound()
+            ->assertSee('Link approval sudah kedaluwarsa');
     }
 
     public function test_admin_can_access_submission_pdf(): void
@@ -77,6 +223,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertRedirect();
 
         $submission = QcFormSubmission::firstOrFail();
+        $submission->forceFill(['plant' => null])->save();
 
         $this->actingAs($admin)
             ->get(route('admin.qc.submissions.index'))
@@ -86,8 +233,9 @@ class QcFormSubmissionTest extends TestCase
             ->get(route('admin.qc'))
             ->assertOk()
             ->assertSee($submission->form_number)
-            ->assertSee('PDF')
-            ->assertDontSee('Detail');
+            ->assertSee('Tonasa 4')
+            ->assertSee('Detail Approval')
+            ->assertSee('Salin Link TTD');
 
         $this->actingAs($admin)
             ->get("/admin/qc/submissions/{$submission->id}")
@@ -96,6 +244,11 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.qc.submissions.pdf', $submission))
             ->assertOk();
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->assertJsonStructure(['url']);
     }
 
     public function test_user_can_store_fixed_qc_draft_without_complete_data(): void
@@ -138,6 +291,15 @@ class QcFormSubmissionTest extends TestCase
             $this->assertSame('001/QC/05-2026', $submission->form_number);
             $this->assertSame('001/QC/05-2026', $submission->report_no);
             $this->assertSame('001/QC/05-2026', $submission->general_info['doc_number']);
+            $this->assertSame($template->code, $submission->template_code);
+            $this->assertSame($template->name, $submission->template_name);
+            $this->assertSame('1.0', $submission->template_snapshot['version']);
+            $this->assertSame($template->template_type, $submission->template_snapshot['template_type']);
+            $this->assertDatabaseHas('document_number_sequences', [
+                'category' => 'qc',
+                'period' => '05-2026',
+                'last_number' => 1,
+            ]);
         } finally {
             Carbon::setTestNow();
         }
@@ -285,7 +447,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertRedirect(route('user.qc.history.index'));
 
         $submission = QcFormSubmission::firstOrFail();
-        $this->assertSame('submitted', $submission->status);
+        $this->assertSame('pending_approval', $submission->status);
         $this->assertSame('Template Fixed General', $submission->template->name);
         $this->assertTrue($submission->body_data['final_check']);
         $this->assertSame($user->name, $submission->general_info['inspector_qc']);
@@ -301,6 +463,79 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get("/user/qc/submissions/{$submission->id}/pdf")
             ->assertNotFound();
+    }
+
+    public function test_user_can_submit_fixed_general_qc_with_not_ok_status(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['body']['general_rows'][0]['status'] = 'Not Ok';
+        $payload['body']['general_rows'][0]['catatan'] = 'Perlu tindak lanjut';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame('Not Ok', $submission->body_data['general_rows'][0]['status']);
+        $this->assertTrue($submission->body_data['final_check']);
+    }
+
+    public function test_user_can_submit_fixed_brics_qc_with_dynamic_manpower_rows(): void
+    {
+        [$user, $template] = $this->makeFixedBricsTemplate();
+        $payload = $this->fixedBricsPayload($template);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame('SPV SHIFT', $submission->body_data['brics_manpower_rows'][0]['left_label']);
+        $this->assertSame('Andi', $submission->body_data['brics_manpower_rows'][0]['left_value']);
+        $this->assertSame('CUSTOM CREW', $submission->body_data['brics_manpower_rows'][2]['left_label']);
+        $this->assertSame('Andi', $submission->body_data['brics_manpower']['spv_shift']);
+    }
+
+    public function test_user_can_submit_fixed_castable_qc_with_dynamic_monitoring_rows(): void
+    {
+        [$user, $template] = $this->makeFixedCastableTemplate();
+        $payload = $this->fixedCastablePayload($template);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('Monitoring Installation Castable')
+            ->assertSee('Tambah Row Monitoring');
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame('Castable LC-16', $submission->body_data['castable_monitoring_type']);
+        $this->assertSame('Catatan khusus monitoring', $submission->body_data['castable_monitoring_note']);
+        $this->assertSame('Catatan form QC castable', $submission->note);
+        $this->assertSame('120 x 80 x 40', $submission->body_data['castable_checks']['sample_dimention']['value']);
+        $this->assertSame('120', $submission->body_data['castable_checks']['sample_dimention']['dimensions']['length']);
+        $this->assertSame('6.5', $submission->body_data['castable_checks']['water_add']['value']);
+        $this->assertSame('2026-05-15', $submission->body_data['castable_sample']['qc_sign_date']['date']);
+        $this->assertStringStartsWith('data:image/png;base64,', $submission->body_data['castable_sample']['qc_sign_date']['signature']);
+        $this->assertCount(2, $submission->body_data['castable_monitoring_rows']);
+        $this->assertSame('BATCH-02', $submission->body_data['castable_monitoring_rows'][1]['batch_number']);
+        $this->assertSame('Supervisor A', $submission->body_data['castable_monitoring_signatures']['prepared_by']['name']);
+        $this->assertSame('', $submission->body_data['castable_monitoring_signatures']['known_by']['name']);
+        $this->assertSame(2, $submission->rows()->where('block_type', 'castable_monitoring')->count());
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.pdf', $submission))
+            ->assertOk();
     }
 
     public function test_qc_attachment_must_be_jpg_or_png_and_is_served_through_authorized_route(): void
@@ -349,7 +584,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertRedirect(route('user.qc.history.index'));
 
         $submission = QcFormSubmission::firstOrFail();
-        $this->assertSame('submitted', $submission->status);
+        $this->assertSame('pending_approval', $submission->status);
         $this->assertContains('Final Check', $submission->body_data['check_steps']);
         $this->assertSame($user->name, $submission->general_info['inspector_qc']);
 
@@ -486,6 +721,46 @@ class QcFormSubmissionTest extends TestCase
         return [$user, $template];
     }
 
+    private function makeFixedBricsTemplate(): array
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+
+        $template = QcFormTemplate::create([
+            'code' => 'QCR-FIXED-BRICS-SUBMIT-001',
+            'name' => 'Template Fixed Brics',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+            'template_type' => FixedQcTemplate::TYPE_BRICS,
+            'body_schema' => [
+                'approval_defaults' => [],
+            ],
+        ]);
+
+        return [$user, $template];
+    }
+
+    private function makeFixedCastableTemplate(): array
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+
+        $template = QcFormTemplate::create([
+            'code' => 'QCR-FIXED-CASTABLE-SUBMIT-001',
+            'name' => 'Template Fixed Castable',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+            'template_type' => FixedQcTemplate::TYPE_CASTABLE,
+            'body_schema' => [
+                'approval_defaults' => [],
+            ],
+        ]);
+
+        return [$user, $template];
+    }
+
     private function fixedHeader(): array
     {
         return [
@@ -562,6 +837,168 @@ class QcFormSubmissionTest extends TestCase
         ];
     }
 
+    private function fixedBricsPayload(QcFormTemplate $template): array
+    {
+        $checks = collect(FixedQcTemplate::bricsInspectionSections())
+            ->flatMap(fn ($section) => $section['items'])
+            ->mapWithKeys(fn ($item) => [$item['key'] => [
+                'status' => 'OK',
+                'remark' => 'Aman',
+            ]])
+            ->all();
+
+        return [
+            'template_id' => $template->id,
+            'action' => 'submit',
+            'header' => [
+                'tahun' => '2026',
+                'area' => 'RAW MILL',
+                'tag_num' => 'BR-01',
+                'functional_location' => 'FL-BRICS',
+                'name_equipment' => 'Kiln Bricks',
+                'id_equipment' => 'EQ-BRICS',
+            ],
+            'body' => [
+                'final_check' => '1',
+                'brics_technical' => [
+                    'activity_date' => '2026-05-15',
+                ],
+                'brics_manpower_rows' => [
+                    ['left_label' => 'SPV SHIFT', 'left_value' => 'Andi', 'right_label' => 'SAFETY', 'right_value' => 'Budi'],
+                    ['left_label' => 'HELPER', 'left_value' => '4', 'right_label' => 'QC', 'right_value' => 'Rina'],
+                    ['left_label' => 'CUSTOM CREW', 'left_value' => '2', 'right_label' => '', 'right_value' => ''],
+                ],
+                'brics_checks' => $checks,
+            ],
+            'approval' => [],
+        ];
+    }
+
+    private function fixedCastablePayload(QcFormTemplate $template): array
+    {
+        $checks = collect(FixedQcTemplate::castableInspectionRows())
+            ->mapWithKeys(function ($item) {
+                $numberValues = [
+                    'water_add' => '6.5',
+                    'needle_add' => '2',
+                    'mixing_time' => '15',
+                    'thickness' => '50',
+                    'no_of_layer' => '3',
+                    'no_of_segment' => '8',
+                    'segment_area' => '12.5',
+                    'total_installation_time' => '120',
+                    'quantity_used' => '250',
+                ];
+
+                $row = [
+                    'status' => $item['options'][0] ?? '',
+                    'value' => empty($item['options']) ? ($numberValues[$item['key']] ?? '1') : '',
+                    'detail' => 'Detail '.$item['no'],
+                ];
+
+                if (($item['input'] ?? null) === 'dimension') {
+                    $row['dimensions'] = [
+                        'length' => '120',
+                        'width' => '80',
+                        'height' => '40',
+                    ];
+                    $row['value'] = '';
+                }
+
+                return [$item['key'] => $row];
+            })
+            ->all();
+
+        return [
+            'template_id' => $template->id,
+            'action' => 'submit',
+            'header' => [
+                'plant' => 'TONASA 4',
+                'tahun' => '2026',
+                'area' => 'KILN',
+                'date_time' => '2026-05-15T08:00',
+                'tag_num' => 'CAST-01',
+                'functional_location' => 'FL-CAST',
+                'name_equipment' => 'Castable Kiln',
+                'id_equipment' => 'EQ-CAST',
+                'alat' => 'Kiln',
+                'pekerjaan' => 'Overhaul',
+                'unit_kerja' => 'QC',
+                'durasi' => '60',
+            ],
+            'body' => [
+                'final_check' => '1',
+                'castable_customer' => [
+                    'company' => 'PT Test',
+                    'install_method' => 'Casting',
+                ],
+                'castable_checks' => $checks,
+                'castable_sample' => [
+                    'sample_mixing_no' => 'SM-01',
+                    'batch_number' => 'BN-01',
+                    'quantity' => '12',
+                    'qc_name' => 'User QC',
+                    'qc_sign_date' => [
+                        'name' => 'User QC',
+                        'date' => '2026-05-15',
+                        'signature' => 'data:image/png;base64,'.base64_encode('sample-signature'),
+                        'signed_at' => now()->toISOString(),
+                    ],
+                ],
+                'castable_monitoring_type' => 'Castable LC-16',
+                'castable_monitoring_note' => 'Catatan khusus monitoring',
+                'castable_monitoring_rows' => [
+                    [
+                        'quantity' => '25',
+                        'batch_number' => 'BATCH-01',
+                        'material_temperature' => '32',
+                        'room_temperature' => '30',
+                        'mixing_time' => '4',
+                        'water_percentage' => '6.5',
+                        'water_ph' => '7',
+                        'water_temperature' => '28',
+                        'installation_location' => 'Burner area',
+                        'remark' => 'Normal',
+                    ],
+                    [
+                        'quantity' => '30',
+                        'batch_number' => 'BATCH-02',
+                        'material_temperature' => '33',
+                        'room_temperature' => '31',
+                        'mixing_time' => '5',
+                        'water_percentage' => '6.7',
+                        'water_ph' => '7',
+                        'water_temperature' => '29',
+                        'installation_location' => 'Kiln hood',
+                        'remark' => 'OK',
+                    ],
+                ],
+                'castable_monitoring_signatures' => [
+                    'prepared_by' => [
+                        'name' => 'Supervisor A',
+                        'date' => '2026-05-15',
+                        'signature' => 'data:image/png;base64,'.base64_encode('prepared'),
+                    ],
+                    'known_by' => [
+                        'name' => 'Customer A',
+                        'date' => '2026-05-15',
+                        'signature' => 'data:image/png;base64,'.base64_encode('known'),
+                    ],
+                ],
+            ],
+            'note' => 'Catatan form QC castable',
+            'approval' => [
+                'castable_filled_by' => [
+                    'signature' => 'data:image/png;base64,'.base64_encode('signature'),
+                    'name' => 'User QC',
+                    'date' => '2026-05-15',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
+        ];
+    }
+
     private function payload(QcFormTemplate $template, $block, $row, string $action): array
     {
         return [
@@ -600,5 +1037,17 @@ class QcFormSubmissionTest extends TestCase
                 ],
             ],
         ];
+    }
+
+    private function tokenFromUrl(string $url): string
+    {
+        return basename((string) parse_url($url, PHP_URL_PATH));
+    }
+
+    private function validSignatureData(): string
+    {
+        return 'data:image/png;base64,'.base64_encode(base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        ));
     }
 }

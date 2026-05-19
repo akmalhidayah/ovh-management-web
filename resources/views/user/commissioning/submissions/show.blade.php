@@ -9,27 +9,38 @@
     @php($labels = $schema['labels'])
     <div class="user-simple-form-header">
         <h1>{{ $submission->form_number }}</h1>
-        <a href="{{ route('user.commissioning.submissions.pdf', $submission) }}" class="btn btn-success" target="_blank">PDF</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('user.commissioning.submissions.pdf', $submission) }}" class="btn btn-success" target="_blank">PDF</a>
+            @if ($canCopyApprovalLink)
+                <button type="button" class="btn btn-warning" data-copy-approval-link-url="{{ route('user.commissioning.submissions.approval-link', $submission) }}">Salin Link Approval</button>
+            @endif
+            <a href="{{ in_array($submission->status, ['draft', 'revision_required'], true) ? route('user.commissioning.drafts.index') : route('user.commissioning.history.index') }}" class="btn btn-outline-secondary">Kembali</a>
+        </div>
     </div>
-    <section class="inspector-panel qc-form-card">
-        <div class="qc-form-section-title"><h3>Informasi Umum</h3></div>
-        <div class="qc-user-field-grid">
-            @foreach (\App\Support\Commissioning\FixedCommissioningTemplate::headerFields() as $field)
-                <div class="qc-user-field"><span>{{ $field['label'] }}</span><div class="form-control bg-light">{{ $header[$field['key']] ?? '-' }}</div></div>
-            @endforeach
-        </div>
-    </section>
-    <section class="inspector-panel qc-form-card">
-        <div class="qc-form-section-title"><h3>{{ $labels['equipment_check_title'] }}</h3></div>
-        <div class="table-responsive">
-            <table class="commissioning-table">
-                <thead><tr><th>No</th><th>Item</th><th>Check</th><th>Result</th><th>Remark</th></tr></thead>
-                <tbody>
-                    @foreach (($body['equipment_check_rows'] ?? []) as $row)
-                        <tr><td>{{ $row['no'] ?? $loop->iteration }}</td><td>{{ $row['item'] ?? '-' }}</td><td>{{ ! empty($row['check']) ? 'Ya' : 'Tidak' }}</td><td>{{ $row['result'] ?? '-' }}</td><td>{{ $row['remark'] ?? '-' }}</td></tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
+    @if (in_array($submission->status, ['draft', 'revision_required'], true))
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Informasi Umum</h3></div>
+            <div class="qc-user-field-grid">
+                @foreach (\App\Support\Commissioning\FixedCommissioningTemplate::headerFields() as $field)
+                    <div class="qc-user-field"><span>{{ $field['label'] }}</span><div class="form-control bg-light">{{ $header[$field['key']] ?? '-' }}</div></div>
+                @endforeach
+            </div>
+        </section>
+    @else
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-card-head">
+                <div>
+                    <span>{{ $submission->form_number }}</span>
+                    <h2>{{ $submission->template_name ?? $submission->template?->name ?? '-' }}</h2>
+                    <p>{{ Str::headline($submission->status) }}</p>
+                </div>
+                <div class="qc-form-code">
+                    <strong>{{ $submission->form_number }}</strong>
+                    <span>{{ $submission->submitted_at?->format('d M Y H:i') ?: '-' }}</span>
+                </div>
+            </div>
+        </section>
+    @endif
 @endsection
+
+@include('approvals._copy-link-script')

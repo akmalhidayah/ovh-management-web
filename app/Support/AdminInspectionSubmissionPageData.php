@@ -28,19 +28,26 @@ class AdminInspectionSubmissionPageData
 
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
+        $pageRoute = $filters['type'] === 'commissioning' ? 'admin.commissioning' : 'admin.qc';
         $submissions = new LengthAwarePaginator(
             $allRows->forPage($page, $perPage)->values(),
             $allRows->count(),
             $perPage,
             $page,
             [
-                'path' => route('admin.qc'),
+                'path' => route($pageRoute),
                 'query' => $request->query(),
             ]
         );
 
+        $pageTitle = match ($filters['type']) {
+            'qc' => 'Quality Control',
+            'commissioning' => 'Commissioning',
+            default => 'QC & Commissioning',
+        };
+
         return [
-            'pageTitle' => 'Inspection & Commissioning',
+            'pageTitle' => $pageTitle,
             'submissions' => $submissions,
             'statusLabels' => self::statusLabels(),
             'summary' => self::summary($allRows),
@@ -66,7 +73,7 @@ class AdminInspectionSubmissionPageData
         if ($type === null || $type === 'qc') {
             $rows = $rows->merge(
                 QcFormSubmission::query()
-                    ->with(['user'])
+                    ->with(['user', 'approvalFlow.steps'])
                     ->submitted()
                     ->latest('submitted_at')
                     ->get()
@@ -77,7 +84,8 @@ class AdminInspectionSubmissionPageData
         if ($type === null || $type === 'commissioning') {
             $rows = $rows->merge(
                 CommissioningFormSubmission::query()
-                    ->with(['user'])
+                    ->with(['user', 'approvalFlow.steps'])
+                    ->whereIn('status', ['submitted', 'pending_approval', 'approved', 'revision_required', 'rejected', 'cancelled'])
                     ->latest('submitted_at')
                     ->get()
                     ->map(fn (CommissioningFormSubmission $submission) => self::commissioningRow($submission))
@@ -98,15 +106,22 @@ class AdminInspectionSubmissionPageData
 
     private static function qcRow(QcFormSubmission $submission): object
     {
+        $generalInfo = $submission->general_info ?? [];
+
         return (object) [
             'type' => 'qc',
             'type_label' => 'QC',
             'model' => $submission,
             'form_number' => $submission->form_number,
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
-            'plant' => $submission->plant,
-            'area' => $submission->area,
-            'equipment' => $submission->equipment,
+            'plant' => self::firstFilled($submission->plant, $generalInfo['plant'] ?? null, $generalInfo['ovh_plant'] ?? null),
+            'area' => self::firstFilled($submission->area, $generalInfo['area'] ?? null),
+            'equipment' => self::firstFilled(
+                $submission->equipment,
+                $generalInfo['name_equipment'] ?? null,
+                $generalInfo['alat'] ?? null,
+                $generalInfo['equipment'] ?? null
+            ),
             'user_name' => $submission->user?->name,
             'status' => $submission->status,
             'submitted_at' => $submission->submitted_at,
@@ -124,14 +139,30 @@ class AdminInspectionSubmissionPageData
             'model' => $submission,
             'form_number' => $submission->form_number,
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
-            'plant' => $header['plant'] ?? null,
-            'area' => $submission->area,
-            'equipment' => $submission->equipment,
+            'plant' => self::firstFilled($header['plant'] ?? null, $header['ovh_plant'] ?? null),
+            'area' => self::firstFilled($submission->area, $header['area'] ?? null),
+            'equipment' => self::firstFilled(
+                $submission->equipment,
+                $header['name_equipment'] ?? null,
+                $header['alat'] ?? null,
+                $header['equipment'] ?? null
+            ),
             'user_name' => $submission->user?->name,
             'status' => $submission->status,
             'submitted_at' => $submission->submitted_at,
-            'pdf_route' => $submission->status === 'submitted' ? route('admin.commissioning.submissions.pdf', $submission) : null,
+            'pdf_route' => $submission->status !== 'draft' ? route('admin.commissioning.submissions.pdf', $submission) : null,
         ];
+    }
+
+    private static function firstFilled(mixed ...$values): mixed
+    {
+        foreach ($values as $value) {
+            if (filled($value)) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private static function matchesFilters(object $row, array $filters): bool
@@ -220,8 +251,12 @@ class AdminInspectionSubmissionPageData
         return [
             'draft' => 'Draft',
             'submitted' => 'Menunggu Review',
+            'pending_approval' => 'Menunggu Approval',
             'approved' => 'Disetujui',
             'revision' => 'Perlu Revisi',
+            'revision_required' => 'Perlu Revisi',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
         ];
     }
 }

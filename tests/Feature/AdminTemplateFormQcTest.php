@@ -110,6 +110,41 @@ class AdminTemplateFormQcTest extends TestCase
         ]);
     }
 
+    public function test_qc_template_code_uses_manual_middle_segment_and_sequence(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $payload = [
+            'code' => 'BC',
+            'name' => 'Template QC BC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'draft',
+            'template_type' => 'general',
+            'general_rows' => [
+                [
+                    'urutan' => 1,
+                    'item_pengecekan' => 'Cek belt',
+                    'standar' => 'Tidak sobek',
+                    'actual_default' => '',
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('admin.template-form-qc.store'), $payload)
+            ->assertRedirect();
+
+        $payload['name'] = 'Template QC BC 2';
+
+        $this->actingAs($admin)
+            ->post(route('admin.template-form-qc.store'), $payload)
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('qc_form_templates', ['code' => 'QCR-BC-001']);
+        $this->assertDatabaseHas('qc_form_templates', ['code' => 'QCR-BC-002']);
+    }
+
     public function test_admin_can_create_qc_umum_template(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

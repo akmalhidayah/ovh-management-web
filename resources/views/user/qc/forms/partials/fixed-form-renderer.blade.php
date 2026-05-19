@@ -310,13 +310,23 @@
         </section>
     @endif
 
-    <section class="inspector-panel qc-form-card">
-        <div class="qc-form-section-title"><h3>Catatan</h3></div>
-        <label class="qc-user-note-box">
-            <span>Catatan</span>
-            <textarea class="form-control" name="note" rows="4" placeholder="Tulis catatan umum pemeriksaan">{{ $noteValue }}</textarea>
-        </label>
-    </section>
+    @if ($type === FixedQcTemplate::TYPE_CASTABLE)
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Catatan Form QC</h3></div>
+            <label class="qc-user-note-box">
+                <span>Catatan Form QC Castable</span>
+                <textarea class="form-control" name="note" rows="4" placeholder="Tulis catatan umum form QC Castable">{{ $noteValue }}</textarea>
+            </label>
+        </section>
+    @else
+        <section class="inspector-panel qc-form-card">
+            <div class="qc-form-section-title"><h3>Catatan</h3></div>
+            <label class="qc-user-note-box">
+                <span>Catatan</span>
+                <textarea class="form-control" name="note" rows="4" placeholder="Tulis catatan umum pemeriksaan">{{ $noteValue }}</textarea>
+            </label>
+        </section>
+    @endif
 
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Lampiran Foto/Gambar</h3></div>
@@ -344,12 +354,11 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
-        <p class="text-muted">Baru bisa ter approve jika form sudah terisi semua & Final Check sudah tercentang:</p>
+        <p class="text-muted">Final Check dapat dicentang setelah pemeriksaan selesai.</p>
         <label class="d-inline-flex align-items-center gap-2 mb-2">
-            <input type="checkbox" name="body[final_check]" value="1" @checked((bool) ($oldBody['final_check'] ?? false)) data-final-check disabled>
+            <input type="checkbox" name="body[final_check]" value="1" @checked((bool) ($oldBody['final_check'] ?? false)) data-final-check>
             <strong>Final Check</strong>
         </label>
-        <div class="text-muted small mb-3" data-final-check-help>Final Check aktif setelah semua status bernilai Ok/Baik.</div>
         @php
             $approvalColumns = FixedQcTemplate::approvalColumns($type);
         @endphp
@@ -365,9 +374,9 @@
                         <strong>{{ $column['label'] }}</strong>
                     </div>
                     <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama" readonly>
+                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama">
                     @if ($isInspector)
-                        <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control disabled>
+                        <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control>
                     @else
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? '' }}" disabled>
                     @endif
@@ -388,7 +397,7 @@
                             </div>
                         </div>
                         <div class="qc-signature-actions mt-2">
-                            <button type="button" class="btn btn-outline-primary" data-signature-open data-signature-label="{{ $column['label'] }}" data-inspector-approval-control disabled>
+                            <button type="button" class="btn btn-outline-primary" data-signature-open data-signature-label="{{ $column['label'] }}" data-inspector-approval-control>
                                 <i class="bi bi-pen me-1"></i><span data-signature-button-label>Tanda Tangan</span>
                             </button>
                             <button type="button" class="btn btn-outline-danger d-none" data-signature-remove>Hapus</button>
@@ -430,7 +439,7 @@
     <section class="inspector-panel qc-form-actions-card">
         <div>
             <h3>Action Form</h3>
-            <p>Simpan draft bisa belum lengkap. Submit wajib header, body, dan Final Check lengkap.</p>
+            <p>Simpan draft bisa belum lengkap. Submit wajib header, body, status checklist, dan Final Check lengkap.</p>
         </div>
         <div class="qc-form-actions">
             <button type="submit" name="action" value="draft" class="btn btn-primary" formnovalidate>Simpan Draft</button>
@@ -442,9 +451,6 @@
 @push('scripts')
     <script>
         (() => {
-            const finalCheck = document.querySelector('[data-final-check]');
-            const finalCheckHelp = document.querySelector('[data-final-check-help]');
-            const inspectorControls = document.querySelectorAll('[data-inspector-approval-control]');
             const masterDataSelect = document.querySelector('[data-master-data-select]');
 
             const setHeaderValue = (key, value) => {
@@ -468,52 +474,6 @@
             masterDataSelect?.addEventListener('change', syncMasterDataHeader);
             syncMasterDataHeader();
 
-            const statusGroups = () => {
-                const radios = Array.from(document.querySelectorAll('input[type="radio"][name*="[status]"]'));
-                return Object.values(radios.reduce((groups, radio) => {
-                    groups[radio.name] = groups[radio.name] || [];
-                    groups[radio.name].push(radio);
-                    return groups;
-                }, {}));
-            };
-
-            const allStatusesOk = () => {
-                const groups = statusGroups();
-                const accepted = ['Ok', 'OK', 'Baik', 'Yes', 'Conventional', 'Low Cement', 'Visual', 'Sound', 'Good', 'Radial', 'Clear'];
-                return groups.length > 0 && groups.every((group) => group.some((radio) => {
-                    return radio.checked && (radio.dataset.finalCheckOk === '1' || accepted.includes(radio.value));
-                }));
-            };
-
-            const syncApprovalGate = () => {
-                if (!finalCheck) return;
-
-                const ready = allStatusesOk();
-                finalCheck.disabled = !ready;
-
-                if (!ready) {
-                    finalCheck.checked = false;
-                }
-
-                const inspectorEnabled = ready && finalCheck.checked;
-                inspectorControls.forEach((control) => {
-                    control.disabled = !inspectorEnabled;
-                });
-
-                if (finalCheckHelp) {
-                    finalCheckHelp.textContent = ready
-                        ? 'Final Check sudah bisa dicentang. Tanda tangan QC Inspektor aktif setelah Final Check dicentang.'
-                        : 'Final Check aktif setelah semua status bernilai Ok/Baik.';
-                }
-            };
-
-            document.addEventListener('change', (event) => {
-                if (event.target.matches('input[type="radio"][name*="[status]"], [data-final-check]')) {
-                    syncApprovalGate();
-                }
-            });
-
-            syncApprovalGate();
         })();
     </script>
 @endpush

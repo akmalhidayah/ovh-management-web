@@ -21,6 +21,16 @@
     $gearboxRows = $schema['gearbox_test_rows'];
     $rows = $schema['equipment_check_rows'] ?: FixedCommissioningTemplate::defaultSchema()['equipment_check_rows'];
     $approvalDefaults = $schema['approval_defaults'] ?? FixedCommissioningTemplate::defaultApprovalDefaults();
+    $codeInputValue = old('code', $template->code);
+    $codeManualValue = $codeInputValue;
+    $codeNumberValue = '001';
+
+    if (preg_match('/^COM-(.+)-(\d+)$/i', (string) $codeInputValue, $codeMatches) === 1) {
+        $codeManualValue = $codeMatches[1];
+        $codeNumberValue = $codeMatches[2];
+    } elseif (preg_match('/^COM-.+-(\d+)$/i', (string) $template->code, $templateCodeMatches) === 1) {
+        $codeNumberValue = $templateCodeMatches[1];
+    }
 @endphp
 
 <form method="POST" action="{{ $action }}">
@@ -33,12 +43,16 @@
         <div class="row g-3">
             <div class="col-12 col-md-4">
                 <label class="form-label">Kode Form</label>
-                <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code', $template->code) }}" placeholder="COM-MTR-001">
+                <div class="input-group">
+                    <span class="input-group-text">COM-</span>
+                    <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ $codeManualValue }}" placeholder="MTR">
+                    <span class="input-group-text">-{{ $codeNumberValue }}</span>
+                </div>
                 @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-8">
                 <label class="form-label">Nama Template</label>
-                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $template->name) }}" required placeholder="Motor & Gearbox Commissioning">
+                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $template->name) }}" required placeholder="Contoh: Motor & Gearbox Commissioning">
                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-4"><label class="form-label">Kategori</label><input type="text" name="category" class="form-control" value="{{ old('category', $template->category ?? 'Commissioning') }}"></div>

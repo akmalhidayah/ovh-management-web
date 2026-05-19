@@ -1,6 +1,15 @@
 @php
     $generalInfo = $submission->general_info ?? [];
     $approvalData = $submission->approval_data ?? [];
+    $templateSnapshot = $submission->template_snapshot ?? [];
+    $templateType = $templateSnapshot['template_type'] ?? $submission->template?->template_type;
+    $templateName = $submission->template_name ?? $templateSnapshot['name'] ?? $submission->template?->name;
+    $templateCategory = $templateSnapshot['category'] ?? $submission->template?->category ?? 'QC';
+    $legacyBlocks = collect($templateSnapshot['blocks'] ?? [])
+        ->map(fn ($block) => (object) $block);
+    if ($legacyBlocks->isEmpty()) {
+        $legacyBlocks = $submission->template?->blocks ?? collect();
+    }
     $rowsByBlock = $submission->rows->groupBy('qc_form_template_block_id');
     $signatureApproval = collect($approvalData)->first(fn ($approval) => is_array($approval) && ! empty($approval['signature']));
     $signedDateValue = $signatureApproval['signed_at'] ?? ($approvalData['tanggal'] ?? null);
@@ -9,7 +18,7 @@
     $signerRole = $signatureApproval['role'] ?? 'Quality Control Personil';
 @endphp
 
-@if ($submission->template?->template_type)
+@if ($templateType)
     @include('qc-submissions._fixed-detail', ['submission' => $submission, 'statusLabels' => $statusLabels])
 @else
 <div class="qc-submission-detail">
@@ -17,8 +26,8 @@
         <div class="qc-form-card-head">
             <div>
                 <span>{{ $submission->form_number }}</span>
-                <h2>{{ $submission->template?->name }}</h2>
-                <p>{{ $submission->template?->category ?: 'QC' }} - {{ $statusLabels[$submission->status] ?? $submission->status }}</p>
+                <h2>{{ $templateName }}</h2>
+                <p>{{ $templateCategory }} - {{ $statusLabels[$submission->status] ?? $submission->status }}</p>
             </div>
             <div class="qc-form-code">
                 <strong>{{ $submission->report_no ?: $submission->form_number }}</strong>
@@ -51,7 +60,7 @@
         </div>
     </section>
 
-    @foreach ($submission->template?->blocks ?? [] as $block)
+    @foreach ($legacyBlocks as $block)
         @continue(! in_array($block->type, ['checklist_table', 'measurement_table'], true))
         @php
             $columns = $block->config['columns'] ?? [];

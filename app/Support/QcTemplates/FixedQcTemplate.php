@@ -39,17 +39,17 @@ class FixedQcTemplate
         if (self::normalizeType($type) === self::TYPE_CASTABLE) {
             return [
                 ['key' => 'doc_number', 'label' => 'Doc.Number', 'type' => 'text'],
-                ['key' => 'tahun', 'label' => 'Tahun', 'type' => 'text'],
+                ['key' => 'plant', 'label' => 'Plant', 'type' => 'text'],
                 ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
                 ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
-                ['key' => 'tag_num', 'label' => 'Tag.Num', 'type' => 'text'],
-                ['key' => 'functional_location', 'label' => 'Functional Location', 'type' => 'text'],
+                ['key' => 'tag_num', 'label' => 'Section No.', 'type' => 'text'],
+                ['key' => 'functional_location', 'label' => 'Functional Loc', 'type' => 'text'],
                 ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
                 ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
-                ['key' => 'alat', 'label' => 'Alat', 'type' => 'text'],
                 ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
                 ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
-                ['key' => 'durasi', 'label' => 'Durasi', 'type' => 'text'],
+                ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
+                ['key' => 'durasi', 'label' => 'Durasi (Menit)', 'type' => 'text'],
             ];
         }
 
@@ -80,9 +80,10 @@ class FixedQcTemplate
 
         if (self::normalizeType($type) === self::TYPE_CASTABLE) {
             return [
-                ['doc_number', 'tahun', 'area', 'date_time'],
-                ['tag_num', 'functional_location', 'name_equipment', 'id_equipment'],
-                ['alat', 'pekerjaan', 'unit_kerja', 'durasi'],
+                ['doc_number', 'plant', 'tag_num'],
+                ['functional_location', 'id_equipment', 'name_equipment'],
+                ['area', 'date_time', 'inspector_qc'],
+                ['pekerjaan', 'unit_kerja', 'durasi'],
             ];
         }
 
@@ -271,16 +272,16 @@ class FixedQcTemplate
             ['key' => 'anchor', 'no' => '7', 'label' => 'ANCHOR', 'options' => ['Yes', 'No'], 'detail_label' => 'Anchor Type / Dia'],
             ['key' => 'plastic_cup_for_anchor', 'no' => '8', 'label' => 'PLASTIC CUP FOR ANCHOR', 'options' => ['Yes', 'No']],
             ['key' => 'sample', 'no' => '9', 'label' => 'SAMPLE*', 'options' => ['Yes', 'No']],
-            ['key' => 'sample_dimention', 'no' => '10', 'label' => 'SAMPLE DIMENTION', 'unit' => '( X X ) mm'],
-            ['key' => 'water_add', 'no' => '11', 'label' => 'WATER ADD', 'unit' => '% volume'],
-            ['key' => 'needle_add', 'no' => '12', 'label' => 'STAINLESS STEEL NEEDLE ADD', 'unit' => '% weight'],
-            ['key' => 'mixing_time', 'no' => '13', 'label' => 'MIXING TIME', 'unit' => 'mnt'],
-            ['key' => 'thickness', 'no' => '14', 'label' => 'THICKNESS', 'unit' => 'mm'],
-            ['key' => 'no_of_layer', 'no' => '15', 'label' => 'NO OF LAYER', 'unit' => 'layer'],
-            ['key' => 'no_of_segment', 'no' => '16', 'label' => 'NO OF SEGMENT', 'unit' => 'segment'],
-            ['key' => 'segment_area', 'no' => '17', 'label' => 'SEGMENT AREA', 'unit' => 'mm2'],
-            ['key' => 'total_installation_time', 'no' => '18', 'label' => 'TOTAL INSTALLATION TIME', 'unit' => 'mnt'],
-            ['key' => 'quantity_used', 'no' => '19', 'label' => 'QUANTITY USED', 'unit' => 'Kg'],
+            ['key' => 'sample_dimention', 'no' => '10', 'label' => 'SAMPLE DIMENTION', 'unit' => 'mm', 'input' => 'dimension'],
+            ['key' => 'water_add', 'no' => '11', 'label' => 'WATER ADD', 'unit' => '% volume', 'input' => 'number'],
+            ['key' => 'needle_add', 'no' => '12', 'label' => 'STAINLESS STEEL NEEDLE ADD', 'unit' => '% weight', 'input' => 'number'],
+            ['key' => 'mixing_time', 'no' => '13', 'label' => 'MIXING TIME', 'unit' => 'mnt', 'input' => 'number'],
+            ['key' => 'thickness', 'no' => '14', 'label' => 'THICKNESS', 'unit' => 'mm', 'input' => 'number'],
+            ['key' => 'no_of_layer', 'no' => '15', 'label' => 'NO OF LAYER', 'unit' => 'layer', 'input' => 'number'],
+            ['key' => 'no_of_segment', 'no' => '16', 'label' => 'NO OF SEGMENT', 'unit' => 'segment', 'input' => 'number'],
+            ['key' => 'segment_area', 'no' => '17', 'label' => 'SEGMENT AREA', 'unit' => 'mm2', 'input' => 'number'],
+            ['key' => 'total_installation_time', 'no' => '18', 'label' => 'TOTAL INSTALLATION TIME', 'unit' => 'mnt', 'input' => 'number'],
+            ['key' => 'quantity_used', 'no' => '19', 'label' => 'QUANTITY USED', 'unit' => 'Kg', 'input' => 'number'],
         ];
     }
 
@@ -292,6 +293,40 @@ class FixedQcTemplate
             ['key' => 'quantity', 'label' => 'Quantity'],
             ['key' => 'qc_name', 'label' => 'QC NAME'],
             ['key' => 'qc_sign_date', 'label' => 'QC SIGN / DATE'],
+        ];
+    }
+
+    public static function castableMonitoringColumns(): array
+    {
+        return [
+            ['key' => 'quantity', 'label' => 'Quantity (kg)', 'placeholder' => 'Contoh: 25'],
+            ['key' => 'batch_number', 'label' => 'Batch number', 'placeholder' => 'Contoh: B-001'],
+            ['key' => 'material_temperature', 'label' => 'Temperatur Material (kering)', 'placeholder' => 'Contoh: 32 C'],
+            ['key' => 'room_temperature', 'label' => 'Temperatur Ruangan C', 'placeholder' => 'Contoh: 30 C'],
+            ['key' => 'mixing_time', 'label' => 'Waktu Aduk (... Standard...) Menit', 'placeholder' => 'Contoh: 4 menit'],
+            ['key' => 'water_percentage', 'label' => 'Persentase (... Standard...) (%)', 'placeholder' => 'Contoh: 6.5%'],
+            ['key' => 'water_ph', 'label' => '(... Standard...) PH', 'placeholder' => 'Contoh: 7'],
+            ['key' => 'water_temperature', 'label' => 'Temperatur (... Standard...) (C)', 'placeholder' => 'Contoh: 28 C'],
+            ['key' => 'installation_location', 'label' => 'Lokasi Pemasangan', 'placeholder' => 'Contoh: Burner area'],
+            ['key' => 'remark', 'label' => 'Keterangan', 'placeholder' => 'Catatan monitoring'],
+        ];
+    }
+
+    public static function defaultCastableMonitoringRows(): array
+    {
+        return collect(range(1, 5))
+            ->map(fn ($number) => collect(self::castableMonitoringColumns())
+                ->mapWithKeys(fn ($column) => [$column['key'] => ''])
+                ->merge(['no' => (string) $number])
+                ->all())
+            ->all();
+    }
+
+    public static function castableMonitoringSignatures(): array
+    {
+        return [
+            ['key' => 'prepared_by', 'heading' => 'Dibuat Oleh', 'role' => 'Supervisor', 'locked' => false],
+            ['key' => 'known_by', 'heading' => 'Mengetahui', 'role' => 'Customer', 'locked' => true],
         ];
     }
 
@@ -314,7 +349,7 @@ class FixedQcTemplate
             ['key' => 'starting_metering', 'label' => 'Starting Metering'],
             ['key' => 'kiln_diameter', 'label' => 'Kiln Diameter'],
             ['key' => 'finishing_metering', 'label' => 'Finishing Metering'],
-            ['key' => 'activity_date', 'label' => 'Activity Date'],
+            ['key' => 'activity_date', 'label' => 'Activity Date', 'type' => 'date'],
             ['key' => 'start_finishing_ring', 'label' => 'Start & Finishing Ring'],
         ];
     }

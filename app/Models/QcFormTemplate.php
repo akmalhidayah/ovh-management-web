@@ -55,6 +55,13 @@ class QcFormTemplate extends Model
         return $this->hasMany(QcFormTemplateGridCell::class)->orderBy('order_no');
     }
 
+    public function approvalSteps(): HasMany
+    {
+        return $this->hasMany(TemplateApprovalStep::class, 'template_id')
+            ->where('template_type', 'qc')
+            ->orderBy('step_order');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');

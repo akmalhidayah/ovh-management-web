@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class QcFormSubmission extends Model
@@ -14,6 +15,10 @@ class QcFormSubmission extends Model
 
     protected $fillable = [
         'qc_form_template_id',
+        'template_code',
+        'template_name',
+        'template_version',
+        'template_snapshot',
         'user_id',
         'form_number',
         'status',
@@ -41,6 +46,7 @@ class QcFormSubmission extends Model
         'general_info' => 'array',
         'body_data' => 'array',
         'approval_data' => 'array',
+        'template_snapshot' => 'array',
     ];
 
     public function getRouteKey(): mixed
@@ -97,13 +103,26 @@ class QcFormSubmission extends Model
         return $this->hasMany(QcFormSubmissionAttachment::class);
     }
 
+    public function approvalFlow(): MorphOne
+    {
+        return $this->morphOne(ApprovalFlow::class, 'approvable')->latestOfMany();
+    }
+
     public function scopeDraft(Builder $query): Builder
     {
-        return $query->where('status', 'draft');
+        return $query->whereIn('status', ['draft', 'revision_required']);
     }
 
     public function scopeSubmitted(Builder $query): Builder
     {
-        return $query->whereIn('status', ['submitted', 'approved', 'revision']);
+        return $query->whereIn('status', [
+            'submitted',
+            'pending_approval',
+            'approved',
+            'revision',
+            'revision_required',
+            'rejected',
+            'cancelled',
+        ]);
     }
 }

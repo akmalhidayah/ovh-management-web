@@ -17,5 +17,6 @@ class DatabaseSeeder extends Seeder
         $this->call(UserSeeder::class);
         $this->call(MasterDataRecordSeeder::class);
         $this->call(QcFormTemplateSeeder::class);
+        $this->call(TemplateApprovalStepSeeder::class);
     }
 }

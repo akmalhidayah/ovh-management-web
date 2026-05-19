@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CommissioningFormFlowTest extends TestCase
@@ -46,6 +48,35 @@ class CommissioningFormFlowTest extends TestCase
         ]);
     }
 
+    public function test_commissioning_template_code_uses_manual_middle_segment_and_sequence(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $payload = [
+            'code' => 'MTR',
+            'name' => 'Template Motor Commissioning',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'draft',
+            'equipment_check_rows' => [
+                ['no' => 1, 'item' => 'Check coupling alignment'],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('admin.template-form-commissioning.store'), $payload)
+            ->assertRedirect();
+
+        $payload['name'] = 'Template Motor Commissioning 2';
+
+        $this->actingAs($admin)
+            ->post(route('admin.template-form-commissioning.store'), $payload)
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('commissioning_form_templates', ['code' => 'COM-MTR-001']);
+        $this->assertDatabaseHas('commissioning_form_templates', ['code' => 'COM-MTR-002']);
+    }
+
     public function test_commissioning_user_can_submit_and_open_pdf(): void
     {
         [$user, $template, $master] = $this->makeCommissioningSetup();
@@ -65,13 +96,23 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSessionHas('success', 'Form Commissioning berhasil disubmit.');
 
         $submission = CommissioningFormSubmission::firstOrFail();
-        $this->assertSame('submitted', $submission->status);
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertNotNull($submission->approvalFlow);
         $this->assertSame('ST-COM-LOC-001', $submission->functional_location);
         $this->assertSame('SEC-COM-001', $submission->tag_num);
         $this->assertSame('GEARBOX MOTOR', $submission->equipment);
         $this->assertSame('TONASA 4', $submission->header_data['plant']);
         $this->assertSame($user->name, $submission->header_data['inspector_commissioning']);
         $this->assertStringContainsString('/COM/', $submission->form_number);
+        $this->assertSame($template->code, $submission->template_code);
+        $this->assertSame($template->name, $submission->template_name);
+        $this->assertSame('1.0', $submission->template_snapshot['version']);
+        $this->assertSame($template->body_schema['equipment_check_rows'][0]['item'], $submission->template_snapshot['body_schema']['equipment_check_rows'][0]['item']);
+        $this->assertDatabaseHas('document_number_sequences', [
+            'category' => 'commissioning',
+            'period' => now()->format('m-Y'),
+            'last_number' => 1,
+        ]);
 
         $pdfUrl = route('user.commissioning.submissions.pdf', $submission);
         $this->assertStringContainsString(CommissioningFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);
@@ -97,11 +138,80 @@ class CommissioningFormFlowTest extends TestCase
             ->get(route('admin.commissioning'))
             ->assertOk()
             ->assertSee($submission->form_number)
-            ->assertSee('GEARBOX MOTOR');
+            ->assertSee('GEARBOX MOTOR')
+            ->assertSee('Detail Approval')
+            ->assertSee('Salin Link TTD');
 
         $this->actingAs($admin)
             ->get(route('admin.commissioning.submissions.pdf', $submission))
             ->assertOk();
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.commissioning.submissions.approval-link', $submission))
+            ->assertOk()
+            ->assertJsonStructure(['url']);
+    }
+
+    public function test_commissioning_submit_creates_four_approver_steps_without_submitter_signature(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with('approvalFlow.steps.links')->firstOrFail();
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertCount(4, $steps);
+        $this->assertFalse($steps[0]->is_submitter_signature);
+        $this->assertTrue($steps[0]->requires_magic_link);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[0]->status);
+        $this->assertSame(ApprovalStep::STATUS_PENDING, $steps[1]->status);
+        $this->assertSame(1, $steps[0]->links->whereNull('used_at')->whereNull('revoked_at')->count());
+    }
+
+    public function test_public_approval_approve_advances_commissioning_flow(): void
+    {
+        Storage::fake('public');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $url = $this->actingAs($user)
+            ->postJson(route('user.commissioning.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+        $token = $this->tokenFromUrl($url);
+
+        $this->get(route('public.approval.show', $token))
+            ->assertOk()
+            ->assertSee('Preview PDF')
+            ->assertSee('Tanda Tangani Dokumen')
+            ->assertSee('value="Leader A"', false)
+            ->assertSee(route('public.approval.pdf', $token), false);
+
+        $this->get(route('public.approval.pdf', $token))
+            ->assertOk();
+
+        $approveResponse = $this->post(route('public.approval.approve', $token), [
+            'approver_name' => 'Commissioning Lead',
+            'approver_position' => 'COMMISSIONING Leader',
+            'signature' => $this->validSignatureData(),
+        ])->assertRedirect();
+
+        $this->get($approveResponse->headers->get('Location'))
+            ->assertOk();
+
+        $submission->refresh()->load('approvalFlow.steps');
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[0]->status);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $submission->approvalFlow->steps[1]->status);
     }
 
     public function test_commissioning_user_can_save_draft_without_complete_data(): void
@@ -145,7 +255,6 @@ class CommissioningFormFlowTest extends TestCase
                 'body.equipment_check_rows',
                 'note',
                 'attachments.dokumentasi',
-                'approval.commissioning_leader.name',
             ]);
 
         $this->assertSame(0, CommissioningFormSubmission::count());
@@ -243,5 +352,17 @@ class CommissioningFormFlowTest extends TestCase
                 'overhaul_management' => ['name' => 'Overhaul A', 'date' => '2026-05-08'],
             ],
         ];
+    }
+
+    private function tokenFromUrl(string $url): string
+    {
+        return basename((string) parse_url($url, PHP_URL_PATH));
+    }
+
+    private function validSignatureData(): string
+    {
+        return 'data:image/png;base64,'.base64_encode(base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        ));
     }
 }

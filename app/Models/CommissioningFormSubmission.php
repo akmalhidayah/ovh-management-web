@@ -5,11 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class CommissioningFormSubmission extends Model
 {
     protected $fillable = [
         'commissioning_form_template_id',
+        'template_code',
+        'template_name',
+        'template_version',
+        'template_snapshot',
         'user_id',
         'form_number',
         'status',
@@ -31,6 +36,7 @@ class CommissioningFormSubmission extends Model
         'header_data' => 'array',
         'body_data' => 'array',
         'approval_data' => 'array',
+        'template_snapshot' => 'array',
     ];
 
     public function getRouteKey(): mixed
@@ -80,5 +86,10 @@ class CommissioningFormSubmission extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(CommissioningFormSubmissionAttachment::class);
+    }
+
+    public function approvalFlow(): MorphOne
+    {
+        return $this->morphOne(ApprovalFlow::class, 'approvable')->latestOfMany();
     }
 }
