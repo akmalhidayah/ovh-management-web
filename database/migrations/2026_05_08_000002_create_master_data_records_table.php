@@ -10,22 +10,42 @@ return new class extends Migration
     {
         Schema::create('master_data_records', function (Blueprint $table) {
             $table->id();
+
             $table->string('document_category', 40);
             $table->string('year', 10)->nullable();
-            $table->string('func_location');
+
+            $table->string('func_location', 150);
             $table->string('equipment_no', 80);
-            $table->string('section_no')->nullable();
-            $table->string('description');
-            $table->string('plant');
-            $table->string('area');
+            $table->string('section_no', 100)->nullable();
+            $table->string('description', 191);
+
+            $table->string('plant', 80);
+            $table->string('area', 80);
+
             $table->string('status', 20)->default('active');
             $table->text('notes')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+
+            $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
             $table->timestamps();
 
-            $table->unique(['document_category', 'equipment_no'], 'master_data_doc_equipment_unique');
-            $table->index(['document_category', 'plant', 'area']);
-            $table->index(['status', 'year']);
+            $table->unique(
+                ['document_category', 'equipment_no'],
+                'master_data_doc_equipment_unique'
+            );
+
+            $table->index(
+                ['document_category', 'plant', 'area'],
+                'master_data_doc_plant_area_index'
+            );
+
+            $table->index(
+                ['status', 'year'],
+                'master_data_status_year_index'
+            );
         });
     }
 
