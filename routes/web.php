@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
+use App\Http\Controllers\Admin\UserPanelController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PublicApprovalController;
@@ -117,6 +118,9 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::patch('/master-data/bulk-status', [MasterDataController::class, 'bulkStatus'])->name('master-data.bulk-status');
     Route::put('/master-data/{masterDataRecord}', [MasterDataController::class, 'update'])->name('master-data.update');
     Route::delete('/master-data/{masterDataRecord}', [MasterDataController::class, 'destroy'])->name('master-data.destroy');
+    Route::get('/user-panel', [UserPanelController::class, 'index'])->name('user-panel');
+    Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
+    Route::put('/user-panel/{user}', [UserPanelController::class, 'update'])->name('user-panel.update');
 });
 
 Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->group(function () {

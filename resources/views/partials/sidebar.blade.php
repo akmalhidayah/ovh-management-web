@@ -56,11 +56,18 @@
     ];
 
     if ($role === 'admin') {
+        $groups[] = ['section' => 'Lainnya'];
         $groups[] = [
             'label' => 'Master Data',
             'icon' => 'bi-database-gear',
             'route' => 'admin.master-data',
             'active' => 'admin.master-data*',
+        ];
+        $groups[] = [
+            'label' => 'Userpanel',
+            'icon' => 'bi-people',
+            'route' => 'admin.user-panel',
+            'active' => 'admin.user-panel*',
         ];
     }
 @endphp
@@ -79,12 +86,15 @@
     <nav class="sidebar-nav">
         @foreach ($groups as $index => $item)
             @php
+                $isSection = isset($item['section']);
                 $isGroup = isset($item['items']);
-                $isActive = $isGroup ? request()->routeIs(...$item['routes']) : request()->routeIs($item['active'] ?? $item['route']);
+                $isActive = $isSection ? false : ($isGroup ? request()->routeIs(...$item['routes']) : request()->routeIs($item['active'] ?? $item['route']));
                 $groupId = 'sidebarGroup'.$index;
             @endphp
 
-            @if ($isGroup)
+            @if ($isSection)
+                <div class="sidebar-section-label">{{ $item['section'] }}</div>
+            @elseif ($isGroup)
                 <div class="sidebar-group {{ $isActive ? 'open' : '' }}" data-sidebar-group>
                     <button class="sidebar-link sidebar-group-toggle {{ $isActive ? 'active' : '' }}" type="button" aria-expanded="{{ $isActive ? 'true' : 'false' }}" aria-controls="{{ $groupId }}">
                         <i class="bi {{ $item['icon'] }}"></i>
