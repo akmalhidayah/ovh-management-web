@@ -2,6 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\CommissioningFormSubmission;
+use App\Models\QcFormSubmission;
+use Illuminate\Database\Eloquent\Model;
+
 class UserRoleUiData
 {
     public static function layout(string $role): array
@@ -552,6 +556,8 @@ class UserRoleUiData
 
     private static function inspectionDashboard(string $role, array $config): array
     {
+        $realData = self::realInspectionDashboardData($role);
+
         return [
             'roleUi' => self::layout($role),
             'hero' => [
@@ -560,12 +566,160 @@ class UserRoleUiData
                 'note' => $config['hero_note'],
                 'actions' => $config['actions'],
             ],
-            'stats' => $config['stats'],
+            'stats' => $realData['stats'] ?? $config['stats'],
             'draftsTitle' => $config['drafts_title'],
             'historyTitle' => $config['history_title'],
-            'drafts' => $config['drafts'],
-            'history' => $config['history'],
+            'drafts' => $realData['drafts'] ?? $config['drafts'],
+            'history' => $realData['history'] ?? $config['history'],
         ];
+    }
+
+    private static function realInspectionDashboardData(string $role): ?array
+    {
+        $userId = auth()->id();
+
+        if (! $userId || ! in_array($role, ['qc', 'commissioning'], true)) {
+            return null;
+        }
+
+        $model = $role === 'qc' ? QcFormSubmission::class : CommissioningFormSubmission::class;
+        $category = $role === 'qc' ? 'QC' : 'Commissioning';
+        $draftLabel = $role === 'qc' ? 'Draft QC' : 'Draft Commissioning';
+        $baseQuery = $model::query()->where('user_id', $userId);
+        $historyStatuses = ['submitted', 'pending_approval', 'approved', 'revision', 'revision_required', 'rejected', 'cancelled'];
+
+        $drafts = (clone $baseQuery)
+            ->with('template')
+            ->whereIn('status', ['draft', 'revision_required', 'revision'])
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn (Model $submission) => self::dashboardDraftRow($submission, $category))
+            ->all();
+
+        $history = (clone $baseQuery)
+            ->with('template')
+            ->whereIn('status', $historyStatuses)
+            ->latest('submitted_at')
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn (Model $submission) => self::dashboardHistoryRow($submission, $category))
+            ->all();
+
+        return [
+            'stats' => [
+                ['label' => $draftLabel, 'value' => (string) (clone $baseQuery)->where('status', 'draft')->count(), 'icon' => 'bi-pencil-square', 'accent' => 'warning'],
+                ['label' => 'Perlu Revisi', 'value' => (string) (clone $baseQuery)->whereIn('status', ['revision', 'revision_required'])->count(), 'icon' => 'bi-arrow-repeat', 'accent' => 'danger'],
+                ['label' => 'Menunggu Review', 'value' => (string) (clone $baseQuery)->whereIn('status', ['submitted', 'pending_approval'])->count(), 'icon' => 'bi-hourglass-split', 'accent' => 'warning'],
+                ['label' => 'Form Terkirim', 'value' => (string) (clone $baseQuery)->whereIn('status', $historyStatuses)->count(), 'icon' => 'bi-send-check', 'accent' => 'success'],
+                ['label' => 'Riwayat PDF', 'value' => (string) (clone $baseQuery)->whereIn('status', $historyStatuses)->count(), 'icon' => 'bi-file-earmark-pdf', 'accent' => 'secondary'],
+            ],
+            'drafts' => $drafts,
+            'history' => $history,
+        ];
+    }
+
+    private static function dashboardDraftRow(Model $submission, string $category): array
+    {
+        return [
+            'category' => $category,
+            'title' => $category.' - '.self::submissionEquipment($submission),
+            'equipment' => self::submissionEquipment($submission),
+            'plant' => self::submissionPlant($submission),
+            'area' => self::submissionArea($submission),
+            'status' => self::inspectionStatusLabel((string) $submission->getAttribute('status')),
+            'updated_at' => self::dashboardDateTime($submission->getAttribute('updated_at')),
+        ];
+    }
+
+    private static function dashboardHistoryRow(Model $submission, string $category): array
+    {
+        return [
+            'submitted_at' => self::dashboardDateTime($submission->getAttribute('submitted_at') ?: $submission->getAttribute('updated_at')),
+            'category' => $category,
+            'type' => self::submissionTemplateName($submission, $category),
+            'equipment' => self::submissionEquipment($submission),
+            'plant' => self::submissionPlant($submission),
+            'area' => self::submissionArea($submission),
+            'status' => self::inspectionStatusLabel((string) $submission->getAttribute('status')),
+        ];
+    }
+
+    private static function submissionTemplateName(Model $submission, string $fallback): string
+    {
+        return (string) (
+            $submission->getAttribute('template_name')
+            ?: data_get($submission->getAttribute('template_snapshot'), 'name')
+            ?: $submission->getRelationValue('template')?->name
+            ?: $fallback
+        );
+    }
+
+    private static function submissionEquipment(Model $submission): string
+    {
+        return (string) (
+            $submission->getAttribute('equipment')
+            ?: data_get($submission->getAttribute('general_info'), 'name_equipment')
+            ?: data_get($submission->getAttribute('general_info'), 'alat')
+            ?: data_get($submission->getAttribute('header_data'), 'name_equipment')
+            ?: $submission->getAttribute('form_number')
+            ?: '-'
+        );
+    }
+
+    private static function submissionPlant(Model $submission): string
+    {
+        return (string) (
+            $submission->getAttribute('plant')
+            ?: data_get($submission->getAttribute('general_info'), 'plant')
+            ?: data_get($submission->getAttribute('general_info'), 'ovh_plant')
+            ?: data_get($submission->getAttribute('header_data'), 'plant')
+            ?: '-'
+        );
+    }
+
+    private static function submissionArea(Model $submission): string
+    {
+        return (string) (
+            $submission->getAttribute('area')
+            ?: data_get($submission->getAttribute('general_info'), 'area')
+            ?: data_get($submission->getAttribute('header_data'), 'area')
+            ?: '-'
+        );
+    }
+
+    private static function inspectionStatusLabel(string $status): string
+    {
+        return [
+            'draft' => 'Draft',
+            'submitted' => 'Menunggu Review',
+            'pending_approval' => 'Menunggu Approval',
+            'approved' => 'Disetujui',
+            'revision' => 'Perlu Revisi',
+            'revision_required' => 'Perlu Revisi',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
+        ][$status] ?? str($status)->replace('_', ' ')->headline()->toString();
+    }
+
+    private static function dashboardDateTime(mixed $value): string
+    {
+        if (! $value) {
+            return '-';
+        }
+
+        $date = $value instanceof \DateTimeInterface
+            ? \Illuminate\Support\Carbon::instance($value)
+            : \Illuminate\Support\Carbon::parse($value);
+
+        $months = [
+            1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
+            5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu',
+            9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des',
+        ];
+
+        return $date->format('d').' '.$months[(int) $date->format('n')].' '.$date->format('Y H:i');
     }
 
     private static function inspectionForm(string $role, array $config): array
