@@ -243,21 +243,24 @@
             background: #fff;
             text-align: center;
         }
+        .attachment-grid th {
+            height: 8mm;
+            padding: 1.5mm;
+            border: 1px solid #000;
+            background: #e5e2d8;
+            font-size: 9px;
+            font-style: italic;
+            font-weight: 700;
+            text-align: center;
+        }
         .attachment-grid td {
             height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '78mm' : '88mm' }};
             padding: 2.4mm;
             vertical-align: top;
             page-break-inside: avoid;
         }
-        .attachment-title {
-            margin-bottom: 2mm;
-            padding: 1mm;
-            border: 1px solid #000;
-            background: #e5e2d8;
-            font-size: 8.5px;
-            font-style: italic;
-            font-weight: 700;
-            text-align: center;
+        .attachment-support-grid {
+            margin-top: 4mm;
         }
         .attachment-empty {
             padding: 10mm 2mm;
