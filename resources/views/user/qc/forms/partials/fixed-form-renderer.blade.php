@@ -381,6 +381,7 @@
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? '' }}" disabled>
                     @endif
                     <input type="hidden" name="approval[{{ $column['key'] }}][signature]" value="{{ $oldApproval[$column['key']]['signature'] ?? '' }}" data-signature-input>
+                    <input type="file" name="approval_signature_files[{{ $column['key'] }}]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
                     <input type="hidden" name="approval[{{ $column['key'] }}][role]" value="{{ $column['label'] }}">
                     <input type="hidden" name="approval[{{ $column['key'] }}][signed_at]" value="{{ $oldApproval[$column['key']]['signed_at'] ?? '' }}" data-signature-time-input>
                     @if ($isInspector)

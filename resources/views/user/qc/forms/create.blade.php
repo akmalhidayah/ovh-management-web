@@ -181,6 +181,29 @@
                 drawing = false;
             };
 
+            const dataUrlToFile = (dataUrl, filename) => {
+                const [header, encoded] = dataUrl.split(',');
+                const mime = header.match(/data:(.*?);base64/)?.[1] || 'image/png';
+                const binary = atob(encoded || '');
+                const bytes = new Uint8Array(binary.length);
+
+                for (let i = 0; i < binary.length; i += 1) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+
+                return new File([bytes], filename, { type: mime });
+            };
+
+            const setFileInput = (input, file) => {
+                if (!input || !file) {
+                    return;
+                }
+
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+                input.files = transfer.files;
+            };
+
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             window.addEventListener('mouseup', stopDrawing);
@@ -206,13 +229,16 @@
                 }
 
                 const dataUrl = signatureDataUrl();
+                const signatureInput = activeCard.querySelector('[data-signature-input]');
+                const fileInput = activeCard.querySelector('[data-signature-file-input]');
                 const signedAt = new Date();
                 const signedText = signedAt.toLocaleString('id-ID', {
                     dateStyle: 'medium',
                     timeStyle: 'short',
                 });
 
-                activeCard.querySelector('[data-signature-input]').value = dataUrl;
+                setFileInput(fileInput, dataUrlToFile(dataUrl, `signature-${Date.now()}.png`));
+                signatureInput.value = '';
                 activeCard.querySelector('[data-signature-time-input]').value = signedAt.toISOString();
                 activeCard.querySelector('[data-signature-preview]').src = dataUrl;
                 activeCard.querySelector('[data-signature-time]').textContent = signedText;
@@ -227,6 +253,8 @@
                 button.addEventListener('click', () => {
                     const card = button.closest('[data-signature-card]');
                     card.querySelector('[data-signature-input]').value = '';
+                    const fileInput = card.querySelector('[data-signature-file-input]');
+                    if (fileInput) fileInput.value = '';
                     card.querySelector('[data-signature-time-input]').value = '';
                     card.querySelector('[data-signature-preview]').removeAttribute('src');
                     card.querySelector('[data-signature-time]').textContent = '';
@@ -234,6 +262,25 @@
                     card.querySelector('[data-signature-result]').classList.add('d-none');
                     button.classList.add('d-none');
                     card.querySelector('[data-signature-button-label]').textContent = 'Tanda Tangan';
+                });
+            });
+
+            document.querySelectorAll('form[data-confirm-submit]').forEach((form) => {
+                form.addEventListener('submit', () => {
+                    form.querySelectorAll('[data-signature-input]').forEach((input) => {
+                        if (!input.value.startsWith('data:image/')) {
+                            return;
+                        }
+
+                        const card = input.closest('[data-signature-card]');
+                        const fileInput = card?.querySelector('[data-signature-file-input]');
+
+                        if (fileInput && !fileInput.files.length) {
+                            setFileInput(fileInput, dataUrlToFile(input.value, `signature-${Date.now()}.png`));
+                        }
+
+                        input.value = '';
+                    });
                 });
             });
         })();

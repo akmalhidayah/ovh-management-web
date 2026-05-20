@@ -2,6 +2,8 @@
 
 namespace App\Support\Pdf;
 
+use Illuminate\Support\Facades\Storage;
+
 class SignatureImage
 {
     public static function forPdf(?string $source): ?string
@@ -10,8 +12,8 @@ class SignatureImage
             return $source;
         }
 
-        if (is_file($source)) {
-            $binary = @file_get_contents($source);
+        if ($path = self::localPathForSource($source)) {
+            $binary = @file_get_contents($path);
 
             return is_string($binary) ? self::cropBinary($binary, $source) : $source;
         }
@@ -26,6 +28,29 @@ class SignatureImage
         }
 
         return self::cropBinary($binary, $source);
+    }
+
+    private static function localPathForSource(string $source): ?string
+    {
+        if (is_file($source)) {
+            return $source;
+        }
+
+        $path = parse_url($source, PHP_URL_PATH) ?: $source;
+
+        if (str_starts_with($path, '/storage/')) {
+            $relative = urldecode(substr($path, strlen('/storage/')));
+
+            return Storage::disk('public')->exists($relative)
+                ? Storage::disk('public')->path($relative)
+                : null;
+        }
+
+        $relative = ltrim($source, '/');
+
+        return Storage::disk('public')->exists($relative)
+            ? Storage::disk('public')->path($relative)
+            : null;
     }
 
     private static function cropBinary(string $binary, string $fallback): string

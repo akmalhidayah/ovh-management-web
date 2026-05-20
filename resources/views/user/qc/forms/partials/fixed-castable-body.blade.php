@@ -203,6 +203,7 @@
                         <input type="hidden" name="body[castable_sample][qc_sign_date][name]" value="{{ $sampleSignatureName }}">
                         <input type="date" class="form-control form-control-sm mb-2" name="body[castable_sample][qc_sign_date][date]" value="{{ $sampleSignatureDate }}">
                         <input type="hidden" name="body[castable_sample][qc_sign_date][signature]" value="{{ $sampleSignatureData }}" data-signature-input>
+                        <input type="file" name="body_signature_files[castable_sample_qc_sign_date]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
                         <input type="hidden" name="body[castable_sample][qc_sign_date][signed_at]" value="{{ $sampleSignature['signed_at'] ?? '' }}" data-signature-time-input>
                         <div class="qc-signature-empty {{ $sampleSignatureData ? 'd-none' : '' }}" data-signature-empty>
                             <i class="bi bi-pen"></i>

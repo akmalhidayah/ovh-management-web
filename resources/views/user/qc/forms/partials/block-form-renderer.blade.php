@@ -206,6 +206,7 @@
                                 <button type="button" class="btn btn-outline-secondary" disabled>Tanda tangan</button>
                             @else
                                 <input type="hidden" name="approval[{{ $key }}][signature]" data-signature-input>
+                                <input type="file" name="approval_signature_files[{{ $key }}]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
                                 <input type="hidden" name="approval[{{ $key }}][name]" value="{{ $signerName }}">
                                 <input type="hidden" name="approval[{{ $key }}][role]" value="{{ $signerPosition }}">
                                 <input type="hidden" name="approval[{{ $key }}][signed_at]" data-signature-time-input>

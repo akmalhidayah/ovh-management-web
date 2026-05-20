@@ -141,7 +141,7 @@ class QcFormSubmissionTest extends TestCase
         $approveResponse = $this->post(route('public.approval.approve', $token), [
             'approver_name' => 'Leader QC',
             'approver_position' => 'QC Leader',
-            'signature' => $this->validSignatureData(),
+            'signature_file' => UploadedFile::fake()->image('signature.png', 20, 10),
         ])->assertRedirect();
 
         $this->get($approveResponse->headers->get('Location'))
@@ -154,6 +154,9 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[1]->status);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
         $this->assertSame(1, $steps[1]->links->whereNotNull('used_at')->count());
+        $this->assertNotNull($steps[1]->signature_path);
+        $this->assertNull($steps[1]->signature_data);
+        Storage::disk('public')->assertExists($steps[1]->signature_path);
 
         $this->get(route('public.approval.show', $token))
             ->assertNotFound()
@@ -440,10 +443,20 @@ class QcFormSubmissionTest extends TestCase
 
     public function test_user_can_submit_fixed_general_qc_and_open_pdf(): void
     {
+        Storage::fake('public');
         [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['approval']['qc_inspector_q_c_inspektor'] = [
+            'name' => 'User QC',
+            'date' => '2026-05-15',
+            'role' => 'QC Inspektor',
+            'signed_at' => now()->toISOString(),
+            'signature' => '',
+        ];
+        $payload['approval_signature_files']['qc_inspector_q_c_inspektor'] = UploadedFile::fake()->image('qc-signature.png', 20, 10);
 
         $this->actingAs($user)
-            ->post(route('user.qc.forms.store'), $this->fixedGeneralPayload($template))
+            ->post(route('user.qc.forms.store'), $payload)
             ->assertRedirect(route('user.qc.history.index'));
 
         $submission = QcFormSubmission::firstOrFail();
@@ -451,6 +464,9 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Template Fixed General', $submission->template->name);
         $this->assertTrue($submission->body_data['final_check']);
         $this->assertSame($user->name, $submission->general_info['inspector_qc']);
+        $signature = $submission->approval_data['qc_inspector_q_c_inspektor']['signature'] ?? '';
+        $this->assertStringStartsWith('/storage/signatures/qc/', $signature);
+        Storage::disk('public')->assertExists(substr(parse_url($signature, PHP_URL_PATH), strlen('/storage/')));
 
         $pdfUrl = route('user.qc.submissions.pdf', $submission);
         $this->assertStringContainsString(QcFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);

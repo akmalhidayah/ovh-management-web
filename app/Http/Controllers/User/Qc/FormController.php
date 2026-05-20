@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -33,6 +34,7 @@ class FormController extends Controller
     private const ERROR_DESTROY = 'QC-SUB-DESTROY-FAILED';
     private const ERROR_APPROVAL_LINK = 'QC-APPROVAL-LINK-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
+    private const SIGNATURE_MAX_BYTES = 1048576;
 
     public function create(Request $request): View
     {
@@ -117,6 +119,14 @@ class FormController extends Controller
                     'note' => $request->input('note'),
                     'approval_data' => $request->input('approval', []),
                 ]);
+
+                $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
+                $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
+
+                $submission->forceFill([
+                    'approval_data' => $approvalData,
+                    'body_data' => $bodyData,
+                ])->save();
 
                 if ($isFixedTemplate) {
                     $this->storeFixedRows($submission, $template, $bodyData ?? []);
@@ -210,6 +220,9 @@ class FormController extends Controller
                 $templateSnapshot = $submission->template_snapshot ?: TemplateSnapshot::forQc($template);
                 $dateTime = $generalInfo['date_time'] ?? null;
 
+                $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
+                $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
+
                 $submission->update([
                     'template_code' => $submission->template_code ?: ($templateSnapshot['code'] ?? null),
                     'template_name' => $submission->template_name ?: ($templateSnapshot['name'] ?? null),
@@ -232,7 +245,7 @@ class FormController extends Controller
                     'general_info' => $generalInfo,
                     'body_data' => $bodyData,
                     'note' => $request->input('note'),
-                    'approval_data' => $request->input('approval', []),
+                    'approval_data' => $approvalData,
                 ]);
 
                 $submission->rows()->delete();
@@ -425,10 +438,103 @@ class FormController extends Controller
             'rows' => ['nullable', 'array'],
             'note' => ['nullable', 'string'],
             'approval' => ['nullable', 'array'],
+            'approval_signature_files' => ['nullable', 'array'],
+            'approval_signature_files.*' => ['nullable', 'file', 'mimes:png,jpg,jpeg', 'mimetypes:image/png,image/jpeg', 'max:1024'],
+            'body_signature_files' => ['nullable', 'array'],
+            'body_signature_files.*' => ['nullable', 'file', 'mimes:png,jpg,jpeg', 'mimetypes:image/png,image/jpeg', 'max:1024'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['nullable', 'array'],
             'attachments.*.*' => ['file', 'mimes:'.self::ALLOWED_ATTACHMENT_MIMES, 'mimetypes:image/jpeg,image/png', 'max:10240'],
         ]);
+    }
+
+    private function approvalDataWithSignatureFiles(Request $request, mixed $approval, QcFormSubmission $submission): array
+    {
+        $approvalData = is_array($approval) ? $approval : [];
+        $files = $request->file('approval_signature_files', []);
+
+        foreach ($files as $key => $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            if (! is_array($approvalData[$key] ?? null)) {
+                $approvalData[$key] = [];
+            }
+
+            $approvalData[$key]['signature'] = $this->storeUploadedSignature($file, $submission);
+        }
+
+        foreach ($approvalData as $key => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $signature = trim((string) ($value['signature'] ?? ''));
+            $storedSignature = $this->storeSignatureDataUrlIfNeeded($signature, $submission);
+
+            if ($storedSignature) {
+                $approvalData[$key]['signature'] = $storedSignature;
+            }
+        }
+
+        return $approvalData;
+    }
+
+    private function bodyDataWithSignatureFiles(Request $request, array $bodyData, QcFormSubmission $submission): array
+    {
+        $file = $request->file('body_signature_files.castable_sample_qc_sign_date');
+
+        if (! isset($bodyData['castable_sample']['qc_sign_date']) || ! is_array($bodyData['castable_sample']['qc_sign_date'])) {
+            if (! $file instanceof UploadedFile) {
+                return $bodyData;
+            }
+
+            $bodyData['castable_sample']['qc_sign_date'] = [];
+        }
+
+        if ($file instanceof UploadedFile) {
+            $bodyData['castable_sample']['qc_sign_date']['signature'] = $this->storeUploadedSignature($file, $submission);
+
+            return $bodyData;
+        }
+
+        $signature = trim((string) ($bodyData['castable_sample']['qc_sign_date']['signature'] ?? ''));
+        $storedSignature = $this->storeSignatureDataUrlIfNeeded($signature, $submission);
+
+        if ($storedSignature) {
+            $bodyData['castable_sample']['qc_sign_date']['signature'] = $storedSignature;
+        }
+
+        return $bodyData;
+    }
+
+    private function storeUploadedSignature(UploadedFile $file, QcFormSubmission $submission): string
+    {
+        $extension = $file->getMimeType() === 'image/png' ? 'png' : 'jpg';
+        $path = 'signatures/qc/submission-'.$submission->id.'-'.Str::random(16).'.'.$extension;
+
+        Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
+
+        return Storage::disk('public')->url($path);
+    }
+
+    private function storeSignatureDataUrlIfNeeded(string $source, QcFormSubmission $submission): ?string
+    {
+        if (! preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/', $source, $matches)) {
+            return null;
+        }
+
+        $binary = base64_decode($matches[2], true);
+        if ($binary === false || strlen($binary) > self::SIGNATURE_MAX_BYTES || @getimagesizefromstring($binary) === false) {
+            return null;
+        }
+
+        $extension = $matches[1] === 'png' ? 'png' : 'jpg';
+        $path = 'signatures/qc/submission-'.$submission->id.'-'.Str::random(16).'.'.$extension;
+        Storage::disk('public')->put($path, $binary);
+
+        return Storage::disk('public')->url($path);
     }
 
     private function storeRows(QcFormSubmission $submission, QcFormTemplate $template, array $blocks): void

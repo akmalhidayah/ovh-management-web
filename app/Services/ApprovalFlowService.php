@@ -11,6 +11,7 @@ use App\Models\TemplateApprovalStep;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -172,6 +173,10 @@ class ApprovalFlowService
             $name = trim((string) ($data['approver_name'] ?? ''));
             $position = trim((string) ($data['approver_position'] ?? ''));
             $signature = trim((string) ($data['signature'] ?? ''));
+            $signatureFile = $request->file('signature_file') ?: $request->file('signature');
+            if (! $signatureFile instanceof UploadedFile) {
+                $signatureFile = null;
+            }
 
             $errors = [];
             if ($name === '') {
@@ -180,10 +185,12 @@ class ApprovalFlowService
             if ($position === '') {
                 $errors['approver_position'] = 'Jabatan approver wajib diisi.';
             }
-            if ($signature === '') {
+            if (! $signatureFile && $signature === '') {
                 $errors['signature'] = 'Tanda tangan wajib diisi.';
-            } elseif (! $this->isValidSignatureData($signature)) {
-                $errors['signature'] = 'Tanda tangan harus berupa gambar PNG/JPEG base64 maksimal 1MB.';
+            } elseif ($signatureFile && ! $this->isValidSignatureFile($signatureFile)) {
+                $errors['signature'] = 'Tanda tangan harus berupa file PNG/JPEG maksimal 1MB.';
+            } elseif (! $signatureFile && ! $this->isValidSignatureData($signature)) {
+                $errors['signature'] = 'Tanda tangan harus berupa gambar PNG/JPEG maksimal 1MB.';
             }
 
             if ($errors !== []) {
@@ -194,7 +201,9 @@ class ApprovalFlowService
                 'status' => ApprovalStep::STATUS_APPROVED,
                 'approver_name' => $name,
                 'approver_position' => $position,
-                'signature_path' => $this->storeSignature($signature, $step),
+                'signature_path' => $signatureFile
+                    ? $this->storeSignatureFile($signatureFile, $step)
+                    : $this->storeSignature($signature, $step),
                 'signature_data' => null,
                 'acted_at' => now(),
                 'ip_address' => $request->ip(),
@@ -419,6 +428,16 @@ class ApprovalFlowService
         return $path;
     }
 
+    private function storeSignatureFile(UploadedFile $file, ApprovalStep $step): string
+    {
+        $extension = $file->getMimeType() === 'image/png' ? 'png' : 'jpg';
+        $path = 'signatures/approval/approval-step-'.$step->id.'-'.Str::random(16).'.'.$extension;
+
+        Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
+
+        return $path;
+    }
+
     private function isValidSignatureData(string $source): bool
     {
         if (! preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/', $source, $matches)) {
@@ -431,6 +450,19 @@ class ApprovalFlowService
         }
 
         return @getimagesizefromstring($binary) !== false;
+    }
+
+    private function isValidSignatureFile(UploadedFile $file): bool
+    {
+        if (! $file->isValid() || $file->getSize() > self::SIGNATURE_MAX_BYTES) {
+            return false;
+        }
+
+        if (! in_array($file->getMimeType(), ['image/png', 'image/jpeg'], true)) {
+            return false;
+        }
+
+        return @getimagesize($file->getRealPath()) !== false;
     }
 
     private function event(ApprovalFlow $flow, ?ApprovalStep $step, string $event, ?string $description = null, ?Request $request = null): void

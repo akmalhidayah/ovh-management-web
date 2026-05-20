@@ -84,7 +84,7 @@
                     <h2>Tanda Tangani Dokumen</h2>
                     <p class="text-muted mb-4">Periksa PDF di atas, lalu isi data approver dan tanda tangan untuk melanjutkan approval.</p>
 
-                    <form method="POST" action="{{ route('public.approval.approve', ['token' => $token]) }}" data-approval-form>
+                    <form method="POST" action="{{ route('public.approval.approve', ['token' => $token]) }}" enctype="multipart/form-data" data-approval-form>
                         @csrf
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -98,7 +98,7 @@
                             <div class="col-12">
                                 <label class="form-label">Tanda Tangan</label>
                                 <canvas width="900" height="280" class="signature-canvas" data-signature-canvas></canvas>
-                                <input type="hidden" name="signature" data-signature-input>
+                                <input type="file" name="signature_file" accept="image/png,image/jpeg" class="d-none" data-signature-input>
                                 <div class="form-text">Gunakan mouse atau sentuhan layar untuk membuat tanda tangan.</div>
                             </div>
                         </div>
@@ -175,13 +175,42 @@
     canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', stop);
     document.querySelector('[data-signature-clear]')?.addEventListener('click', reset);
-    document.querySelector('[data-approval-form]')?.addEventListener('submit', (event) => {
+    const setSignatureFile = (blob) => {
+        const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+    };
+
+    const approvalForm = document.querySelector('[data-approval-form]');
+    let signaturePrepared = false;
+    approvalForm?.addEventListener('submit', (event) => {
+        if (signaturePrepared) {
+            return;
+        }
+
+        event.preventDefault();
+
         if (!hasDrawing) {
-            event.preventDefault();
             alert('Silakan buat tanda tangan terlebih dahulu.');
             return;
         }
-        input.value = canvas.toDataURL('image/png');
+
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                alert('Tanda tangan gagal diproses. Silakan coba lagi.');
+                return;
+            }
+
+            setSignatureFile(blob);
+            signaturePrepared = true;
+
+            if (approvalForm.requestSubmit) {
+                approvalForm.requestSubmit(event.submitter || undefined);
+            } else {
+                approvalForm.submit();
+            }
+        }, 'image/png');
     });
     const rejectBox = document.querySelector('[data-reject-form]');
     document.querySelector('[data-show-reject]')?.addEventListener('click', () => rejectBox.style.display = 'block');
