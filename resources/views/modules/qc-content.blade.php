@@ -1,67 +1,26 @@
 @php
     $statusLabels = $statusLabels ?? [];
-    $summary = $summary ?? ['total' => 0, 'submitted' => 0, 'approved' => 0, 'revision' => 0];
-    $charts = $charts ?? [
-        'overall' => ['labels' => [], 'data' => []],
-        'qc' => ['labels' => [], 'data' => []],
-        'commissioning' => ['labels' => [], 'data' => []],
-    ];
-    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect(), 'areas' => collect()];
-    $filters = $filters ?? ['type' => 'all', 'status' => 'all', 'year' => 'all', 'plant' => 'all', 'area' => 'all', 'search' => ''];
+    $inspectionMetrics = $inspectionMetrics ?? ($qcMetrics ?? null);
+    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect()];
+    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'search' => ''];
     $statusClasses = [
         'draft' => 'text-bg-secondary',
         'submitted' => 'text-bg-info',
+        'pending_approval' => 'text-bg-info',
         'approved' => 'text-bg-success',
         'revision' => 'text-bg-warning',
+        'revision_required' => 'text-bg-warning',
+        'rejected' => 'text-bg-danger',
+        'cancelled' => 'text-bg-secondary',
     ];
-    $pageHeading = $pageTitle ?? 'QC & Commissioning';
     $filterRoute = $filters['type'] === 'commissioning' ? 'admin.commissioning' : 'admin.qc';
-    $visibleCharts = match ($filters['type']) {
-        'qc' => [
-            ['key' => 'qc', 'label' => 'Quality Control', 'badge' => 'text-bg-info'],
-        ],
-        'commissioning' => [
-            ['key' => 'commissioning', 'label' => 'Commissioning', 'badge' => 'text-bg-success'],
-        ],
-        default => [
-            ['key' => 'overall', 'label' => 'Semua', 'badge' => 'text-bg-primary'],
-            ['key' => 'qc', 'label' => 'QC', 'badge' => 'text-bg-info'],
-            ['key' => 'commissioning', 'label' => 'Commissioning', 'badge' => 'text-bg-success'],
-        ],
-    };
+    $formatPercentage = fn ($value) => rtrim(rtrim(number_format((float) $value, 1, ',', '.'), '0'), ',');
+    $metricsLabel = $inspectionMetrics['label'] ?? ($filters['type'] === 'commissioning' ? 'Commissioning' : 'QC');
 @endphp
-
-<div class="page-header">
-    <div>
-        <h1>{{ $pageHeading }}</h1>
-    </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-12 col-md-6 col-xl-3"><x-stat-card title="Total Submission" :value="$summary['total']" icon="bi-shield-check" tone="primary" /></div>
-    <div class="col-12 col-md-6 col-xl-3"><x-stat-card title="Menunggu Review" :value="$summary['submitted']" icon="bi-hourglass-split" tone="info" /></div>
-    <div class="col-12 col-md-6 col-xl-3"><x-stat-card title="Disetujui" :value="$summary['approved']" icon="bi-check2-circle" tone="success" /></div>
-    <div class="col-12 col-md-6 col-xl-3"><x-stat-card title="Perlu Revisi" :value="$summary['revision']" icon="bi-exclamation-triangle" tone="warning" /></div>
-</div>
-
-<div class="row g-3 mb-4">
-    @foreach ($visibleCharts as $chart)
-        <div class="col-12 {{ count($visibleCharts) === 1 ? '' : 'col-lg-4' }}">
-            <div class="content-card inspection-chart-card">
-                <div class="card-heading mb-2">
-                    <span class="badge {{ $chart['badge'] }}">{{ $chart['label'] }}</span>
-                </div>
-                <div class="inspection-chart-wrap">
-                    <canvas data-admin-area-chart='@json($charts[$chart['key']])'></canvas>
-                </div>
-            </div>
-        </div>
-    @endforeach
-</div>
 
 <form method="GET" action="{{ route($filterRoute) }}">
     <x-filter-card>
-        <div class="col-12 col-md-6 col-xl-2">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Tahun</label>
             <select class="form-select" name="year">
                 <option value="all">Semua Tahun</option>
@@ -70,7 +29,7 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-2">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Plant</label>
             <select class="form-select" name="plant">
                 <option value="all">Semua Plant</option>
@@ -79,25 +38,7 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-2">
-            <label class="form-label">Area</label>
-            <select class="form-select" name="area">
-                <option value="all">Semua Area</option>
-                @foreach ($filterOptions['areas'] as $area)
-                    <option value="{{ $area }}" @selected($filters['area'] == $area)>{{ $area }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-12 col-md-6 col-xl-2">
-            <label class="form-label">Status</label>
-            <select class="form-select" name="status">
-                <option value="all">Semua Status</option>
-                @foreach ($statusLabels as $value => $label)
-                    <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-xl-6">
             <label class="form-label">Cari</label>
             <div class="d-flex gap-2">
                 <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="No form / equipment">
@@ -106,6 +47,89 @@
         </div>
     </x-filter-card>
 </form>
+
+@if ($inspectionMetrics)
+    <div class="qc-progress-dashboard">
+        <div class="qc-progress-card qc-progress-card-total">
+            <div>
+                <div class="qc-progress-card-title">Equipment</div>
+                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['total'], 0, ',', '.') }}</div>
+            </div>
+            <i class="bi bi-gear-wide-connected"></i>
+        </div>
+        <div class="qc-progress-card qc-progress-card-process">
+            <div>
+                <div class="qc-progress-card-title">Equipment Process</div>
+                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['process'], 0, ',', '.') }}</div>
+            </div>
+            <i class="bi bi-clipboard2-check"></i>
+        </div>
+        <div class="qc-progress-card qc-progress-card-ongoing">
+            <div>
+                <div class="qc-progress-card-title">Equipment On Going</div>
+                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['ongoing'], 0, ',', '.') }}</div>
+            </div>
+            <i class="bi bi-pencil-square"></i>
+        </div>
+        <div class="qc-progress-card qc-progress-card-percentage">
+            <div>
+                <div class="qc-progress-card-title">Persentase</div>
+                <div class="qc-progress-card-value">{{ $formatPercentage($inspectionMetrics['cards']['percentage']) }}%</div>
+            </div>
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="content-card qc-area-detail-card">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle qc-area-progress-table">
+                        <thead>
+                            <tr>
+                                <th>Area</th>
+                                <th>Equipment</th>
+                                <th>Ongoing Equipment Testing</th>
+                                <th>Equipment Process</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($inspectionMetrics['areaRows'] as $row)
+                                <tr>
+                                    <td>{{ $row['area'] }}</td>
+                                    <td>{{ number_format($row['equipment'], 0, ',', '.') }}</td>
+                                    <td>{{ number_format($row['ongoing'], 0, ',', '.') }}</td>
+                                    <td>{{ number_format($row['process'], 0, ',', '.') }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">Belum ada master data equipment {{ $metricsLabel }} untuk filter ini.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                        @if ($inspectionMetrics['areaRows']->isNotEmpty())
+                            <tfoot>
+                                <tr>
+                                    <th>Total</th>
+                                    <th>{{ number_format($inspectionMetrics['areaRows']->sum('equipment'), 0, ',', '.') }}</th>
+                                    <th>{{ number_format($inspectionMetrics['areaRows']->sum('ongoing'), 0, ',', '.') }}</th>
+                                    <th>{{ number_format($inspectionMetrics['areaRows']->sum('process'), 0, ',', '.') }}</th>
+                                </tr>
+                            </tfoot>
+                        @endif
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="content-card qc-area-chart-card">
+                <div class="qc-area-chart-wrap">
+                    <canvas data-qc-area-progress-chart='@json($inspectionMetrics['chart'])'></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 
 <div class="content-card">
     <div class="table-responsive">
@@ -204,75 +228,234 @@
     ])
 @endforeach
 
-@push('scripts')
-    <script>
-        document.querySelectorAll('[data-admin-area-chart]').forEach(function (canvas) {
-            if (!window.Chart) {
-                return;
-            }
+@if ($inspectionMetrics)
+    @push('scripts')
+        <script>
+            document.querySelectorAll('[data-qc-area-progress-chart]').forEach(function (canvas) {
+                if (!window.Chart) {
+                    return;
+                }
 
-            const chartData = JSON.parse(canvas.dataset.adminAreaChart || '{"labels":[],"data":[]}');
-            new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: chartData.labels,
-                    datasets: [{
-                        label: 'Persentase per area',
-                        data: chartData.data,
-                        backgroundColor: '#1d4ed8',
-                        borderRadius: 5,
-                        maxBarThickness: 30,
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const index = context.dataIndex;
-                                    const meta = chartData.meta?.[index] || {};
-                                    const count = chartData.counts?.[index] ?? meta.count ?? 0;
-                                    const plants = (meta.plants || []).join(', ') || '-';
-                                    const years = (meta.years || []).join(', ') || '-';
-
-                                    return [
-                                        `Persentase: ${context.parsed.y}%`,
-                                        `Jumlah: ${count} dari ${chartData.total || 0} data`,
-                                        `Plant: ${plants}`,
-                                        `Tahun: ${years}`,
-                                    ];
+                const chartData = JSON.parse(canvas.dataset.qcAreaProgressChart || '{"labels":[],"data":[]}');
+                new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: 'Progress',
+                            data: chartData.data,
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4,
+                            maxBarThickness: 42,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                align: 'start',
+                                labels: {
+                                    boxWidth: 28,
+                                    boxHeight: 14,
+                                    color: '#334155',
+                                    font: { size: 13 },
+                                },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `Progress: ${context.parsed.y}%`;
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    precision: 0,
+                                    callback: function (value) {
+                                        return value + '%';
+                                    },
+                                },
+                                grid: { color: '#d9dee8' },
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: '#334155',
+                                    maxRotation: 35,
+                                    minRotation: 35,
                                 },
                             },
                         },
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                precision: 0,
-                                callback: function (value) {
-                                    return value + '%';
-                                },
-                            },
-                            grid: { color: '#eef2f7' },
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { maxRotation: 0, autoSkip: true },
-                        },
-                    },
-                },
+                });
             });
-        });
-    </script>
-@endpush
+        </script>
+    @endpush
+@endif
 
 @push('styles')
     <style>
+        .qc-progress-dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+            margin: 1.25rem 0 1rem;
+        }
+
+        .qc-progress-card {
+            position: relative;
+            min-height: 118px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            overflow: hidden;
+            padding: 1rem 1.2rem;
+            border: 1px solid;
+            border-radius: .55rem;
+            background: #ffffff;
+            box-shadow: 0 .25rem .7rem rgba(15, 23, 42, .12);
+        }
+
+        .qc-progress-card-title {
+            max-width: 11rem;
+            color: #3343a5;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        .qc-progress-card-value {
+            margin-top: .7rem;
+            color: #3343a5;
+            font-size: clamp(2rem, 3.1vw, 3rem);
+            font-weight: 500;
+            line-height: 1;
+            text-align: right;
+        }
+
+        .qc-progress-card > i {
+            flex: 0 0 auto;
+            color: currentColor;
+            font-size: 4rem;
+            line-height: 1;
+            opacity: .42;
+        }
+
+        .qc-progress-card-total {
+            border-color: #3343a5;
+            color: #3343a5;
+        }
+
+        .qc-progress-card-process {
+            border-color: #2f8c3c;
+            color: #2f8c3c;
+        }
+
+        .qc-progress-card-process .qc-progress-card-title,
+        .qc-progress-card-process .qc-progress-card-value {
+            color: #2f8c3c;
+        }
+
+        .qc-progress-card-ongoing {
+            border-color: #b91c1c;
+            color: #b91c1c;
+        }
+
+        .qc-progress-card-ongoing .qc-progress-card-title,
+        .qc-progress-card-ongoing .qc-progress-card-value {
+            color: #b91c1c;
+        }
+
+        .qc-progress-card-percentage {
+            border-color: #94105d;
+            color: #94105d;
+        }
+
+        .qc-progress-card-percentage .qc-progress-card-title,
+        .qc-progress-card-percentage .qc-progress-card-value {
+            color: #94105d;
+        }
+
+        .qc-area-detail-card,
+        .qc-area-chart-card {
+            height: 100%;
+        }
+
+        .qc-area-chart-card {
+            background: #f3f4f6;
+        }
+
+        .qc-area-chart-wrap {
+            height: 255px;
+        }
+
+        .qc-area-progress-table {
+            width: 100%;
+            min-width: 0;
+            table-layout: fixed;
+            margin-bottom: 0;
+            color: #111827;
+            font-size: .8rem;
+        }
+
+        .qc-area-progress-table th {
+            background: #3f78ca;
+            color: #ffffff;
+            font-size: .7rem;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            line-height: 1.15;
+            text-align: center;
+            vertical-align: middle;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .qc-area-progress-table td,
+        .qc-area-progress-table th {
+            padding: .28rem .38rem;
+            border-color: #1f2937;
+        }
+
+        .qc-area-progress-table th:nth-child(1),
+        .qc-area-progress-table td:nth-child(1) {
+            width: 24%;
+        }
+
+        .qc-area-progress-table th:nth-child(2),
+        .qc-area-progress-table td:nth-child(2) {
+            width: 17%;
+        }
+
+        .qc-area-progress-table th:nth-child(3),
+        .qc-area-progress-table td:nth-child(3) {
+            width: 32%;
+        }
+
+        .qc-area-progress-table th:nth-child(4),
+        .qc-area-progress-table td:nth-child(4) {
+            width: 27%;
+        }
+
+        .qc-area-progress-table td:nth-child(n+2),
+        .qc-area-progress-table tfoot th:nth-child(n+2) {
+            text-align: center;
+        }
+
+        .qc-area-progress-table tfoot th {
+            background: #bdd7ee;
+            color: #111827;
+        }
+
         .admin-submission-table {
             min-width: 760px;
             margin-bottom: 0;
@@ -337,6 +520,10 @@
         }
 
         @media (max-width: 1199.98px) {
+            .qc-progress-dashboard {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .admin-submission-table {
                 min-width: 720px;
             }
@@ -344,6 +531,20 @@
             .admin-submission-col-plant { width: 96px; }
             .admin-submission-col-area { width: 96px; }
             .admin-submission-col-status { width: 126px; }
+        }
+
+        @media (max-width: 575.98px) {
+            .qc-progress-dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .qc-progress-card {
+                min-height: 104px;
+            }
+
+            .qc-progress-card > i {
+                font-size: 3rem;
+            }
         }
     </style>
 @endpush

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\CommissioningFormSubmission;
+use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,10 +15,8 @@ class AdminInspectionSubmissionPageData
     {
         $filters = [
             'type' => self::validType($request->input('type', $defaultType)),
-            'status' => $request->input('status', 'all') ?: 'all',
             'year' => $request->input('year', 'all') ?: 'all',
             'plant' => $request->input('plant', 'all') ?: 'all',
-            'area' => $request->input('area', 'all') ?: 'all',
             'search' => trim((string) $request->input('search')),
         ];
 
@@ -50,12 +49,7 @@ class AdminInspectionSubmissionPageData
             'pageTitle' => $pageTitle,
             'submissions' => $submissions,
             'statusLabels' => self::statusLabels(),
-            'summary' => self::summary($allRows),
-            'charts' => [
-                'overall' => self::areaChartData(self::chartRows('all', $filters)),
-                'qc' => self::areaChartData(self::chartRows('qc', $filters)),
-                'commissioning' => self::areaChartData(self::chartRows('commissioning', $filters)),
-            ],
+            'inspectionMetrics' => self::inspectionMetrics($filters),
             'filterOptions' => self::filterOptions(),
             'filters' => $filters,
         ];
@@ -95,15 +89,6 @@ class AdminInspectionSubmissionPageData
         return $rows;
     }
 
-    private static function chartRows(string $type, array $filters): Collection
-    {
-        $chartFilters = array_merge($filters, ['type' => $type]);
-
-        return self::submissionRows()
-            ->filter(fn (object $row) => self::matchesFilters($row, $chartFilters))
-            ->values();
-    }
-
     private static function qcRow(QcFormSubmission $submission): object
     {
         $generalInfo = $submission->general_info ?? [];
@@ -116,6 +101,11 @@ class AdminInspectionSubmissionPageData
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
             'plant' => self::firstFilled($submission->plant, $generalInfo['plant'] ?? null, $generalInfo['ovh_plant'] ?? null),
             'area' => self::firstFilled($submission->area, $generalInfo['area'] ?? null),
+            'equipment_key' => self::firstFilled(
+                $generalInfo['id_equipment'] ?? null,
+                $generalInfo['equipment_no'] ?? null,
+                $generalInfo['master_data_record_id'] ?? null
+            ),
             'equipment' => self::firstFilled(
                 $submission->equipment,
                 $generalInfo['name_equipment'] ?? null,
@@ -141,6 +131,13 @@ class AdminInspectionSubmissionPageData
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
             'plant' => self::firstFilled($header['plant'] ?? null, $header['ovh_plant'] ?? null),
             'area' => self::firstFilled($submission->area, $header['area'] ?? null),
+            'equipment_key' => self::firstFilled(
+                $submission->equipment_no,
+                $header['id_equipment'] ?? null,
+                $header['master_data_record_id'] ?? null,
+                $submission->functional_location,
+                $submission->tag_num
+            ),
             'equipment' => self::firstFilled(
                 $submission->equipment,
                 $header['name_equipment'] ?? null,
@@ -171,11 +168,7 @@ class AdminInspectionSubmissionPageData
             return false;
         }
 
-        if ($filters['status'] !== 'all' && $row->status !== $filters['status']) {
-            return false;
-        }
-
-        foreach (['year', 'plant', 'area'] as $field) {
+        foreach (['year', 'plant'] as $field) {
             if ($filters[$field] !== 'all' && (string) $row->{$field} !== (string) $filters[$field]) {
                 return false;
             }
@@ -197,53 +190,195 @@ class AdminInspectionSubmissionPageData
         return str_contains(mb_strtolower($haystack), mb_strtolower($filters['search']));
     }
 
-    private static function summary(Collection $rows): array
-    {
-        return [
-            'total' => $rows->count(),
-            'submitted' => $rows->where('status', 'submitted')->count(),
-            'approved' => $rows->where('status', 'approved')->count(),
-            'revision' => $rows->where('status', 'revision')->count(),
-        ];
-    }
-
     private static function filterOptions(): array
     {
         $rows = self::submissionRows();
+        $masterRows = self::masterDataRows();
 
         return [
-            'years' => $rows->pluck('year')->filter()->unique()->sortDesc()->values(),
-            'plants' => $rows->pluck('plant')->filter()->unique()->sort()->values(),
-            'areas' => $rows->pluck('area')->filter()->unique()->sort()->values(),
+            'years' => $rows->pluck('year')->merge($masterRows->pluck('year'))->filter()->unique()->sortDesc()->values(),
+            'plants' => $rows->pluck('plant')->merge($masterRows->pluck('plant'))->filter()->unique()->sort()->values(),
         ];
     }
 
-    private static function areaChartData(Collection $rows): array
+    private static function inspectionMetrics(array $filters): ?array
     {
-        $total = max($rows->count(), 1);
-        $groups = $rows
-            ->groupBy(fn (object $row) => filled($row->area) ? $row->area : 'Tanpa Area')
-            ->map(function (Collection $areaRows, string $area) use ($total) {
-                $count = $areaRows->count();
+        return match ($filters['type']) {
+            'qc' => self::metricsForType(
+                $filters,
+                MasterDataRecord::CATEGORY_QC,
+                fn (array $filters): Collection => self::qcDashboardSubmissionRows($filters),
+                'QC'
+            ),
+            'commissioning' => self::metricsForType(
+                $filters,
+                MasterDataRecord::CATEGORY_COMMISSIONING,
+                fn (array $filters): Collection => self::commissioningDashboardSubmissionRows($filters),
+                'Commissioning'
+            ),
+            default => null,
+        };
+    }
+
+    private static function metricsForType(array $filters, string $documentCategory, callable $submissionRowsResolver, string $label): array
+    {
+        $submissionRows = $submissionRowsResolver($filters);
+        $processKeys = $submissionRows
+            ->reject(fn (object $row) => $row->status === 'draft')
+            ->map(fn (object $row) => self::normalizeEquipmentKey($row->equipment_key ?? $row->equipment))
+            ->filter()
+            ->unique()
+            ->values();
+        $ongoingKeys = $submissionRows
+            ->where('status', 'draft')
+            ->map(fn (object $row) => self::normalizeEquipmentKey($row->equipment_key ?? $row->equipment))
+            ->filter()
+            ->unique()
+            ->diff($processKeys)
+            ->values();
+
+        $masterRows = self::filteredMasterRows($filters, $submissionRows, $documentCategory);
+        $areaRows = $masterRows
+            ->groupBy(fn (MasterDataRecord $record) => filled($record->area) ? $record->area : 'Tanpa Area')
+            ->map(function (Collection $records, string $area) use ($processKeys, $ongoingKeys): array {
+                $equipmentRecords = $records
+                    ->unique(fn (MasterDataRecord $record) => self::normalizeEquipmentKey($record->equipment_no) ?: (string) $record->id)
+                    ->values();
+                $processCount = $equipmentRecords
+                    ->filter(fn (MasterDataRecord $record) => self::recordMatchesEquipmentKeys($record, $processKeys))
+                    ->count();
+                $ongoingCount = $equipmentRecords
+                    ->filter(fn (MasterDataRecord $record) => self::recordMatchesEquipmentKeys($record, $ongoingKeys)
+                        && ! self::recordMatchesEquipmentKeys($record, $processKeys))
+                    ->count();
+                $equipmentCount = $equipmentRecords->count();
 
                 return [
                     'area' => $area,
-                    'count' => $count,
-                    'percentage' => round(($count / $total) * 100, 1),
-                    'plants' => $areaRows->pluck('plant')->filter()->unique()->sort()->values()->all(),
-                    'years' => $areaRows->pluck('year')->filter()->unique()->sortDesc()->values()->all(),
+                    'equipment' => $equipmentCount,
+                    'ongoing' => $ongoingCount,
+                    'process' => $processCount,
+                    'progress' => $equipmentCount > 0 ? round(($processCount / $equipmentCount) * 100, 1) : 0,
                 ];
             })
-            ->sortByDesc('count')
-            ->take(8);
+            ->sortKeys()
+            ->values();
+
+        $process = $areaRows->sum('process');
+        $ongoing = $areaRows->sum('ongoing');
+        $total = $process + $ongoing;
+        $percentage = $total > 0 ? round(($process / $total) * 100, 1) : 0;
 
         return [
-            'labels' => $groups->pluck('area')->values(),
-            'data' => $groups->pluck('percentage')->values(),
-            'counts' => $groups->pluck('count')->values(),
-            'total' => $rows->count(),
-            'meta' => $groups->values(),
+            'cards' => [
+                'total' => $total,
+                'process' => $process,
+                'ongoing' => $ongoing,
+                'percentage' => $percentage,
+            ],
+            'areaRows' => $areaRows,
+            'chart' => [
+                'labels' => $areaRows->pluck('area')->values(),
+                'data' => $areaRows->pluck('progress')->values(),
+            ],
+            'label' => $label,
         ];
+    }
+
+    private static function qcDashboardSubmissionRows(array $filters): Collection
+    {
+        return QcFormSubmission::query()
+            ->with('user')
+            ->latest('updated_at')
+            ->get()
+            ->map(fn (QcFormSubmission $submission) => self::qcRow($submission))
+            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->values();
+    }
+
+    private static function commissioningDashboardSubmissionRows(array $filters): Collection
+    {
+        return CommissioningFormSubmission::query()
+            ->with('user')
+            ->latest('updated_at')
+            ->get()
+            ->map(fn (CommissioningFormSubmission $submission) => self::commissioningRow($submission))
+            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->values();
+    }
+
+    private static function masterRowsByCategory(string $documentCategory): Collection
+    {
+        return MasterDataRecord::query()
+            ->where('document_category', $documentCategory)
+            ->where('status', 'active')
+            ->get();
+    }
+
+    private static function masterDataRows(): Collection
+    {
+        return MasterDataRecord::query()
+            ->where('status', 'active')
+            ->get();
+    }
+
+    private static function filteredMasterRows(array $filters, Collection $submissionRows, string $documentCategory): Collection
+    {
+        $submissionKeys = $submissionRows
+            ->map(fn (object $row) => self::normalizeEquipmentKey($row->equipment_key ?? $row->equipment))
+            ->filter()
+            ->unique()
+            ->values();
+        $search = mb_strtolower($filters['search']);
+
+        return self::masterRowsByCategory($documentCategory)
+            ->filter(function (MasterDataRecord $record) use ($filters, $search, $submissionKeys): bool {
+                if ($filters['year'] !== 'all' && (string) $record->year !== (string) $filters['year']) {
+                    return false;
+                }
+
+                if ($filters['plant'] !== 'all' && (string) $record->plant !== (string) $filters['plant']) {
+                    return false;
+                }
+
+                if ($search === '') {
+                    return true;
+                }
+
+                $haystack = mb_strtolower(implode(' ', array_filter([
+                    $record->func_location,
+                    $record->equipment_no,
+                    $record->section_no,
+                    $record->description,
+                    $record->plant,
+                    $record->area,
+                ])));
+
+                return str_contains($haystack, $search) || self::recordMatchesEquipmentKeys($record, $submissionKeys);
+            })
+            ->values();
+    }
+
+    private static function recordMatchesEquipmentKeys(MasterDataRecord $record, Collection $equipmentKeys): bool
+    {
+        return collect([
+            $record->equipment_no,
+            $record->description,
+            $record->func_location,
+            $record->section_no,
+            $record->id,
+        ])
+            ->map(fn (mixed $value) => self::normalizeEquipmentKey($value))
+            ->filter()
+            ->intersect($equipmentKeys)
+            ->isNotEmpty();
+    }
+
+    private static function normalizeEquipmentKey(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : mb_strtolower($value);
     }
 
     private static function statusLabels(): array
