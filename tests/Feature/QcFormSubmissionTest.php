@@ -353,7 +353,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Pilih Name Equipment')
             ->assertSee('name="header[area]"', false)
-            ->assertSee('data-area-select', false)
+            ->assertSee('data-master-area-select', false)
             ->assertSee('ACTIVE BELT CONVEYOR')
             ->assertSee('EQ-ACTIVE-001')
             ->assertDontSee('ST-INACTIVE-QC')

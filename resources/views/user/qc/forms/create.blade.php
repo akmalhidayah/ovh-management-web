@@ -3,6 +3,19 @@
 @section('title', 'Buat Form QC')
 
 @section('content')
+    @php
+        $qcMasterDataRecords = collect($activeQcMasterDataRecords ?? []);
+        $draftHeader = ($draftSubmission ?? null)?->general_info ?? [];
+        $selectedMasterDataId = old('header.master_data_record_id', $draftHeader['master_data_record_id'] ?? null);
+        $selectedMasterDataRecord = $selectedMasterDataId ? $qcMasterDataRecords->firstWhere('id', (int) $selectedMasterDataId) : null;
+        $areaOptions = $qcMasterDataRecords->pluck('area')->filter()->unique()->sort()->values();
+        $selectedArea = old('header.area', request('area', $draftHeader['area'] ?? ($selectedMasterDataRecord?->area ?? '')));
+        if ($selectedArea && ! $areaOptions->contains($selectedArea)) {
+            $areaOptions->push($selectedArea);
+            $areaOptions = $areaOptions->sort()->values();
+        }
+    @endphp
+
     <div class="user-simple-form-header qc-template-form-heading">
         <div>
             <h1>Buat Form Quality Control</h1>
@@ -26,8 +39,8 @@
     @endif
 
     <section class="inspector-panel qc-template-picker-card">
-        <div class="row g-3 align-items-end">
-            <div class="col-12 col-lg-8">
+        <div class="qc-template-picker-grid">
+            <div class="qc-template-picker-field">
                 <label for="template-select" class="form-label">Jenis Form</label>
                 <select id="template-select" class="form-select qc-template-select" {{ $templates->isEmpty() ? 'disabled' : '' }}>
                     @forelse ($templates as $template)
@@ -39,7 +52,16 @@
                     @endforelse
                 </select>
             </div>
-            <div class="col-12 col-lg-4">
+            <div class="qc-template-picker-field">
+                <label for="master-area-select" class="form-label">Area</label>
+                <select id="master-area-select" class="form-select qc-template-select" data-master-area-select {{ $areaOptions->isEmpty() ? 'disabled' : '' }}>
+                    <option value="">Pilih Area</option>
+                    @foreach ($areaOptions as $areaOption)
+                        <option value="{{ $areaOption }}" @selected((string) $selectedArea === (string) $areaOption)>{{ $areaOption }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="qc-template-picker-summary">
                 <div class="qc-template-selected-meta">
                     <span>{{ $selectedTemplate?->code ?: 'Template belum tersedia' }}</span>
                     <strong>{{ $selectedTemplate?->category ?: 'QC' }}</strong>
@@ -70,7 +92,11 @@
     <script>
         document.getElementById('template-select')?.addEventListener('change', function () {
             const url = new URL(@json(route('user.qc.forms.create')), window.location.origin);
+            const selectedArea = document.getElementById('master-area-select')?.value;
             url.searchParams.set('template', this.value);
+            if (selectedArea) {
+                url.searchParams.set('area', selectedArea);
+            }
             window.location.href = url.toString();
         });
 

@@ -86,12 +86,14 @@
                             <option value="">Pilih Area terlebih dahulu</option>
                         </select>
                     @elseif ($fieldKey === 'area')
-                        <select name="header[area]" class="form-select" data-header-input="area" data-area-select required>
-                            <option value="">Pilih Area</option>
-                            @foreach ($areaOptions as $areaOption)
-                                <option value="{{ $areaOption }}" @selected((string) $selectedArea === (string) $areaOption)>{{ $areaOption }}</option>
-                            @endforeach
-                        </select>
+                        <input type="{{ $field['type'] }}"
+                               name="header[{{ $fieldKey }}]"
+                               value="{{ $selectedArea }}"
+                               class="form-control"
+                               data-header-input="{{ $fieldKey }}"
+                               placeholder="Pilih area di bagian atas"
+                               readonly
+                               required>
                     @else
                         <input type="{{ $field['type'] }}" name="header[{{ $fieldKey }}]" value="{{ $value }}" class="form-control" data-header-input="{{ $fieldKey }}" @if ($fieldKey === 'doc_number' || $fieldKey === 'inspector_commissioning' || in_array($fieldKey, $autoKeys, true)) readonly @else required @endif>
                     @endif
@@ -299,7 +301,7 @@
 <script>
 (() => {
     const master = document.querySelector('[data-master-data-select]');
-    const area = document.querySelector('[data-area-select]');
+    const area = document.querySelector('[data-master-area-select]');
     const masterOptions = @json($masterDataOptions);
     const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
     const setHeader = (key, value) => { const input = document.querySelector(`[data-header-input="${key}"]`); if (input) input.value = value || ''; };
@@ -313,6 +315,8 @@
     const filterMasterOptions = () => {
         const selectedArea = area?.value || '';
         if (!master) return;
+
+        setHeader('area', selectedArea);
 
         const currentValue = master.value || selectedMasterDataId;
         master.innerHTML = '';

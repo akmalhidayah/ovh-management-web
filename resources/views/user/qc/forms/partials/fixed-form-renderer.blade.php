@@ -123,12 +123,13 @@
                                 <option value="">Pilih Area terlebih dahulu</option>
                             </select>
                         @elseif ($fieldKey === 'area')
-                            <select name="header[area]" class="form-select" data-header-input="area" data-area-select>
-                                <option value="">Pilih Area</option>
-                                @foreach ($areaOptions as $areaOption)
-                                    <option value="{{ $areaOption }}" @selected((string) $selectedArea === (string) $areaOption)>{{ $areaOption }}</option>
-                                @endforeach
-                            </select>
+                            <input type="{{ $field['type'] }}"
+                                   name="header[{{ $fieldKey }}]"
+                                   value="{{ $selectedArea }}"
+                                   class="form-control"
+                                   data-header-input="{{ $fieldKey }}"
+                                   placeholder="Pilih area di bagian atas"
+                                   readonly>
                         @elseif ($fieldKey === 'durasi')
                             <input type="text"
                                    name="header[durasi]"
@@ -477,7 +478,7 @@
     <script>
         (() => {
             const masterDataSelect = document.querySelector('[data-master-data-select]');
-            const areaSelect = document.querySelector('[data-area-select]');
+            const areaSelect = document.querySelector('[data-master-area-select]');
             const masterDataOptions = @json($masterDataOptions);
             const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
 
@@ -495,6 +496,8 @@
             const filterMasterDataOptions = () => {
                 const area = areaSelect?.value || '';
                 if (!masterDataSelect) return;
+
+                setHeaderValue('area', area);
 
                 const currentValue = masterDataSelect.value || selectedMasterDataId;
                 masterDataSelect.innerHTML = '';

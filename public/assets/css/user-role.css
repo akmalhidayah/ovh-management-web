@@ -625,18 +625,51 @@ body.inspector-body {
 
 .qc-template-picker-card {
     margin-bottom: 1rem;
+    padding: 1.1rem 1.25rem;
+}
+
+.qc-template-picker-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 2fr) minmax(220px, 1fr) minmax(220px, 1fr);
+    gap: 1rem;
+    align-items: end;
+}
+
+.qc-template-picker-field {
+    min-width: 0;
+}
+
+.qc-template-picker-field .form-label {
+    margin-bottom: 0.45rem;
+    color: #26354a;
+    font-weight: 700;
+}
+
+.qc-template-picker-summary {
+    min-width: 0;
 }
 
 .qc-template-select {
     min-height: 48px;
+    border-color: #cfdae8;
+    border-radius: 8px;
+    color: #102033;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.qc-template-select:focus {
+    border-color: #8faeff;
+    box-shadow: 0 0 0 0.2rem rgba(74, 111, 255, 0.16);
 }
 
 .qc-template-selected-meta {
     display: grid;
     gap: 0.2rem;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid #d7dee8;
-    border-radius: 10px;
+    min-height: 48px;
+    padding: 0.62rem 0.85rem;
+    border: 1px solid #cfdae8;
+    border-radius: 8px;
     background: #f7f9fb;
 }
 
@@ -647,6 +680,12 @@ body.inspector-body {
 
 .qc-template-selected-meta strong {
     color: #102033;
+}
+
+@media (max-width: 991.98px) {
+    .qc-template-picker-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .qc-empty-template-state {

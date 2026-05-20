@@ -87,7 +87,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('Template Motor Commissioning')
             ->assertSee('Pilih Name Equipment')
             ->assertSee('name="header[area]"', false)
-            ->assertSee('data-area-select', false)
+            ->assertSee('data-master-area-select', false)
             ->assertSee('Section No.')
             ->assertSee('GEARBOX MOTOR')
             ->assertSee('EQ-COM-001');
