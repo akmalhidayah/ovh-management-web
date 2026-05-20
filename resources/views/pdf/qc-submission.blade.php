@@ -230,37 +230,47 @@
             font-style: italic;
         }
         .attachment-page {
-            min-height: 270mm;
+            min-height: auto;
             padding-top: 0;
         }
         .attachment-grid {
-            page-break-inside: avoid;
+            table-layout: fixed;
+            page-break-inside: auto;
         }
-        .attachment-grid th,
         .attachment-grid td {
             width: 50%;
             border: 1px solid #000;
             background: #fff;
             text-align: center;
         }
-        .attachment-grid th {
-            height: 8mm;
-            padding-top: 2mm;
-            background: #e5e2d8;
-            font-size: 10px;
-            font-style: italic;
-            font-weight: 400;
-        }
         .attachment-grid td {
-            height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '125mm' : '155mm' }};
-            padding: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '5mm 3mm 3mm' : '8mm 4mm 4mm' }};
+            height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '78mm' : '88mm' }};
+            padding: 2.4mm;
             vertical-align: top;
+            page-break-inside: avoid;
+        }
+        .attachment-title {
+            margin-bottom: 2mm;
+            padding: 1mm;
+            border: 1px solid #000;
+            background: #e5e2d8;
+            font-size: 8.5px;
+            font-style: italic;
+            font-weight: 700;
+            text-align: center;
+        }
+        .attachment-empty {
+            padding: 10mm 2mm;
+            border: 1px solid #000;
+            background: #fff;
+            text-align: center;
+            font-style: italic;
         }
         .attachment-img {
             display: block;
-            max-width: 82mm;
-            max-height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '108mm' : '132mm' }};
-            margin: 0 auto 3mm;
+            max-width: 76mm;
+            max-height: {{ $type === FixedQcTemplate::TYPE_CASTABLE ? '62mm' : '72mm' }};
+            margin: 0 auto;
             border: 1px solid #999;
         }
         .approval-table td,
