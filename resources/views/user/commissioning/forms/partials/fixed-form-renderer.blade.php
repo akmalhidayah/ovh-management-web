@@ -9,6 +9,32 @@
     $oldBody = old('body', $draftBody);
     $masterDataRecords = collect($activeMasterDataRecords ?? []);
     $selectedMasterDataId = old('header.master_data_record_id', $oldHeader['master_data_record_id'] ?? null);
+    if (! $selectedMasterDataId && (! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
+        $selectedMasterDataId = optional($masterDataRecords->first(function ($record) use ($oldHeader) {
+            return (
+                $record->description === ($oldHeader['name_equipment'] ?? null)
+                || $record->func_location === ($oldHeader['functional_location'] ?? null)
+            ) && (! isset($oldHeader['id_equipment']) || $record->equipment_no === $oldHeader['id_equipment']);
+        }))->id;
+    }
+    $selectedMasterDataRecord = $selectedMasterDataId ? $masterDataRecords->firstWhere('id', (int) $selectedMasterDataId) : null;
+    $areaOptions = $masterDataRecords->pluck('area')->filter()->unique()->sort()->values();
+    $selectedArea = old('header.area', $oldHeader['area'] ?? ($selectedMasterDataRecord?->area ?? ''));
+    if ($selectedArea && ! $areaOptions->contains($selectedArea)) {
+        $areaOptions->push($selectedArea);
+    }
+    $areaOptions = $areaOptions->sort()->values();
+    $masterDataOptions = $masterDataRecords->map(fn ($record) => [
+        'id' => (string) $record->id,
+        'tahun' => (string) ($record->year ?? ''),
+        'plant' => (string) ($record->plant ?? ''),
+        'area' => (string) ($record->area ?? ''),
+        'tagNum' => (string) ($record->section_no ?? ''),
+        'functionalLocation' => (string) ($record->func_location ?? ''),
+        'nameEquipment' => (string) ($record->description ?? ''),
+        'idEquipment' => (string) ($record->equipment_no ?? ''),
+        'label' => trim(($record->description ?: '-') . ' - ' . ($record->equipment_no ?: '-') . ' (' . ($record->area ?: '-') . ')'),
+    ])->values();
     $checkRows = old('body.equipment_check_rows', ($draftBody['equipment_check_rows'] ?? []) ?: ($schema['equipment_check_rows'] ?? []));
     $motorRows = old('body.motor_test_rows', ($draftBody['motor_test_rows'] ?? []) ?: ($schema['motor_test_rows'] ?? []));
     $gearboxRows = old('body.gearbox_test_rows', ($draftBody['gearbox_test_rows'] ?? []) ?: ($schema['gearbox_test_rows'] ?? []));
@@ -24,8 +50,8 @@
     $approvalDefaults = $schema['approval_defaults'] ?? FixedCommissioningTemplate::defaultApprovalDefaults();
     $headerRows = [
         ['doc_number', 'plant', 'tag_num'],
-        ['functional_location', 'id_equipment', 'name_equipment'],
-        ['area', 'date_time', 'inspector_commissioning'],
+        ['functional_location', 'area', 'name_equipment'],
+        ['id_equipment', 'date_time', 'inspector_commissioning'],
     ];
     $headerFieldMap = collect(FixedCommissioningTemplate::headerFields())->keyBy('key');
 @endphp
@@ -50,26 +76,20 @@
                 @php
                     $field = $headerFieldMap[$fieldKey];
                     $value = $oldHeader[$fieldKey] ?? ($fieldKey === 'doc_number' ? ($autoDocNumber ?? '') : ($fieldKey === 'inspector_commissioning' ? $signerName : ''));
-                    $autoKeys = ['plant', 'tag_num', 'functional_location', 'area', 'id_equipment'];
+                    $autoKeys = ['plant', 'tag_num', 'functional_location', 'id_equipment'];
                 @endphp
                 <label class="qc-user-field">
                     <span>{{ $field['label'] }}</span>
                     @if ($fieldKey === 'name_equipment')
                         <input type="hidden" name="header[name_equipment]" value="{{ $value }}" data-header-input="name_equipment">
                         <select name="header[master_data_record_id]" class="form-select" data-master-data-select required>
-                            <option value="">Pilih Name Equipment</option>
-                            @foreach ($masterDataRecords as $record)
-                                <option value="{{ $record->id }}"
-                                        @selected((string) $selectedMasterDataId === (string) $record->id)
-                                        data-tahun="{{ $record->year }}"
-                                        data-plant="{{ $record->plant }}"
-                                        data-area="{{ $record->area }}"
-                                        data-tag-num="{{ $record->section_no }}"
-                                        data-functional-location="{{ $record->func_location }}"
-                                        data-name-equipment="{{ $record->description }}"
-                                        data-id-equipment="{{ $record->equipment_no }}">
-                                    {{ $record->description }} - {{ $record->equipment_no }}
-                                </option>
+                            <option value="">Pilih Area terlebih dahulu</option>
+                        </select>
+                    @elseif ($fieldKey === 'area')
+                        <select name="header[area]" class="form-select" data-header-input="area" data-area-select required>
+                            <option value="">Pilih Area</option>
+                            @foreach ($areaOptions as $areaOption)
+                                <option value="{{ $areaOption }}" @selected((string) $selectedArea === (string) $areaOption)>{{ $areaOption }}</option>
                             @endforeach
                         </select>
                     @else
@@ -279,15 +299,59 @@
 <script>
 (() => {
     const master = document.querySelector('[data-master-data-select]');
+    const area = document.querySelector('[data-area-select]');
+    const masterOptions = @json($masterDataOptions);
+    const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
     const setHeader = (key, value) => { const input = document.querySelector(`[data-header-input="${key}"]`); if (input) input.value = value || ''; };
     document.querySelectorAll('[data-commissioning-form] input[name*="[remarks]"], [data-commissioning-form] input[name*="[remark]"]').forEach((input) => {
         input.required = false;
         input.removeAttribute('required');
     });
+    const clearMasterHeader = () => {
+        ['tahun','plant','tag_num','functional_location','name_equipment','id_equipment'].forEach((key) => setHeader(key, ''));
+    };
+    const filterMasterOptions = () => {
+        const selectedArea = area?.value || '';
+        if (!master) return;
+
+        const currentValue = master.value || selectedMasterDataId;
+        master.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = selectedArea ? 'Pilih Name Equipment' : 'Pilih Area terlebih dahulu';
+        master.appendChild(placeholder);
+
+        masterOptions
+            .filter((option) => selectedArea && option.area === selectedArea)
+            .forEach((record) => {
+                const option = document.createElement('option');
+                option.value = record.id;
+                option.textContent = record.label;
+                option.dataset.tahun = record.tahun;
+                option.dataset.plant = record.plant;
+                option.dataset.area = record.area;
+                option.dataset.tagNum = record.tagNum;
+                option.dataset.functionalLocation = record.functionalLocation;
+                option.dataset.nameEquipment = record.nameEquipment;
+                option.dataset.idEquipment = record.idEquipment;
+                master.appendChild(option);
+            });
+
+        master.disabled = !selectedArea;
+
+        if (currentValue && master.querySelector(`option[value="${CSS.escape(currentValue)}"]`)) {
+            master.value = currentValue;
+        } else {
+            clearMasterHeader();
+        }
+    };
     const syncMaster = () => {
         const option = master?.selectedOptions?.[0];
-        if (!option || !option.value) return;
-        ['tahun','plant','area','tagNum','functionalLocation','nameEquipment','idEquipment'].forEach(() => {});
+        if (!option || !option.value) {
+            clearMasterHeader();
+            return;
+        }
         setHeader('tahun', option.dataset.tahun);
         setHeader('plant', option.dataset.plant);
         setHeader('area', option.dataset.area);
@@ -296,7 +360,12 @@
         setHeader('name_equipment', option.dataset.nameEquipment);
         setHeader('id_equipment', option.dataset.idEquipment);
     };
+    area?.addEventListener('change', () => {
+        filterMasterOptions();
+        syncMaster();
+    });
     master?.addEventListener('change', syncMaster);
+    filterMasterOptions();
     syncMaster();
 
 })();
