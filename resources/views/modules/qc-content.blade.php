@@ -59,7 +59,7 @@
         </div>
         <div class="qc-progress-card qc-progress-card-process">
             <div>
-                <div class="qc-progress-card-title">Equipment Process</div>
+                <div class="qc-progress-card-title">Equipment Complete</div>
                 <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['process'], 0, ',', '.') }}</div>
             </div>
             <i class="bi bi-clipboard2-check"></i>
@@ -89,8 +89,8 @@
                             <tr>
                                 <th>Area</th>
                                 <th>Equipment</th>
+                                <th>Equipment Complete</th>
                                 <th>Ongoing Equipment Testing</th>
-                                <th>Equipment Process</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,8 +98,8 @@
                                 <tr>
                                     <td>{{ $row['area'] }}</td>
                                     <td>{{ number_format($row['equipment'], 0, ',', '.') }}</td>
-                                    <td>{{ number_format($row['ongoing'], 0, ',', '.') }}</td>
                                     <td>{{ number_format($row['process'], 0, ',', '.') }}</td>
+                                    <td>{{ number_format($row['ongoing'], 0, ',', '.') }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -112,8 +112,8 @@
                                 <tr>
                                     <th>Total</th>
                                     <th>{{ number_format($inspectionMetrics['areaRows']->sum('equipment'), 0, ',', '.') }}</th>
-                                    <th>{{ number_format($inspectionMetrics['areaRows']->sum('ongoing'), 0, ',', '.') }}</th>
                                     <th>{{ number_format($inspectionMetrics['areaRows']->sum('process'), 0, ',', '.') }}</th>
+                                    <th>{{ number_format($inspectionMetrics['areaRows']->sum('ongoing'), 0, ',', '.') }}</th>
                                 </tr>
                             </tfoot>
                         @endif
