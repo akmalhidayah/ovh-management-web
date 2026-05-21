@@ -17,13 +17,16 @@ class AdminInspectionSubmissionPageData
             'type' => self::validType($request->input('type', $defaultType)),
             'year' => $request->input('year', 'all') ?: 'all',
             'plant' => $request->input('plant', 'all') ?: 'all',
+            'work_status' => $request->input('work_status', 'all') ?: 'all',
             'search' => trim((string) $request->input('search')),
         ];
 
-        $allRows = self::submissionRows()
-            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
-            ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
-            ->values();
+        $allRows = $filters['type'] === 'commissioning'
+            ? self::commissioningIndexRows($filters)
+            : self::submissionRows()
+                ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+                ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
+                ->values();
 
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
@@ -68,7 +71,7 @@ class AdminInspectionSubmissionPageData
             $rows = $rows->merge(
                 QcFormSubmission::query()
                     ->with(['user', 'approvalFlow.steps'])
-                    ->submitted()
+                    ->whereIn('status', ['draft', 'submitted', 'pending_approval', 'approved', 'revision', 'revision_required', 'rejected', 'cancelled'])
                     ->latest('submitted_at')
                     ->get()
                     ->map(fn (QcFormSubmission $submission) => self::qcRow($submission))
@@ -79,7 +82,7 @@ class AdminInspectionSubmissionPageData
             $rows = $rows->merge(
                 CommissioningFormSubmission::query()
                     ->with(['user', 'approvalFlow.steps'])
-                    ->whereIn('status', ['submitted', 'pending_approval', 'approved', 'revision_required', 'rejected', 'cancelled'])
+                    ->whereIn('status', ['draft', 'submitted', 'pending_approval', 'approved', 'revision_required', 'rejected', 'cancelled'])
                     ->latest('submitted_at')
                     ->get()
                     ->map(fn (CommissioningFormSubmission $submission) => self::commissioningRow($submission))
@@ -93,7 +96,7 @@ class AdminInspectionSubmissionPageData
     {
         $generalInfo = $submission->general_info ?? [];
 
-        return (object) [
+        $row = (object) [
             'type' => 'qc',
             'type_label' => 'QC',
             'model' => $submission,
@@ -101,6 +104,9 @@ class AdminInspectionSubmissionPageData
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
             'plant' => self::firstFilled($submission->plant, $generalInfo['plant'] ?? null, $generalInfo['ovh_plant'] ?? null),
             'area' => self::firstFilled($submission->area, $generalInfo['area'] ?? null),
+            'master_data_record_id' => $generalInfo['master_data_record_id'] ?? null,
+            'functional_location' => $generalInfo['functional_location'] ?? null,
+            'equipment_no' => self::firstFilled($generalInfo['id_equipment'] ?? null, $generalInfo['equipment_no'] ?? null),
             'equipment_key' => self::firstFilled(
                 $generalInfo['id_equipment'] ?? null,
                 $generalInfo['equipment_no'] ?? null,
@@ -114,16 +120,19 @@ class AdminInspectionSubmissionPageData
             ),
             'user_name' => $submission->user?->name,
             'status' => $submission->status,
+            'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
-            'pdf_route' => route('admin.qc.submissions.pdf', $submission),
+            'pdf_route' => $submission->status !== 'draft' ? route('admin.qc.submissions.pdf', $submission) : null,
         ];
+
+        return self::withMasterInspectionStatus($row);
     }
 
     private static function commissioningRow(CommissioningFormSubmission $submission): object
     {
         $header = $submission->header_data ?? [];
 
-        return (object) [
+        $row = (object) [
             'type' => 'commissioning',
             'type_label' => 'Commissioning',
             'model' => $submission,
@@ -131,6 +140,10 @@ class AdminInspectionSubmissionPageData
             'year' => $submission->year ?: $submission->submitted_at?->format('Y'),
             'plant' => self::firstFilled($header['plant'] ?? null, $header['ovh_plant'] ?? null),
             'area' => self::firstFilled($submission->area, $header['area'] ?? null),
+            'master_data_record_id' => $header['master_data_record_id'] ?? null,
+            'functional_location' => self::firstFilled($submission->functional_location, $header['functional_location'] ?? null),
+            'equipment_no' => self::firstFilled($submission->equipment_no, $header['id_equipment'] ?? null),
+            'section_no' => $submission->tag_num,
             'equipment_key' => self::firstFilled(
                 $submission->equipment_no,
                 $header['id_equipment'] ?? null,
@@ -146,9 +159,106 @@ class AdminInspectionSubmissionPageData
             ),
             'user_name' => $submission->user?->name,
             'status' => $submission->status,
+            'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
             'pdf_route' => $submission->status !== 'draft' ? route('admin.commissioning.submissions.pdf', $submission) : null,
         ];
+
+        return self::withMasterInspectionStatus($row);
+    }
+
+    private static function commissioningIndexRows(array $filters): Collection
+    {
+        $submissionRows = self::submissionRows('commissioning')
+            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
+            ->values();
+
+        return self::filteredMasterRows($filters, $submissionRows, MasterDataRecord::CATEGORY_COMMISSIONING)
+            ->map(function (MasterDataRecord $record) use ($submissionRows): object {
+                $submissionRow = $submissionRows->first(
+                    fn (object $row) => self::commissioningSubmissionMatchesRecord($row, $record)
+                );
+
+                return self::commissioningMasterRow($record, $submissionRow);
+            })
+            ->filter(fn (object $row) => self::matchesWorkStatusFilter($row, $filters))
+            ->sort(fn (object $a, object $b): int => self::compareCommissioningIndexRows($a, $b))
+            ->values();
+    }
+
+    private static function compareCommissioningIndexRows(object $a, object $b): int
+    {
+        $rankComparison = self::commissioningIndexStatusRank($a) <=> self::commissioningIndexStatusRank($b);
+
+        if ($rankComparison !== 0) {
+            return $rankComparison;
+        }
+
+        $submittedAtComparison = ($b->submitted_at?->timestamp ?? 0) <=> ($a->submitted_at?->timestamp ?? 0);
+
+        if ($submittedAtComparison !== 0) {
+            return $submittedAtComparison;
+        }
+
+        return strnatcasecmp(
+            implode('|', [$a->area ?? '', $a->functional_location ?? '', $a->equipment ?? '']),
+            implode('|', [$b->area ?? '', $b->functional_location ?? '', $b->equipment ?? ''])
+        );
+    }
+
+    private static function commissioningIndexStatusRank(object $row): int
+    {
+        return match ($row->work_status ?? null) {
+            'close' => 0,
+            'ongoing' => 1,
+            default => 2,
+        };
+    }
+
+    private static function commissioningMasterRow(MasterDataRecord $record, ?object $submissionRow): object
+    {
+        return (object) [
+            'type' => 'commissioning',
+            'type_label' => 'Commissioning',
+            'model' => $submissionRow?->model,
+            'form_number' => $submissionRow?->form_number,
+            'year' => $record->year,
+            'plant' => $record->plant,
+            'area' => $record->area,
+            'master_data_record_id' => $record->id,
+            'functional_location' => $record->func_location,
+            'equipment_no' => $record->equipment_no,
+            'section_no' => $record->section_no,
+            'equipment_key' => self::firstFilled($record->equipment_no, $record->func_location, $record->id),
+            'equipment' => $record->description,
+            'user_name' => $submissionRow?->user_name,
+            'status' => $submissionRow?->status,
+            'work_status' => self::effectiveWorkStatus($record, $submissionRow?->work_status),
+            'submitted_at' => $submissionRow?->submitted_at,
+            'pdf_route' => $submissionRow?->pdf_route,
+            'inspection_status_update_url' => route('admin.master-data.inspection-status', $record),
+        ];
+    }
+
+    private static function commissioningSubmissionMatchesRecord(object $row, MasterDataRecord $record): bool
+    {
+        $rowMasterId = self::normalizeEquipmentKey($row->master_data_record_id ?? null);
+        if ($rowMasterId !== null) {
+            return $rowMasterId === self::normalizeEquipmentKey($record->id);
+        }
+
+        $rowFunctionalLocation = self::normalizeEquipmentKey($row->functional_location ?? null);
+        if ($rowFunctionalLocation !== null) {
+            return $rowFunctionalLocation === self::normalizeEquipmentKey($record->func_location);
+        }
+
+        $rowEquipmentNo = self::normalizeEquipmentKey($row->equipment_no ?? $row->equipment_key ?? null);
+        if ($rowEquipmentNo !== null && filled($record->equipment_no)) {
+            return $rowEquipmentNo === self::normalizeEquipmentKey($record->equipment_no);
+        }
+
+        return false;
     }
 
     private static function firstFilled(mixed ...$values): mixed
@@ -165,6 +275,10 @@ class AdminInspectionSubmissionPageData
     private static function matchesFilters(object $row, array $filters): bool
     {
         if ($filters['type'] !== 'all' && $row->type !== $filters['type']) {
+            return false;
+        }
+
+        if (! self::matchesWorkStatusFilter($row, $filters)) {
             return false;
         }
 
@@ -188,6 +302,58 @@ class AdminInspectionSubmissionPageData
         ]));
 
         return str_contains(mb_strtolower($haystack), mb_strtolower($filters['search']));
+    }
+
+    private static function matchesWorkStatusFilter(object $row, array $filters): bool
+    {
+        return ($filters['work_status'] ?? 'all') === 'all'
+            || ($row->work_status ?? null) === $filters['work_status'];
+    }
+
+    private static function workStatus(?string $submissionStatus): string
+    {
+        return $submissionStatus === 'draft' ? 'ongoing' : 'close';
+    }
+
+    private static function effectiveWorkStatus(?MasterDataRecord $record, ?string $fallback): string
+    {
+        return in_array($record?->inspection_status, ['close', 'ongoing'], true)
+            ? $record->inspection_status
+            : ($fallback ?: 'not_started');
+    }
+
+    private static function withMasterInspectionStatus(object $row): object
+    {
+        $record = self::findMatchingMasterRecord($row);
+
+        if ($record) {
+            $row->master_data_record_id = $record->id;
+            $row->work_status = self::effectiveWorkStatus($record, $row->work_status ?? null);
+            $row->inspection_status_update_url = route('admin.master-data.inspection-status', $record);
+        }
+
+        return $row;
+    }
+
+    private static function findMatchingMasterRecord(object $row): ?MasterDataRecord
+    {
+        $query = MasterDataRecord::query()
+            ->where('document_category', $row->type)
+            ->where('status', 'active');
+
+        if (filled($row->master_data_record_id ?? null)) {
+            return (clone $query)->whereKey($row->master_data_record_id)->first();
+        }
+
+        if (filled($row->functional_location ?? null)) {
+            return (clone $query)->where('func_location', $row->functional_location)->first();
+        }
+
+        if (filled($row->equipment_no ?? null)) {
+            return (clone $query)->where('equipment_no', $row->equipment_no)->first();
+        }
+
+        return null;
     }
 
     private static function filterOptions(): array
@@ -245,11 +411,10 @@ class AdminInspectionSubmissionPageData
                     ->unique(fn (MasterDataRecord $record) => self::normalizeEquipmentKey($record->equipment_no) ?: (string) $record->id)
                     ->values();
                 $processCount = $equipmentRecords
-                    ->filter(fn (MasterDataRecord $record) => self::recordMatchesEquipmentKeys($record, $processKeys))
+                    ->filter(fn (MasterDataRecord $record) => self::effectiveWorkStatusForMetrics($record, $processKeys, $ongoingKeys) === 'close')
                     ->count();
                 $ongoingCount = $equipmentRecords
-                    ->filter(fn (MasterDataRecord $record) => self::recordMatchesEquipmentKeys($record, $ongoingKeys)
-                        && ! self::recordMatchesEquipmentKeys($record, $processKeys))
+                    ->filter(fn (MasterDataRecord $record) => self::effectiveWorkStatusForMetrics($record, $processKeys, $ongoingKeys) === 'ongoing')
                     ->count();
                 $equipmentCount = $equipmentRecords->count();
 
@@ -266,7 +431,7 @@ class AdminInspectionSubmissionPageData
 
         $process = $areaRows->sum('process');
         $ongoing = $areaRows->sum('ongoing');
-        $total = $process + $ongoing;
+        $total = $areaRows->sum('equipment');
         $percentage = $total > 0 ? round(($process / $total) * 100, 1) : 0;
 
         return [
@@ -372,6 +537,15 @@ class AdminInspectionSubmissionPageData
             ->filter()
             ->intersect($equipmentKeys)
             ->isNotEmpty();
+    }
+
+    private static function effectiveWorkStatusForMetrics(MasterDataRecord $record, Collection $processKeys, Collection $ongoingKeys): string
+    {
+        $fallback = self::recordMatchesEquipmentKeys($record, $processKeys)
+            ? 'close'
+            : (self::recordMatchesEquipmentKeys($record, $ongoingKeys) ? 'ongoing' : 'not_started');
+
+        return self::effectiveWorkStatus($record, $fallback);
     }
 
     private static function normalizeEquipmentKey(mixed $value): ?string

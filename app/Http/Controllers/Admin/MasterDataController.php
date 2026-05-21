@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterDataRecord;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -93,6 +94,22 @@ class MasterDataController extends Controller
         return back()->with('success', "{$updated} master data berhasil diubah menjadi {$label}.");
     }
 
+    public function updateInspectionStatus(Request $request, MasterDataRecord $masterDataRecord): JsonResponse
+    {
+        $validated = $request->validate([
+            'inspection_status' => ['required', Rule::in(array_keys(MasterDataRecord::inspectionStatuses()))],
+        ]);
+
+        $masterDataRecord->update([
+            'inspection_status' => $validated['inspection_status'],
+        ]);
+
+        return response()->json([
+            'status' => $masterDataRecord->inspection_status,
+            'label' => MasterDataRecord::inspectionStatuses()[$masterDataRecord->inspection_status],
+        ]);
+    }
+
     public function destroy(MasterDataRecord $masterDataRecord): RedirectResponse
     {
         $masterDataRecord->delete();
@@ -102,18 +119,18 @@ class MasterDataController extends Controller
 
     private function validateRecord(Request $request, ?MasterDataRecord $record = null): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'document_category' => ['required', Rule::in(array_keys(MasterDataRecord::documentCategories()))],
             'year' => ['nullable', 'string', 'max:10'],
-            'func_location' => ['required', 'string', 'max:255'],
-            'equipment_no' => [
+            'func_location' => [
                 'required',
                 'string',
-                'max:80',
-                Rule::unique('master_data_records', 'equipment_no')
+                'max:255',
+                Rule::unique('master_data_records', 'func_location')
                     ->where(fn ($query) => $query->where('document_category', $request->input('document_category')))
                     ->ignore($record?->id),
             ],
+            'equipment_no' => ['nullable', 'string', 'max:80'],
             'section_no' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:255'],
             'plant' => ['required', 'string', 'max:255'],
@@ -121,6 +138,21 @@ class MasterDataController extends Controller
             'status' => ['required', Rule::in(array_keys(MasterDataRecord::statuses()))],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $validated['equipment_no'] = $this->nullableEquipmentNo($validated['equipment_no'] ?? null);
+
+        return $validated;
+    }
+
+    private function nullableEquipmentNo(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '' || $value === '-' || mb_strtoupper($value) === 'N/A') {
+            return null;
+        }
+
+        return $value;
     }
 
     private function distinctOptions(string $column): array

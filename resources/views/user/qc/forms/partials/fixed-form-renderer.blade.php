@@ -69,6 +69,26 @@
         'nameEquipment' => (string) ($record->description ?? ''),
         'label' => trim(($record->description ?: '-') . ' - ' . ($record->equipment_no ?: '-') . ' (' . ($record->area ?: '-') . ')'),
     ])->values();
+    $organizationSections = collect($activeOrganizationSections ?? []);
+    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
+    $organizationSectionOptions = $organizationSections
+        ->map(fn ($section, $index) => [
+            'id' => (string) ($section->id ?? $index),
+            'department' => (string) ($section->department ?? ''),
+            'unitKerja' => (string) ($section->unit_kerja ?? ''),
+            'section' => (string) ($section->section ?? ''),
+        ])
+        ->filter(fn ($section) => $section['section'] !== '')
+        ->sortBy(fn ($section) => implode('|', [$section['department'], $section['unitKerja'], $section['section']]))
+        ->values();
+    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(fn ($section) => $section['section'] === $selectedOrganizationSection)) {
+        $organizationSectionOptions->push([
+            'id' => (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
+            'department' => (string) old('header.department', $oldHeader['department'] ?? ''),
+            'unitKerja' => (string) old('header.work_unit', $oldHeader['work_unit'] ?? ''),
+            'section' => (string) $selectedOrganizationSection,
+        ]);
+    }
     $headerRows = FixedQcTemplate::headerRows($type);
     $headerRows = collect($headerRows)
         ->map(fn ($row) => array_values(array_filter($row, fn ($fieldKey) => $fieldKey !== 'area')))
@@ -139,6 +159,22 @@
                                    list="qc-duration-minute-options"
                                    inputmode="numeric"
                                    placeholder="Contoh: 30">
+                        @elseif ($fieldKey === 'unit_kerja')
+                            <input type="hidden" name="header[department]" value="{{ old('header.department', $oldHeader['department'] ?? '') }}" data-header-input="department">
+                            <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
+                            <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
+                            <select name="header[unit_kerja]" class="form-select" data-organization-section-select>
+                                <option value="">Pilih seksi</option>
+                                @foreach ($organizationSectionOptions as $sectionOption)
+                                    <option value="{{ $sectionOption['section'] }}"
+                                            data-id="{{ $sectionOption['id'] }}"
+                                            data-department="{{ $sectionOption['department'] }}"
+                                            data-work-unit="{{ $sectionOption['unitKerja'] }}"
+                                            @selected((string) $selectedOrganizationSection === (string) $sectionOption['section'])>
+                                        {{ $sectionOption['section'] }}
+                                    </option>
+                                @endforeach
+                            </select>
                         @else
                             <input type="{{ $field['type'] }}"
                                    name="header[{{ $fieldKey }}]"
@@ -361,6 +397,12 @@
                 'foto_after' => 'Foto After',
                 'dokumen_pendukung' => 'Dokumen Pendukung',
             ] as $attachmentKey => $attachmentLabel)
+                @php
+                    $temporaryAttachmentTokens = old("temporary_attachments.{$attachmentKey}", []);
+                    $temporaryAttachmentMetas = collect($temporaryAttachmentTokens)
+                        ->map(fn ($token) => ['token' => $token] + (session("qc_temporary_attachments.{$token}") ?? []))
+                        ->filter(fn ($attachment) => isset($attachment['original_name']));
+                @endphp
                 <div class="qc-upload-box" data-upload-box data-upload-type="image">
                     <div class="qc-upload-box-head">
                         <div>
@@ -372,6 +414,15 @@
                     <input type="file" class="form-control" name="attachments[{{ $attachmentKey }}][]" data-upload-input accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
                     <div class="qc-upload-message" data-upload-message></div>
                     <div class="qc-upload-preview" data-upload-preview></div>
+                    @if ($temporaryAttachmentMetas->isNotEmpty())
+                        <div class="mt-2 small text-muted">
+                            <strong class="d-block text-body">Lampiran tersimpan sementara:</strong>
+                            @foreach ($temporaryAttachmentMetas as $attachment)
+                                <input type="hidden" name="temporary_attachments[{{ $attachmentKey }}][]" value="{{ $attachment['token'] }}">
+                                <div><i class="bi bi-check2-circle me-1 text-success"></i>{{ $attachment['original_name'] }}</div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
@@ -474,17 +525,116 @@
     </section>
 </div>
 
+@once
+    @push('styles')
+        <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+        <style>
+            .qc-user-field .ts-wrapper.single .ts-control {
+                min-height: 3.5rem;
+                border-color: #d7dfeb;
+                border-radius: .75rem;
+                padding: .9rem 1rem;
+                font-size: 1rem;
+            }
+
+            .qc-user-field .ts-wrapper.focus .ts-control {
+                border-color: #86b7fe;
+                box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .16);
+            }
+
+            .qc-user-field .ts-dropdown {
+                border-color: #d7dfeb;
+                border-radius: .75rem;
+                overflow: hidden;
+                box-shadow: 0 1rem 2rem rgba(15, 23, 42, .12);
+            }
+
+            .qc-user-field .ts-dropdown .option {
+                padding: .65rem .85rem;
+                font-size: .94rem;
+            }
+
+            .qc-user-field .ts-dropdown .active {
+                background: #eef4ff;
+                color: #172033;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    @endpush
+@endonce
+
 @push('scripts')
     <script>
         (() => {
             const masterDataSelect = document.querySelector('[data-master-data-select]');
             const areaSelect = document.querySelector('[data-master-area-select]');
+            const organizationSectionSelect = document.querySelector('[data-organization-section-select]');
             const masterDataOptions = @json($masterDataOptions);
             const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
+            let masterDataTomSelect = null;
+            let organizationSectionTomSelect = null;
+
+            const destroyMasterDataSearch = () => {
+                if (masterDataTomSelect) {
+                    masterDataTomSelect.destroy();
+                    masterDataTomSelect = null;
+                }
+            };
+
+            const initMasterDataSearch = () => {
+                if (!masterDataSelect || !window.TomSelect) return;
+
+                masterDataTomSelect = new TomSelect(masterDataSelect, {
+                    create: false,
+                    allowEmptyOption: true,
+                    maxOptions: 1000,
+                    searchField: ['text'],
+                    placeholder: areaSelect?.value ? 'Cari equipment...' : 'Pilih area terlebih dahulu',
+                    render: {
+                        no_results: () => '<div class="no-results">Equipment tidak ditemukan</div>',
+                    },
+                });
+            };
 
             const setHeaderValue = (key, value) => {
                 const input = document.querySelector(`[data-header-input="${key}"]`);
                 if (input) input.value = value || '';
+            };
+
+            const initOrganizationSectionSearch = () => {
+                if (!organizationSectionSelect || !window.TomSelect) return;
+
+                organizationSectionTomSelect = new TomSelect(organizationSectionSelect, {
+                    create: false,
+                    allowEmptyOption: true,
+                    maxOptions: 1000,
+                    searchField: ['text'],
+                    placeholder: 'Cari seksi...',
+                    render: {
+                        option: function (data, escape) {
+                            const option = data.$option;
+                            const department = option?.dataset.department || '';
+                            const workUnit = option?.dataset.workUnit || '';
+                            const meta = [workUnit, department].filter(Boolean).join(' - ');
+
+                            return `<div>
+                                <div>${escape(data.text)}</div>
+                                ${meta ? `<small class="text-muted">${escape(meta)}</small>` : ''}
+                            </div>`;
+                        },
+                        no_results: () => '<div class="no-results">Seksi tidak ditemukan</div>',
+                    },
+                });
+            };
+
+            const syncOrganizationSection = () => {
+                const option = organizationSectionSelect?.selectedOptions?.[0];
+                setHeaderValue('organization_section_id', option?.dataset.id || '');
+                setHeaderValue('department', option?.dataset.department || '');
+                setHeaderValue('work_unit', option?.dataset.workUnit || '');
             };
 
             const clearMasterDataHeader = () => {
@@ -500,6 +650,7 @@
                 setHeaderValue('area', area);
 
                 const currentValue = masterDataSelect.value || selectedMasterDataId;
+                destroyMasterDataSearch();
                 masterDataSelect.innerHTML = '';
 
                 const placeholder = document.createElement('option');
@@ -530,6 +681,8 @@
                 } else {
                     clearMasterDataHeader();
                 }
+
+                initMasterDataSearch();
             };
 
             const syncMasterDataHeader = () => {
@@ -553,8 +706,11 @@
                 syncMasterDataHeader();
             });
             masterDataSelect?.addEventListener('change', syncMasterDataHeader);
+            organizationSectionSelect?.addEventListener('change', syncOrganizationSection);
             filterMasterDataOptions();
             syncMasterDataHeader();
+            initOrganizationSectionSearch();
+            syncOrganizationSection();
 
         })();
     </script>

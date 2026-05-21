@@ -2,7 +2,7 @@
     $statusLabels = $statusLabels ?? [];
     $inspectionMetrics = $inspectionMetrics ?? ($qcMetrics ?? null);
     $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect()];
-    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'search' => ''];
+    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'work_status' => 'all', 'search' => ''];
     $statusClasses = [
         'draft' => 'text-bg-secondary',
         'submitted' => 'text-bg-info',
@@ -38,7 +38,15 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-xl-6">
+        <div class="col-12 col-md-6 col-xl-2">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="work_status">
+                <option value="all" @selected(($filters['work_status'] ?? 'all') === 'all')>Semua Status</option>
+                <option value="close" @selected(($filters['work_status'] ?? 'all') === 'close')>Close</option>
+                <option value="ongoing" @selected(($filters['work_status'] ?? 'all') === 'ongoing')>On Going</option>
+            </select>
+        </div>
+        <div class="col-12 col-xl-4">
             <label class="form-label">Cari</label>
             <div class="d-flex gap-2">
                 <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="No form / equipment">
@@ -51,32 +59,32 @@
 @if ($inspectionMetrics)
     <div class="qc-progress-dashboard">
         <div class="qc-progress-card qc-progress-card-total">
-            <div>
+            <div class="qc-progress-card-icon"><i class="bi bi-database"></i></div>
+            <div class="min-w-0">
                 <div class="qc-progress-card-title">Equipment</div>
-                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['total'], 0, ',', '.') }}</div>
+                <div class="qc-progress-card-value" data-count-value="{{ $inspectionMetrics['cards']['total'] }}" data-count-decimals="0">{{ number_format($inspectionMetrics['cards']['total'], 0, ',', '.') }}</div>
             </div>
-            <i class="bi bi-gear-wide-connected"></i>
         </div>
         <div class="qc-progress-card qc-progress-card-process">
-            <div>
+            <div class="qc-progress-card-icon"><i class="bi bi-check2-circle"></i></div>
+            <div class="min-w-0">
                 <div class="qc-progress-card-title">Equipment Complete</div>
-                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['process'], 0, ',', '.') }}</div>
+                <div class="qc-progress-card-value" data-count-value="{{ $inspectionMetrics['cards']['process'] }}" data-count-decimals="0">{{ number_format($inspectionMetrics['cards']['process'], 0, ',', '.') }}</div>
             </div>
-            <i class="bi bi-clipboard2-check"></i>
         </div>
         <div class="qc-progress-card qc-progress-card-ongoing">
-            <div>
+            <div class="qc-progress-card-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div class="min-w-0">
                 <div class="qc-progress-card-title">Equipment On Going</div>
-                <div class="qc-progress-card-value">{{ number_format($inspectionMetrics['cards']['ongoing'], 0, ',', '.') }}</div>
+                <div class="qc-progress-card-value" data-count-value="{{ $inspectionMetrics['cards']['ongoing'] }}" data-count-decimals="0">{{ number_format($inspectionMetrics['cards']['ongoing'], 0, ',', '.') }}</div>
             </div>
-            <i class="bi bi-pencil-square"></i>
         </div>
         <div class="qc-progress-card qc-progress-card-percentage">
-            <div>
+            <div class="qc-progress-card-icon"><i class="bi bi-percent"></i></div>
+            <div class="min-w-0">
                 <div class="qc-progress-card-title">Persentase</div>
-                <div class="qc-progress-card-value">{{ $formatPercentage($inspectionMetrics['cards']['percentage']) }}%</div>
+                <div class="qc-progress-card-value" data-count-value="{{ $inspectionMetrics['cards']['percentage'] }}" data-count-decimals="1" data-count-trim="true" data-count-suffix="%">{{ $formatPercentage($inspectionMetrics['cards']['percentage']) }}%</div>
             </div>
-            <i class="bi bi-graph-up-arrow"></i>
         </div>
     </div>
 
@@ -152,7 +160,7 @@
                     <th>Plant</th>
                     <th>Area</th>
                     <th>Equipment</th>
-                    <th>Status</th>
+                    <th>Approval</th>
                     <th class="text-end">Action</th>
                 </tr>
             </thead>
@@ -169,20 +177,47 @@
                         <td>{{ $submission->plant ?: '-' }}</td>
                         <td>{{ $submission->area ?: '-' }}</td>
                         <td>
-                            <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
+                            <div class="admin-submission-equipment-row">
+                                <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
+                                @if ($submission->inspection_status_update_url ?? null)
+                                    <select class="admin-work-status-select @if (($submission->work_status ?? null) === 'close') admin-work-status-close @elseif (($submission->work_status ?? null) === 'ongoing') admin-work-status-ongoing @endif"
+                                            data-inspection-status-select
+                                            data-update-url="{{ $submission->inspection_status_update_url }}"
+                                            aria-label="Status equipment">
+                                        @if (! in_array($submission->work_status ?? null, ['close', 'ongoing'], true))
+                                            <option value="" selected disabled>Pilih Status</option>
+                                        @endif
+                                        <option value="close" @selected(($submission->work_status ?? null) === 'close')>Close</option>
+                                        <option value="ongoing" @selected(($submission->work_status ?? null) === 'ongoing')>On Going</option>
+                                    </select>
+                                @elseif (($submission->work_status ?? null) === 'close')
+                                    <span class="admin-work-status-badge admin-work-status-close">Close</span>
+                                @elseif (($submission->work_status ?? null) === 'ongoing')
+                                    <span class="admin-work-status-badge admin-work-status-ongoing">On Going</span>
+                                @endif
+                            </div>
                             <div class="admin-submission-meta">
-                                <span>{{ $submission->form_number ?: '-' }}</span>
-                                <span>{{ $submission->submitted_at?->format('d M Y H:i') ?: '-' }}</span>
+                                @if ($submission->form_number)
+                                    <span>{{ $submission->form_number }}</span>
+                                    <span>{{ $submission->submitted_at?->format('d M Y H:i') ?: '-' }}</span>
+                                @else
+                                    <span>{{ $submission->functional_location ?? '-' }}</span>
+                                    <span>{{ $submission->equipment_no ?? 'ID equipment belum ada' }}</span>
+                                @endif
                             </div>
                         </td>
                         <td>
-                            <span class="badge {{ $statusClasses[$submission->status] ?? 'text-bg-secondary' }}">
-                                {{ $statusLabels[$submission->status] ?? $submission->status }}
-                            </span>
+                            @if ($submission->status && $submission->status !== 'draft')
+                                <span class="badge {{ $statusClasses[$submission->status] ?? 'text-bg-secondary' }}">
+                                    {{ $statusLabels[$submission->status] ?? $submission->status }}
+                                </span>
+                            @else
+                                <span class="text-muted small">Belum submit</span>
+                            @endif
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex align-items-center gap-2">
-                                @if ($submission->model->approvalFlow)
+                                @if ($submission->model?->approvalFlow)
                                     <button type="button" class="btn btn-sm btn-outline-primary admin-inspection-icon-btn" data-bs-toggle="modal" data-bs-target="#adminApprovalProgressModal{{ $submission->type }}{{ $submission->model->id }}" title="Detail Approval" aria-label="Detail Approval">
                                         <i class="bi bi-list-check"></i>
                                     </button>
@@ -193,14 +228,16 @@
                                         <i class="bi bi-filetype-pdf"></i>
                                     </a>
                                 @else
-                                    <span class="text-muted small">Draft user</span>
+                                    <span class="text-muted small">-</span>
                                 @endif
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Belum ada submission untuk filter ini.</td>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            {{ $filters['type'] === 'commissioning' ? 'Belum ada master data equipment untuk filter ini.' : 'Belum ada submission untuk filter ini.' }}
+                        </td>
                     </tr>
                 @endforelse
             </tbody>
@@ -212,7 +249,7 @@
     </div>
 </div>
 
-@foreach ($submissions as $submission)
+@foreach ($submissions->getCollection()->filter(fn ($submission) => $submission->model?->approvalFlow) as $submission)
     @php
         $activeApprovalStep = $submission->model->approvalFlow?->steps->firstWhere('status', 'active');
         $adminCopyApprovalLinkUrl = $submission->status === 'pending_approval' && $activeApprovalStep
@@ -231,6 +268,45 @@
 @if ($inspectionMetrics)
     @push('scripts')
         <script>
+            document.querySelectorAll('[data-count-value]').forEach(function (element) {
+                const target = Number.parseFloat(element.dataset.countValue || '0');
+                const decimals = Number.parseInt(element.dataset.countDecimals || '0', 10);
+                const suffix = element.dataset.countSuffix || '';
+                const trim = element.dataset.countTrim === 'true';
+                const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900;
+                const formatter = new Intl.NumberFormat('id-ID', {
+                    minimumFractionDigits: trim ? 0 : decimals,
+                    maximumFractionDigits: decimals,
+                });
+
+                const render = function (value) {
+                    element.textContent = formatter.format(value) + suffix;
+                };
+
+                if (!Number.isFinite(target) || duration === 0) {
+                    render(Number.isFinite(target) ? target : 0);
+                    return;
+                }
+
+                const start = performance.now();
+
+                const tick = function (time) {
+                    const progress = Math.min((time - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    render(target * eased);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+
+                    render(target);
+                };
+
+                render(0);
+                requestAnimationFrame(tick);
+            });
+
             document.querySelectorAll('[data-qc-area-progress-chart]').forEach(function (canvas) {
                 if (!window.Chart) {
                     return;
@@ -244,26 +320,43 @@
                         datasets: [{
                             label: 'Progress',
                             data: chartData.data,
-                            backgroundColor: '#3b82f6',
-                            borderRadius: 4,
-                            maxBarThickness: 42,
+                            backgroundColor: '#2563eb',
+                            borderColor: '#1d4ed8',
+                            borderWidth: 1,
+                            borderRadius: 7,
+                            borderSkipped: false,
+                            maxBarThickness: 46,
                         }],
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: {
+                            duration: 900,
+                            easing: 'easeOutCubic',
+                        },
+                        animations: {
+                            y: {
+                                from: 0,
+                            },
+                        },
                         plugins: {
                             legend: {
                                 display: true,
                                 align: 'start',
                                 labels: {
-                                    boxWidth: 28,
-                                    boxHeight: 14,
-                                    color: '#334155',
-                                    font: { size: 13 },
+                                    boxWidth: 10,
+                                    boxHeight: 10,
+                                    borderRadius: 3,
+                                    color: '#475569',
+                                    font: { size: 12, weight: 600 },
                                 },
                             },
                             tooltip: {
+                                backgroundColor: '#0f172a',
+                                padding: 10,
+                                titleFont: { size: 12, weight: 700 },
+                                bodyFont: { size: 12 },
                                 callbacks: {
                                     label: function (context) {
                                         return `Progress: ${context.parsed.y}%`;
@@ -274,26 +367,83 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
+                                min: 0,
                                 max: 100,
+                                border: { display: false },
                                 ticks: {
+                                    stepSize: 20,
                                     precision: 0,
+                                    color: '#64748b',
+                                    padding: 8,
                                     callback: function (value) {
                                         return value + '%';
                                     },
                                 },
-                                grid: { color: '#d9dee8' },
+                                grid: { display: false },
                             },
                             x: {
+                                border: { display: false },
                                 grid: { display: false },
                                 ticks: {
-                                    color: '#334155',
-                                    maxRotation: 35,
-                                    minRotation: 35,
+                                    color: '#475569',
+                                    font: { size: 12, weight: 600 },
+                                    maxRotation: 0,
+                                    minRotation: 0,
+                                    padding: 10,
+                                    callback: function (value) {
+                                        const label = this.getLabelForValue(value);
+                                        const words = String(label).split(' ');
+                                        const lines = [];
+
+                                        words.forEach(function (word) {
+                                            const lastIndex = lines.length - 1;
+
+                                            if (lastIndex >= 0 && `${lines[lastIndex]} ${word}`.length <= 12) {
+                                                lines[lastIndex] = `${lines[lastIndex]} ${word}`;
+                                                return;
+                                            }
+
+                                            lines.push(word);
+                                        });
+
+                                        return lines.slice(0, 2);
+                                    },
                                 },
                             },
                         },
                     },
                 });
+            });
+
+            document.querySelectorAll('[data-inspection-status-select]').forEach(function (select) {
+                select.addEventListener('change', async function () {
+                    const previousValue = select.dataset.previousValue || select.value;
+                    select.disabled = true;
+
+                    try {
+                        const response = await fetch(select.dataset.updateUrl, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                            body: JSON.stringify({ inspection_status: select.value }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Gagal memperbarui status.');
+                        }
+
+                        window.location.reload();
+                    } catch (error) {
+                        select.value = previousValue;
+                        select.disabled = false;
+                        alert(error.message || 'Gagal memperbarui status.');
+                    }
+                });
+
+                select.dataset.previousValue = select.value;
             });
         </script>
     @endpush
@@ -304,84 +454,80 @@
         .qc-progress-dashboard {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1rem;
-            margin: 1.25rem 0 1rem;
+            gap: .85rem;
+            margin: 1rem 0 1rem;
         }
 
         .qc-progress-card {
-            position: relative;
-            min-height: 118px;
+            --card-accent: #0d6efd;
+            min-height: 86px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            overflow: hidden;
-            padding: 1rem 1.2rem;
-            border: 1px solid;
-            border-radius: .55rem;
+            gap: .95rem;
+            padding: .86rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: .75rem;
             background: #ffffff;
-            box-shadow: 0 .25rem .7rem rgba(15, 23, 42, .12);
+            box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .055);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+
+        .qc-progress-card:hover {
+            transform: translateY(-2px);
+            border-color: #cbd5e1;
+            box-shadow: 0 .75rem 1.55rem rgba(15, 23, 42, .08);
+        }
+
+        .qc-progress-card-icon {
+            width: 46px;
+            height: 46px;
+            flex: 0 0 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .65rem;
+            color: #ffffff;
+            background: var(--card-accent);
+            font-size: 1.25rem;
+            line-height: 1;
         }
 
         .qc-progress-card-title {
             max-width: 11rem;
-            color: #3343a5;
-            font-size: 1rem;
-            font-weight: 800;
-            line-height: 1.1;
-            text-transform: uppercase;
+            color: #64748b;
+            font-size: .86rem;
+            font-weight: 500;
+            line-height: 1.2;
+            text-transform: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .qc-progress-card-value {
-            margin-top: .7rem;
-            color: #3343a5;
-            font-size: clamp(2rem, 3.1vw, 3rem);
-            font-weight: 500;
-            line-height: 1;
-            text-align: right;
-        }
-
-        .qc-progress-card > i {
-            flex: 0 0 auto;
-            color: currentColor;
-            font-size: 4rem;
-            line-height: 1;
-            opacity: .42;
+            margin-top: .14rem;
+            color: #0f172a;
+            font-size: clamp(1.45rem, 2vw, 1.85rem);
+            font-weight: 800;
+            line-height: 1.12;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
         }
 
         .qc-progress-card-total {
-            border-color: #3343a5;
-            color: #3343a5;
+            --card-accent: #0d6efd;
         }
 
         .qc-progress-card-process {
-            border-color: #2f8c3c;
-            color: #2f8c3c;
-        }
-
-        .qc-progress-card-process .qc-progress-card-title,
-        .qc-progress-card-process .qc-progress-card-value {
-            color: #2f8c3c;
+            --card-accent: #198754;
         }
 
         .qc-progress-card-ongoing {
-            border-color: #b91c1c;
-            color: #b91c1c;
-        }
-
-        .qc-progress-card-ongoing .qc-progress-card-title,
-        .qc-progress-card-ongoing .qc-progress-card-value {
-            color: #b91c1c;
+            --card-accent: #dc3545;
         }
 
         .qc-progress-card-percentage {
-            border-color: #94105d;
-            color: #94105d;
-        }
-
-        .qc-progress-card-percentage .qc-progress-card-title,
-        .qc-progress-card-percentage .qc-progress-card-value {
-            color: #94105d;
+            --card-accent: #6f42c1;
         }
 
         .qc-area-detail-card,
@@ -390,11 +536,13 @@
         }
 
         .qc-area-chart-card {
-            background: #f3f4f6;
+            border-color: #e2e8f0;
+            background: #ffffff;
+            box-shadow: 0 .45rem 1.1rem rgba(15, 23, 42, .055);
         }
 
         .qc-area-chart-wrap {
-            height: 255px;
+            height: 270px;
         }
 
         .qc-area-progress-table {
@@ -402,15 +550,17 @@
             min-width: 0;
             table-layout: fixed;
             margin-bottom: 0;
-            color: #111827;
+            color: #0f172a;
             font-size: .8rem;
+            border-collapse: separate;
+            border-spacing: 0;
         }
 
         .qc-area-progress-table th {
-            background: #3f78ca;
+            background: #1e40af;
             color: #ffffff;
-            font-size: .7rem;
-            font-weight: 800;
+            font-size: .68rem;
+            font-weight: 750;
             letter-spacing: 0;
             text-transform: uppercase;
             line-height: 1.15;
@@ -422,8 +572,8 @@
 
         .qc-area-progress-table td,
         .qc-area-progress-table th {
-            padding: .28rem .38rem;
-            border-color: #1f2937;
+            padding: .56rem .54rem;
+            border-color: #e2e8f0;
         }
 
         .qc-area-progress-table th:nth-child(1),
@@ -449,11 +599,17 @@
         .qc-area-progress-table td:nth-child(n+2),
         .qc-area-progress-table tfoot th:nth-child(n+2) {
             text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .qc-area-progress-table tbody tr:hover td {
+            background: #f8fafc;
         }
 
         .qc-area-progress-table tfoot th {
-            background: #bdd7ee;
-            color: #111827;
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 800;
         }
 
         .admin-submission-table {
@@ -494,6 +650,60 @@
             font-size: .89rem;
             font-weight: 750;
             line-height: 1.2;
+        }
+
+        .admin-submission-equipment-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .65rem;
+        }
+
+        .admin-work-status-badge {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 4.7rem;
+            padding: .22rem .48rem;
+            border-radius: 999px;
+            font-size: .66rem;
+            font-weight: 800;
+            line-height: 1.15;
+        }
+
+        .admin-work-status-close {
+            color: #166534;
+            background: #dcfce7;
+        }
+
+        .admin-work-status-ongoing {
+            color: #92400e;
+            background: #fef3c7;
+        }
+
+        .admin-work-status-select {
+            flex: 0 0 auto;
+            min-width: 6rem;
+            padding: .22rem 1.65rem .22rem .58rem;
+            border: 0;
+            border-radius: 999px;
+            font-size: .68rem;
+            font-weight: 800;
+            line-height: 1.15;
+            cursor: pointer;
+            background-position: right .55rem center;
+            background-size: .65rem;
+        }
+
+        .admin-work-status-close {
+            color: #166534;
+            background-color: #dcfce7;
+        }
+
+        .admin-work-status-ongoing {
+            color: #92400e;
+            background-color: #fef3c7;
         }
 
         .admin-submission-meta {
@@ -539,11 +749,7 @@
             }
 
             .qc-progress-card {
-                min-height: 104px;
-            }
-
-            .qc-progress-card > i {
-                font-size: 3rem;
+                min-height: 82px;
             }
         }
     </style>

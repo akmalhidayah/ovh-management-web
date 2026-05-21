@@ -24,6 +24,7 @@ class MasterDataRecord extends Model
         'plant',
         'area',
         'status',
+        'inspection_status',
         'notes',
         'created_by',
     ];
@@ -41,6 +42,14 @@ class MasterDataRecord extends Model
         return [
             'active' => 'Aktif',
             'inactive' => 'Nonaktif',
+        ];
+    }
+
+    public static function inspectionStatuses(): array
+    {
+        return [
+            'close' => 'Close',
+            'ongoing' => 'On Going',
         ];
     }
 

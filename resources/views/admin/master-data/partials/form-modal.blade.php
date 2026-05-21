@@ -34,7 +34,7 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Equipment No.</label>
-                            <input type="text" name="equipment_no" class="form-control" value="{{ old('equipment_no', $record?->equipment_no) }}" required placeholder="20007019">
+                            <input type="text" name="equipment_no" class="form-control" value="{{ old('equipment_no', $record?->equipment_no) }}" placeholder="20007019 / N/A">
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Section No.</label>

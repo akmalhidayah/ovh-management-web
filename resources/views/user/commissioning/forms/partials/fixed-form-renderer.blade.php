@@ -122,7 +122,9 @@
                 </thead>
                 <tbody><tr>
                     @foreach ($motorRatingFields as $field)
-                        @php($key = $field['key'])
+                        @php
+                            $key = $field['key'];
+                        @endphp
                         <td><input type="text" name="body[motor_rating][{{ $key }}]" value="{{ $motorRating[$key] ?? '' }}" class="form-control" required></td>
                     @endforeach
                     <td colspan="4" class="text-center small">
@@ -151,8 +153,10 @@
                     @foreach ($motorRows as $index => $row)
                         <tr data-motor-row>
                             @foreach ($motorTestFields as $field)
-                                @php($key = $field['key'])
-                                @php($isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true))
+                                @php
+                                    $key = $field['key'];
+                                    $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
+                                @endphp
                                 <td><input type="text" name="body[motor_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
                             @endforeach
                         </tr>
@@ -180,7 +184,9 @@
                 </thead>
                 <tbody><tr>
                     @foreach ($gearboxRatingFields as $field)
-                        @php($key = $field['key'])
+                        @php
+                            $key = $field['key'];
+                        @endphp
                         <td><input type="text" name="body[gearbox_rating][{{ $key }}]" value="{{ $gearboxRating[$key] ?? '' }}" class="form-control" required></td>
                     @endforeach
                 </tr></tbody>
@@ -220,8 +226,10 @@
                     @foreach ($gearboxRows as $index => $row)
                         <tr data-gearbox-row>
                             @foreach ($gearboxTestFields as $field)
-                                @php($key = $field['key'])
-                                @php($isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true))
+                                @php
+                                    $key = $field['key'];
+                                    $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
+                                @endphp
                                 <td><input type="text" name="body[gearbox_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
                             @endforeach
                         </tr>
@@ -263,10 +271,26 @@
         <div class="row g-3">
             <div class="col-12 col-lg-7"><label class="qc-user-note-box"><span>{{ $labels['note_label'] }}</span><textarea name="note" rows="5" class="form-control">{{ old('note', $draftSubmission?->note ?? '') }}</textarea></label></div>
             <div class="col-12 col-lg-5">
+                @php
+                    $temporaryAttachmentTokens = old('temporary_attachments.dokumentasi', []);
+                    $temporaryAttachmentMetas = collect($temporaryAttachmentTokens)
+                        ->map(fn ($token) => ['token' => $token] + (session("commissioning_temporary_attachments.{$token}") ?? []))
+                        ->filter(fn ($attachment) => isset($attachment['original_name']));
+                    $hasTemporaryDocumentation = $temporaryAttachmentMetas->isNotEmpty();
+                @endphp
                 <label class="qc-user-note-box">
                     <span>{{ $labels['documentation_label'] }}</span>
-                    <input type="file" name="attachments[dokumentasi][]" class="form-control" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple @if (! ($draftSubmission?->attachments()->exists() ?? false)) required @endif>
+                    <input type="file" name="attachments[dokumentasi][]" class="form-control" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple @if (! $hasTemporaryDocumentation && ! ($draftSubmission?->attachments()->exists() ?? false)) required @endif>
                     <small class="text-muted d-block mt-2">Hanya JPG atau PNG. Bisa upload lebih dari satu gambar sekaligus.</small>
+                    @if ($temporaryAttachmentMetas->isNotEmpty())
+                        <div class="mt-2 small text-muted">
+                            <strong class="d-block text-body">Lampiran tersimpan sementara:</strong>
+                            @foreach ($temporaryAttachmentMetas as $attachment)
+                                <input type="hidden" name="temporary_attachments[dokumentasi][]" value="{{ $attachment['token'] }}">
+                                <div><i class="bi bi-check2-circle me-1 text-success"></i>{{ $attachment['original_name'] }}</div>
+                            @endforeach
+                        </div>
+                    @endif
                 </label>
             </div>
         </div>
@@ -276,7 +300,9 @@
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
         <div class="qc-user-approval-grid" style="--qc-approval-columns: 4">
             @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
-                @php($approvalName = $approval[$column['key']]['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? ''))
+                @php
+                    $approvalName = $approval[$column['key']]['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '');
+                @endphp
                 <div class="qc-user-approval-box is-locked">
                     <strong>{{ $column['label'] }}</strong>
                     <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
@@ -297,6 +323,47 @@
     </section>
 </div>
 
+@once
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    .qc-user-field .ts-wrapper.single .ts-control {
+        min-height: 3.5rem;
+        border-color: #d7dfeb;
+        border-radius: .75rem;
+        padding: .9rem 1rem;
+        font-size: 1rem;
+    }
+
+    .qc-user-field .ts-wrapper.focus .ts-control {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .16);
+    }
+
+    .qc-user-field .ts-dropdown {
+        border-color: #d7dfeb;
+        border-radius: .75rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 2rem rgba(15, 23, 42, .12);
+    }
+
+    .qc-user-field .ts-dropdown .option {
+        padding: .65rem .85rem;
+        font-size: .94rem;
+    }
+
+    .qc-user-field .ts-dropdown .active {
+        background: #eef4ff;
+        color: #172033;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+@endpush
+@endonce
+
 @push('scripts')
 <script>
 (() => {
@@ -304,6 +371,30 @@
     const area = document.querySelector('[data-master-area-select]');
     const masterOptions = @json($masterDataOptions);
     const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
+    let masterTomSelect = null;
+
+    const destroyMasterSearch = () => {
+        if (masterTomSelect) {
+            masterTomSelect.destroy();
+            masterTomSelect = null;
+        }
+    };
+
+    const initMasterSearch = () => {
+        if (!master || !window.TomSelect) return;
+
+        masterTomSelect = new TomSelect(master, {
+            create: false,
+            allowEmptyOption: true,
+            maxOptions: 1000,
+            searchField: ['text'],
+            placeholder: area?.value ? 'Cari equipment...' : 'Pilih area terlebih dahulu',
+            render: {
+                no_results: () => '<div class="no-results">Equipment tidak ditemukan</div>',
+            },
+        });
+    };
+
     const setHeader = (key, value) => { const input = document.querySelector(`[data-header-input="${key}"]`); if (input) input.value = value || ''; };
     document.querySelectorAll('[data-commissioning-form] input[name*="[remarks]"], [data-commissioning-form] input[name*="[remark]"]').forEach((input) => {
         input.required = false;
@@ -319,6 +410,7 @@
         setHeader('area', selectedArea);
 
         const currentValue = master.value || selectedMasterDataId;
+        destroyMasterSearch();
         master.innerHTML = '';
 
         const placeholder = document.createElement('option');
@@ -349,6 +441,8 @@
         } else {
             clearMasterHeader();
         }
+
+        initMasterSearch();
     };
     const syncMaster = () => {
         const option = master?.selectedOptions?.[0];

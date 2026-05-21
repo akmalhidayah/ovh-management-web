@@ -16,6 +16,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,6 +34,7 @@ class FormController extends Controller
     private const ERROR_APPROVAL_LINK = 'COM-APPROVAL-LINK-FAILED';
     private const ERROR_DESTROY = 'COM-SUB-DESTROY-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
+    private const TEMP_ATTACHMENT_SESSION_KEY = 'commissioning_temporary_attachments';
 
     public function create(Request $request): View
     {
@@ -59,7 +61,11 @@ class FormController extends Controller
         $template = CommissioningFormTemplate::where('status', 'active')->findOrFail($validated['template_id']);
 
         if ($validated['action'] === 'submit') {
-            $this->validateSubmit($request, $template);
+            try {
+                $this->validateSubmit($request, $template);
+            } catch (ValidationException $exception) {
+                return $this->backWithTemporaryAttachments($request, $exception);
+            }
         }
 
         try {
@@ -91,7 +97,7 @@ class FormController extends Controller
                     'approval_data' => $request->input('approval', []),
                 ]);
 
-                $this->storeAttachments($submission, $request->file('attachments', []));
+                $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
@@ -146,7 +152,11 @@ class FormController extends Controller
         $template = CommissioningFormTemplate::findOrFail($submission->commissioning_form_template_id);
 
         if ($validated['action'] === 'submit') {
-            $this->validateSubmit($request, $template, $submission);
+            try {
+                $this->validateSubmit($request, $template, $submission);
+            } catch (ValidationException $exception) {
+                return $this->backWithTemporaryAttachments($request, $exception);
+            }
         }
 
         try {
@@ -175,7 +185,7 @@ class FormController extends Controller
                     'approval_data' => $request->input('approval', []),
                 ]);
 
-                $this->storeAttachments($submission, $request->file('attachments', []));
+                $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
@@ -327,6 +337,9 @@ class FormController extends Controller
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['nullable', 'array'],
             'attachments.*.*' => ['file', 'mimes:'.self::ALLOWED_ATTACHMENT_MIMES, 'mimetypes:image/jpeg,image/png', 'max:10240'],
+            'temporary_attachments' => ['nullable', 'array'],
+            'temporary_attachments.*' => ['nullable', 'array'],
+            'temporary_attachments.*.*' => ['string'],
         ]);
     }
 
@@ -414,8 +427,11 @@ class FormController extends Controller
         }
 
         $hasNewAttachment = collect($request->file('attachments.dokumentasi', []))->filter()->isNotEmpty();
+        $hasTemporaryAttachment = collect($request->input('temporary_attachments.dokumentasi', []))
+            ->filter(fn ($token) => $this->temporaryAttachmentExists($token, 'dokumentasi'))
+            ->isNotEmpty();
         $hasExistingAttachment = $submission?->attachments()->exists() ?? false;
-        if (! $hasNewAttachment && ! $hasExistingAttachment) {
+        if (! $hasNewAttachment && ! $hasTemporaryAttachment && ! $hasExistingAttachment) {
             $errors['attachments.dokumentasi'] = 'Dokumentasi wajib diupload. Hanya JPG atau PNG.';
         }
 
@@ -480,7 +496,7 @@ class FormController extends Controller
         ];
     }
 
-    private function storeAttachments(CommissioningFormSubmission $submission, array $attachments): void
+    private function storeAttachments(CommissioningFormSubmission $submission, array $attachments, array $temporaryAttachments = []): void
     {
         foreach ($attachments as $fieldKey => $files) {
             foreach ((array) $files as $file) {
@@ -502,6 +518,95 @@ class FormController extends Controller
                 ]);
             }
         }
+
+        $this->storeTemporaryAttachments($submission, $temporaryAttachments);
+    }
+
+    private function backWithTemporaryAttachments(Request $request, ValidationException $exception): RedirectResponse
+    {
+        return back()
+            ->withInput(array_merge($request->except('attachments', 'temporary_attachments'), [
+                'temporary_attachments' => $this->preserveTemporaryAttachments($request),
+            ]))
+            ->withErrors($exception->errors());
+    }
+
+    private function preserveTemporaryAttachments(Request $request): array
+    {
+        $sessionAttachments = session(self::TEMP_ATTACHMENT_SESSION_KEY, []);
+        $groupedTokens = collect($request->input('temporary_attachments', []))
+            ->map(fn ($tokens) => collect((array) $tokens)
+                ->filter(fn ($token) => isset($sessionAttachments[$token]))
+                ->values()
+                ->all())
+            ->filter()
+            ->all();
+
+        foreach ($request->file('attachments', []) as $fieldKey => $files) {
+            foreach ((array) $files as $file) {
+                if (! $file instanceof UploadedFile) {
+                    continue;
+                }
+
+                $token = (string) Str::uuid();
+                $path = $file->store("temporary-attachments/commissioning/{$request->user()?->id}", 'local');
+
+                $sessionAttachments[$token] = [
+                    'field_key' => $fieldKey,
+                    'file_path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ];
+
+                $groupedTokens[$fieldKey][] = $token;
+            }
+        }
+
+        session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
+
+        return $groupedTokens;
+    }
+
+    private function temporaryAttachmentExists(mixed $token, string $fieldKey): bool
+    {
+        $attachment = session(self::TEMP_ATTACHMENT_SESSION_KEY.'.'.$token);
+
+        return is_array($attachment)
+            && ($attachment['field_key'] ?? null) === $fieldKey
+            && Storage::disk('local')->exists($attachment['file_path'] ?? '');
+    }
+
+    private function storeTemporaryAttachments(CommissioningFormSubmission $submission, array $temporaryAttachments): void
+    {
+        $sessionAttachments = session(self::TEMP_ATTACHMENT_SESSION_KEY, []);
+
+        foreach ($temporaryAttachments as $fieldKey => $tokens) {
+            foreach ((array) $tokens as $token) {
+                $attachment = $sessionAttachments[$token] ?? null;
+
+                if (! $attachment || ($attachment['field_key'] ?? null) !== $fieldKey || ! Storage::disk('local')->exists($attachment['file_path'])) {
+                    continue;
+                }
+
+                $targetPath = "commissioning-submissions/{$submission->id}/".basename($attachment['file_path']);
+                Storage::disk('local')->move($attachment['file_path'], $targetPath);
+
+                $submission->attachments()->create([
+                    'field_key' => $fieldKey,
+                    'label' => Str::headline($fieldKey),
+                    'file_path' => $targetPath,
+                    'original_name' => $attachment['original_name'],
+                    'mime_type' => $attachment['mime_type'],
+                    'size' => $attachment['size'],
+                    'type' => 'image',
+                ]);
+
+                unset($sessionAttachments[$token]);
+            }
+        }
+
+        session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
     }
 
     private function activeMasterDataRecords()

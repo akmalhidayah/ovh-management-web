@@ -5,7 +5,7 @@
             'Functional Location' => 'Functional Loc',
             'Section' => 'Section No.',
             'Durasi (menit)' => 'Durasi (Menit)',
-            'Unit Kerja' => 'Unit kerja',
+            'Unit Kerja' => 'Seksi',
         ][$label] ?? $label;
     };
 @endphp

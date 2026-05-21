@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Master Data')
-@section('page_title', 'Master Data')
+@section('title', 'MASTER DATA EQUIPMENT')
+@section('page_title', 'MASTER DATA EQUIPMENT')
 
 @section('content')
     @php
@@ -32,8 +32,7 @@
 
     <div class="page-header">
         <div>
-            <h1>Master Data</h1>
-            <p>Kelola referensi equipment berdasarkan kategori dokumen QC dan Commissioning.</p>
+            <h1>MASTER DATA EQUIPMENT</h1>
         </div>
         <div class="page-actions">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createMasterDataModal">

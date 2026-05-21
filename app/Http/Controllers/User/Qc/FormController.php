@@ -4,12 +4,14 @@ namespace App\Http\Controllers\User\Qc;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterDataRecord;
+use App\Models\OrganizationSection;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormSubmissionAttachment;
 use App\Models\QcFormTemplate;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
 use App\Support\QcTemplates\FixedQcTemplate;
+use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -35,6 +37,7 @@ class FormController extends Controller
     private const ERROR_APPROVAL_LINK = 'QC-APPROVAL-LINK-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
     private const SIGNATURE_MAX_BYTES = 1048576;
+    private const TEMP_ATTACHMENT_SESSION_KEY = 'qc_temporary_attachments';
 
     public function create(Request $request): View
     {
@@ -66,6 +69,7 @@ class FormController extends Controller
             'selectedTemplate' => $selectedTemplate,
             'autoDocNumber' => $this->previewQcDocumentNumber(),
             'activeQcMasterDataRecords' => $this->activeQcMasterDataRecords(),
+            'activeOrganizationSections' => $this->activeOrganizationSections(),
         ]));
     }
 
@@ -78,7 +82,11 @@ class FormController extends Controller
             ->findOrFail($validated['template_id']);
 
         if ($template->template_type && $validated['action'] === 'submit') {
-            $this->validateFixedSubmission($request, $template);
+            try {
+                $this->validateFixedSubmission($request, $template);
+            } catch (ValidationException $exception) {
+                return $this->backWithTemporaryAttachments($request, $exception);
+            }
         }
 
         try {
@@ -134,7 +142,7 @@ class FormController extends Controller
                     $this->storeRows($submission, $template, $request->input('rows', []));
                 }
 
-                $this->storeAttachments($submission, $template, $request->file('attachments', []));
+                $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
@@ -189,6 +197,7 @@ class FormController extends Controller
             'draftSubmission' => $submission,
             'autoDocNumber' => $submission->general_info['doc_number'] ?? $submission->report_no ?? $submission->form_number,
             'activeQcMasterDataRecords' => $this->activeQcMasterDataRecords(),
+            'activeOrganizationSections' => $this->activeOrganizationSections(),
         ]));
     }
 
@@ -205,7 +214,11 @@ class FormController extends Controller
             ->findOrFail($submission->qc_form_template_id);
 
         if ($template->template_type && $validated['action'] === 'submit') {
-            $this->validateFixedSubmission($request, $template);
+            try {
+                $this->validateFixedSubmission($request, $template);
+            } catch (ValidationException $exception) {
+                return $this->backWithTemporaryAttachments($request, $exception);
+            }
         }
 
         try {
@@ -256,7 +269,7 @@ class FormController extends Controller
                     $this->storeRows($submission, $template, $request->input('rows', []));
                 }
 
-                $this->storeAttachments($submission, $template, $request->file('attachments', []));
+                $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
@@ -445,6 +458,9 @@ class FormController extends Controller
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['nullable', 'array'],
             'attachments.*.*' => ['file', 'mimes:'.self::ALLOWED_ATTACHMENT_MIMES, 'mimetypes:image/jpeg,image/png', 'max:10240'],
+            'temporary_attachments' => ['nullable', 'array'],
+            'temporary_attachments.*' => ['nullable', 'array'],
+            'temporary_attachments.*.*' => ['string'],
         ]);
     }
 
@@ -569,6 +585,9 @@ class FormController extends Controller
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_qc'] = $request->user()?->name;
+        $header['department'] = $request->input('header.department');
+        $header['work_unit'] = $request->input('header.work_unit');
+        $header['organization_section_id'] = $request->input('header.organization_section_id');
 
         if ($masterRecord = $this->selectedActiveQcMasterDataRecord($request)) {
             $header['master_data_record_id'] = $masterRecord->id;
@@ -1034,7 +1053,7 @@ class FormController extends Controller
         return Str::slug($label, '_');
     }
 
-    private function storeAttachments(QcFormSubmission $submission, QcFormTemplate $template, array $attachments): void
+    private function storeAttachments(QcFormSubmission $submission, QcFormTemplate $template, array $attachments, array $temporaryAttachments = []): void
     {
         $attachmentLabels = $template->blocks
             ->where('type', 'attachment')
@@ -1067,6 +1086,86 @@ class FormController extends Controller
                 ]);
             }
         }
+
+        $this->storeTemporaryAttachments($submission, $attachmentLabels, $temporaryAttachments);
+    }
+
+    private function backWithTemporaryAttachments(Request $request, ValidationException $exception): RedirectResponse
+    {
+        return back()
+            ->withInput(array_merge($request->except('attachments', 'temporary_attachments'), [
+                'temporary_attachments' => $this->preserveTemporaryAttachments($request),
+            ]))
+            ->withErrors($exception->errors());
+    }
+
+    private function preserveTemporaryAttachments(Request $request): array
+    {
+        $sessionAttachments = session(self::TEMP_ATTACHMENT_SESSION_KEY, []);
+        $groupedTokens = collect($request->input('temporary_attachments', []))
+            ->map(fn ($tokens) => collect((array) $tokens)
+                ->filter(fn ($token) => isset($sessionAttachments[$token]))
+                ->values()
+                ->all())
+            ->filter()
+            ->all();
+
+        foreach ($request->file('attachments', []) as $fieldKey => $files) {
+            foreach ((array) $files as $file) {
+                if (! $file instanceof UploadedFile) {
+                    continue;
+                }
+
+                $token = (string) Str::uuid();
+                $path = $file->store("temporary-attachments/qc/{$request->user()?->id}", 'local');
+
+                $sessionAttachments[$token] = [
+                    'field_key' => $fieldKey,
+                    'file_path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ];
+
+                $groupedTokens[$fieldKey][] = $token;
+            }
+        }
+
+        session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
+
+        return $groupedTokens;
+    }
+
+    private function storeTemporaryAttachments(QcFormSubmission $submission, $attachmentLabels, array $temporaryAttachments): void
+    {
+        $sessionAttachments = session(self::TEMP_ATTACHMENT_SESSION_KEY, []);
+
+        foreach ($temporaryAttachments as $fieldKey => $tokens) {
+            foreach ((array) $tokens as $token) {
+                $attachment = $sessionAttachments[$token] ?? null;
+
+                if (! $attachment || ($attachment['field_key'] ?? null) !== $fieldKey || ! Storage::disk('local')->exists($attachment['file_path'])) {
+                    continue;
+                }
+
+                $targetPath = "qc-submissions/{$submission->id}/".basename($attachment['file_path']);
+                Storage::disk('local')->move($attachment['file_path'], $targetPath);
+
+                $submission->attachments()->create([
+                    'field_key' => $fieldKey,
+                    'label' => $attachmentLabels[$fieldKey] ?? Str::headline($fieldKey),
+                    'file_path' => $targetPath,
+                    'original_name' => $attachment['original_name'],
+                    'mime_type' => $attachment['mime_type'],
+                    'size' => $attachment['size'],
+                    'type' => 'image',
+                ]);
+
+                unset($sessionAttachments[$token]);
+            }
+        }
+
+        session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
     }
 
     private function generateFormNumber(): string
@@ -1136,6 +1235,24 @@ class FormController extends Controller
             ->orderBy('func_location')
             ->orderBy('equipment_no')
             ->get();
+    }
+
+    private function activeOrganizationSections()
+    {
+        $sections = OrganizationSection::query()
+            ->active()
+            ->orderBy('department')
+            ->orderBy('unit_kerja')
+            ->orderBy('section')
+            ->get();
+
+        if ($sections->isNotEmpty()) {
+            return $sections;
+        }
+
+        return collect(OrganizationSections::rows())
+            ->map(fn (array $row) => (object) $row)
+            ->values();
     }
 
     private function selectedActiveQcMasterDataRecord(Request $request): ?MasterDataRecord

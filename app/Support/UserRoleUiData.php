@@ -15,7 +15,7 @@ class UserRoleUiData
                 'role' => 'qc',
                 'role_label' => 'QC',
                 'brand_title' => 'Quality Control',
-                'brand_subtitle' => 'Unit Kerja Overhaull PT. Semen Tonasa',
+                'brand_subtitle' => 'Unit Kerja Overhaul PT. Semen Tonasa',
                 'hero_asset' => 'assets/images/illustrations/hero-qc.svg',
                 'nav' => [
                     ['label' => 'Dashboard', 'route' => 'user.qc.dashboard', 'icon' => 'bi-grid-1x2'],
@@ -29,7 +29,7 @@ class UserRoleUiData
                 'role' => 'commissioning',
                 'role_label' => 'Commissioning',
                 'brand_title' => 'Commissioning',
-                'brand_subtitle' => 'Unit Kerja Overhaull PT. Semen Tonasa',
+                'brand_subtitle' => 'Unit Kerja Overhaul PT. Semen Tonasa',
                 'hero_asset' => 'assets/images/illustrations/hero-commissioning.svg',
                 'nav' => [
                     ['label' => 'Dashboard', 'route' => 'user.commissioning.dashboard', 'icon' => 'bi-grid-1x2'],
@@ -73,7 +73,7 @@ class UserRoleUiData
                 'role' => 'qc',
                 'role_label' => 'QC',
                 'brand_title' => 'Quality Control',
-                'brand_subtitle' => 'Unit Kerja Overhaull PT. Semen Tonasa',
+                'brand_subtitle' => 'Unit Kerja Overhaul PT. Semen Tonasa',
                 'hero_asset' => 'assets/images/illustrations/hero-qc.svg',
                 'nav' => [],
             ],

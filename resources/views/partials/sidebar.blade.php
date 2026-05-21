@@ -78,7 +78,7 @@
             <img src="{{ asset('assets/images/logo/logo-st2.png') }}" alt="Semen Tonasa" class="brand-logo">
         </div>
         <div class="brand-copy">
-            <div class="brand-title">Overhaull PT. Semen Tonasa</div>
+            <div class="brand-title">Overhaul PT. Semen Tonasa</div>
             <div class="brand-subtitle">{{ strtoupper($role) }}</div>
         </div>
     </div>

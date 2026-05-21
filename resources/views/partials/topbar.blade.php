@@ -5,7 +5,7 @@
         </button>
         <div class="topbar-title min-w-0">
             <span class="text-truncate d-block">@yield('page_title', 'Dashboard')</span>
-            <small class="text-muted d-none d-sm-block">Overhaull PT. Semen Tonasa</small>
+            <small class="text-muted d-none d-sm-block">Overhaul PT. Semen Tonasa</small>
         </div>
     </div>
 

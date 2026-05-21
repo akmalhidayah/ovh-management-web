@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('year', 10)->nullable();
 
             $table->string('func_location', 150);
-            $table->string('equipment_no', 80);
+            $table->string('equipment_no', 80)->nullable();
             $table->string('section_no', 100)->nullable();
             $table->string('description', 191);
 
@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('area', 80);
 
             $table->string('status', 20)->default('active');
+            $table->string('inspection_status', 20)->nullable();
             $table->text('notes')->nullable();
 
             $table->foreignId('created_by')
@@ -33,8 +34,13 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(
+                ['document_category', 'func_location'],
+                'master_data_doc_func_location_unique'
+            );
+
+            $table->index(
                 ['document_category', 'equipment_no'],
-                'master_data_doc_equipment_unique'
+                'master_data_doc_equipment_index'
             );
 
             $table->index(
