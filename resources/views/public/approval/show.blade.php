@@ -93,7 +93,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Jabatan Approver</label>
-                                <input type="text" name="approver_position" class="form-control" value="{{ old('approver_position', $step->label) }}" required>
+                                <input type="text" name="approver_position" class="form-control" value="{{ old('approver_position', $suggestedApproverPosition) }}" placeholder="Jabatan Approver" required>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Tanda Tangan</label>

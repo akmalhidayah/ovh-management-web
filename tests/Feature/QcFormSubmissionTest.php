@@ -132,6 +132,43 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(ApprovalStep::STATUS_PENDING, $steps[2]->status);
     }
 
+    public function test_public_approval_uses_editable_fixed_qc_title_as_approver_position(): void
+    {
+        [$user, $castableTemplate] = $this->makeFixedCastableTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedCastablePayload($castableTemplate))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $castableSubmission = QcFormSubmission::firstOrFail();
+        $castableUrl = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $castableSubmission))
+            ->assertOk()
+            ->json('url');
+
+        $this->get(route('public.approval.show', $this->tokenFromUrl($castableUrl)))
+            ->assertOk()
+            ->assertSee('value="Manager Approval"', false)
+            ->assertDontSee('value="*2 disetujui"', false);
+
+        [$bricsUser, $bricsTemplate] = $this->makeFixedBricsTemplate();
+
+        $this->actingAs($bricsUser)
+            ->post(route('user.qc.forms.store'), $this->fixedBricsPayload($bricsTemplate))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $bricsSubmission = QcFormSubmission::latest('id')->firstOrFail();
+        $bricsUrl = $this->actingAs($bricsUser)
+            ->postJson(route('user.qc.submissions.approval-link', $bricsSubmission))
+            ->assertOk()
+            ->json('url');
+
+        $this->get(route('public.approval.show', $this->tokenFromUrl($bricsUrl)))
+            ->assertOk()
+            ->assertSee('value="Supplier PIC"', false)
+            ->assertDontSee('value="Vendor"', false);
+    }
+
     public function test_public_approval_approve_advances_qc_flow_and_invalidates_token(): void
     {
         Storage::fake('public');

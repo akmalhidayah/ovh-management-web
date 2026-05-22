@@ -42,6 +42,7 @@ class PublicApprovalController extends Controller
             'submission' => $step->flow->approvable,
             'document' => $this->documentSummary($step),
             'suggestedApproverName' => $this->suggestedApproverName($step),
+            'suggestedApproverPosition' => $this->suggestedApproverPosition($step),
         ]);
     }
 
@@ -226,6 +227,41 @@ class PublicApprovalController extends Controller
         }
 
         return '';
+    }
+
+    private function suggestedApproverPosition(ApprovalStep $step): string
+    {
+        $submission = $step->flow->approvable;
+
+        if ($submission instanceof QcFormSubmission) {
+            $templateSnapshot = $submission->template_snapshot ?? [];
+            $templateType = FixedQcTemplate::normalizeType($templateSnapshot['template_type'] ?? $submission->template?->template_type);
+            $column = array_values(FixedQcTemplate::approvalColumns($templateType))[$step->step_order - 1] ?? null;
+
+            if (! $column) {
+                return '';
+            }
+
+            $key = $column['key'];
+
+            if (FixedQcTemplate::approvalGroupIsEditable($templateType, $key)) {
+                return FixedQcTemplate::approvalEditableValue(
+                    $templateType,
+                    $key,
+                    data_get($submission->approval_data ?? [], $key.'.group', '')
+                );
+            }
+
+            if (FixedQcTemplate::approvalLabelIsEditable($templateType, $key)) {
+                return FixedQcTemplate::approvalEditableValue(
+                    $templateType,
+                    $key,
+                    data_get($submission->approval_data ?? [], $key.'.label', '')
+                );
+            }
+        }
+
+        return $step->label;
     }
 
     private function invalidApprovalLinkResponse(string $status): Response
