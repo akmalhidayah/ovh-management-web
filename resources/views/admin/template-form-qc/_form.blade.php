@@ -338,21 +338,14 @@
                         $approvalDefault = $typeApprovalDefaults[$column['key']] ?? [];
                         $approvalName = $approvalDefault['name'] ?? '';
                         $titleEditable = FixedQcTemplate::approvalTitleIsEditable($approvalType, $column['key']);
-                        $approvalGroup = $titleEditable
-                            ? old("approval_defaults.{$column['key']}.group", $approvalDefault['group'] ?? $column['group'])
-                            : ($approvalDefault['group'] ?? $column['group']);
+                        $approvalGroup = $approvalDefault['group'] ?? $column['group'];
                         $approvalLabel = $titleEditable
                             ? old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label'])
                             : ($approvalDefault['label'] ?? $column['label']);
                     @endphp
                     <div class="qc-approval-box">
                         @if ($titleEditable)
-                            <input type="text"
-                                   name="approval_defaults[{{ $column['key'] }}][group]"
-                                   class="form-control form-control-sm text-center"
-                                   value="{{ $approvalGroup }}"
-                                   placeholder="Header approval"
-                                   @disabled($selectedType !== $approvalType)>
+                            <small>{{ $approvalGroup }}</small>
                             <input type="text"
                                    name="approval_defaults[{{ $column['key'] }}][label]"
                                    class="form-control form-control-sm text-center mt-2 fw-semibold"

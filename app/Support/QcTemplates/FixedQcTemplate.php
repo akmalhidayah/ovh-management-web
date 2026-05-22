@@ -230,7 +230,7 @@ class FixedQcTemplate
                 return [
                     $column['key'] => [
                         'name' => trim((string) Arr::get($data, 'name', '')),
-                        'group' => $titleEditable ? (trim((string) Arr::get($data, 'group', '')) ?: $column['group']) : $column['group'],
+                        'group' => $column['group'],
                         'label' => $titleEditable ? (trim((string) Arr::get($data, 'label', '')) ?: $column['label']) : $column['label'],
                     ],
                 ];
@@ -293,11 +293,7 @@ class FixedQcTemplate
     {
         $type = self::normalizeType($type);
 
-        if ($type === self::TYPE_BRICS) {
-            return $key === 'brics_approve_by';
-        }
-
-        return $type === self::TYPE_CASTABLE;
+        return in_array($type, [self::TYPE_CASTABLE, self::TYPE_BRICS], true);
     }
 
     public static function castableCustomerRows(): array
