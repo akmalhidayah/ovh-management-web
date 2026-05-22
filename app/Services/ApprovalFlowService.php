@@ -290,12 +290,15 @@ class ApprovalFlowService
     {
         $approvalData = $submission->approval_data ?? [];
         $legacy = $this->legacyApprovalForSubmitter($step, $approvalData);
+        $legacySignature = $legacy['signature'] ?? null;
+        $signaturePath = $this->publicStoragePathFromUrl($legacySignature);
 
         $step->update([
             'status' => ApprovalStep::STATUS_APPROVED,
             'approver_name' => $legacy['name'] ?? $submission->user?->name ?? 'Submitter',
             'approver_position' => $legacy['role'] ?? $step->label,
-            'signature_data' => $legacy['signature'] ?? null,
+            'signature_path' => $signaturePath,
+            'signature_data' => $signaturePath ? null : $legacySignature,
             'acted_at' => isset($legacy['signed_at']) ? Carbon::parse($legacy['signed_at']) : now(),
         ]);
     }
@@ -414,6 +417,25 @@ class ApprovalFlowService
         }
 
         return [];
+    }
+
+    private function publicStoragePathFromUrl(mixed $source): ?string
+    {
+        $source = trim((string) $source);
+
+        if ($source === '' || str_starts_with($source, 'data:image/')) {
+            return null;
+        }
+
+        $path = parse_url($source, PHP_URL_PATH) ?: $source;
+
+        if (! str_starts_with($path, '/storage/')) {
+            return null;
+        }
+
+        $relative = urldecode(substr($path, strlen('/storage/')));
+
+        return Storage::disk('public')->exists($relative) ? $relative : null;
     }
 
     private function storeSignature(string $source, ApprovalStep $step): string

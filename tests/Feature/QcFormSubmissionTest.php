@@ -86,7 +86,9 @@ class QcFormSubmissionTest extends TestCase
         $this->assertTrue($steps[0]->is_submitter_signature);
         $this->assertFalse($steps[0]->requires_magic_link);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
-        $this->assertNotNull($steps[0]->signature_data);
+        $this->assertNotNull($steps[0]->signature_path);
+        $this->assertNull($steps[0]->signature_data);
+        Storage::disk('public')->assertExists($steps[0]->signature_path);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
         $this->assertSame(1, $steps[1]->links->whereNull('used_at')->whereNull('revoked_at')->count());
         $this->assertSame(0, $steps[2]->links->count());

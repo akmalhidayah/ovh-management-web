@@ -20,11 +20,9 @@
                     return null;
                 }
 
-                $mime = $attachment->mime_type ?: 'image/jpeg';
-
                 return [
                     'name' => $attachment->original_name,
-                    'source' => 'data:'.$mime.';base64,'.base64_encode(file_get_contents($path)),
+                    'source' => $path,
                 ];
             })
             ->filter()
