@@ -243,7 +243,7 @@
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
         <p class="text-muted">Baru bisa ter approve jika form sudah terisi semua & Final Check sudah tercentang:</p>
         @php
-            $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $approvalData);
+            $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $approvalData, true);
         @endphp
         <div class="qc-user-approval-grid" style="--qc-approval-columns: {{ count($approvalColumns) }}">
             @foreach ($approvalColumns as $column)

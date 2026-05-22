@@ -117,14 +117,7 @@
                 <tr>
                     <td colspan="2" class="fw-semibold">{{ $row['label'] }}</td>
                     <td colspan="3">
-                        @if ($row['key'] === 'qc_sign_date')
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Tanda Tangan</button>
-                                <input type="date" class="form-control form-control-sm" disabled>
-                            </div>
-                        @else
-                            <input type="{{ $row['key'] === 'quantity' ? 'number' : 'text' }}" class="form-control form-control-sm" disabled>
-                        @endif
+                        <input type="{{ $row['key'] === 'quantity' ? 'number' : ($row['key'] === 'qc_date' ? 'date' : 'text') }}" class="form-control form-control-sm" disabled>
                     </td>
                 </tr>
             @endforeach

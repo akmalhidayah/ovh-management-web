@@ -10,10 +10,6 @@
     $monitoringColumns = FixedQcTemplate::castableMonitoringColumns();
     $castableSignerName = $signerName ?? auth()->user()?->name ?? 'User QC';
     $castableToday = $today ?? now()->toDateString();
-    $sampleSignature = is_array($castableSample['qc_sign_date'] ?? null) ? $castableSample['qc_sign_date'] : [];
-    $sampleSignatureData = $sampleSignature['signature'] ?? '';
-    $sampleSignatureDate = $sampleSignature['date'] ?? $castableToday;
-    $sampleSignatureName = $sampleSignature['name'] ?? $castableSignerName;
 @endphp
 
 <section class="inspector-panel qc-form-card">
@@ -196,45 +192,14 @@
     <div class="qc-form-section-title"><h3>Sample Data</h3></div>
     <div class="qc-user-field-grid">
         @foreach (FixedQcTemplate::castableSampleRows() as $row)
-            @if ($row['key'] === 'qc_sign_date')
-                <div class="qc-user-field wide">
-                    <span>{{ $row['label'] }}</span>
-                    <div class="qc-user-approval-box qc-castable-sample-sign" data-signature-card="castable-sample-qc-sign-date">
-                        <input type="hidden" name="body[castable_sample][qc_sign_date][name]" value="{{ $sampleSignatureName }}">
-                        <input type="date" class="form-control form-control-sm mb-2" name="body[castable_sample][qc_sign_date][date]" value="{{ $sampleSignatureDate }}">
-                        <input type="hidden" name="body[castable_sample][qc_sign_date][signature]" value="{{ $sampleSignatureData }}" data-signature-input>
-                        <input type="file" name="body_signature_files[castable_sample_qc_sign_date]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
-                        <input type="hidden" name="body[castable_sample][qc_sign_date][signed_at]" value="{{ $sampleSignature['signed_at'] ?? '' }}" data-signature-time-input>
-                        <div class="qc-signature-empty {{ $sampleSignatureData ? 'd-none' : '' }}" data-signature-empty>
-                            <i class="bi bi-pen"></i>
-                            <span>Belum ditandatangani</span>
-                        </div>
-                        <div class="qc-signature-result {{ $sampleSignatureData ? '' : 'd-none' }}" data-signature-result>
-                            <img alt="Preview tanda tangan" data-signature-preview @if ($sampleSignatureData) src="{{ $sampleSignatureData }}" @endif>
-                            <div>
-                                <strong data-signature-signer>{{ $sampleSignatureName }}</strong>
-                                <span>QC SIGN / DATE</span>
-                                <small data-signature-time></small>
-                            </div>
-                        </div>
-                        <div class="qc-signature-actions mt-2">
-                            <button type="button" class="btn btn-outline-primary" data-signature-open data-signature-label="QC SIGN / DATE">
-                                <i class="bi bi-pen me-1"></i><span data-signature-button-label>{{ $sampleSignatureData ? 'Ubah' : 'Tanda Tangan' }}</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-danger {{ $sampleSignatureData ? '' : 'd-none' }}" data-signature-remove>Hapus</button>
-                        </div>
-                    </div>
-                </div>
-            @else
-                <label class="qc-user-field">
-                    <span>{{ $row['label'] }}</span>
-                    <input type="{{ $row['key'] === 'quantity' ? 'number' : 'text' }}"
-                           @if ($row['key'] === 'quantity') step="any" inputmode="decimal" @endif
-                           name="body[castable_sample][{{ $row['key'] }}]"
-                           value="{{ $castableSample[$row['key']] ?? '' }}"
-                           class="form-control">
-                </label>
-            @endif
+            <label class="qc-user-field">
+                <span>{{ $row['label'] }}</span>
+                <input type="{{ $row['key'] === 'quantity' ? 'number' : ($row['key'] === 'qc_date' ? 'date' : 'text') }}"
+                       @if ($row['key'] === 'quantity') step="any" inputmode="decimal" @endif
+                       name="body[castable_sample][{{ $row['key'] }}]"
+                       value="{{ $castableSample[$row['key']] ?? '' }}"
+                       class="form-control">
+            </label>
         @endforeach
     </div>
 </section>

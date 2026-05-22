@@ -4,7 +4,6 @@
     $customer = $bodyData['castable_customer'] ?? [];
     $checks = $bodyData['castable_checks'] ?? [];
     $sample = $bodyData['castable_sample'] ?? [];
-    $sampleSignature = is_array($sample['qc_sign_date'] ?? null) ? $sample['qc_sign_date'] : [];
     $dimensionValue = static function (array $saved): string {
         $dimensions = $saved['dimensions'] ?? [];
         $values = [
@@ -75,17 +74,7 @@
     @foreach (FixedQcTemplate::castableSampleRows() as $row)
         <tr>
             <td style="width: 50%;">{{ $row['label'] }}</td>
-            <td>
-                @if ($row['key'] === 'qc_sign_date')
-                    :
-                    @if (! empty($sampleSignature['signature'] ?? null))
-                        <img src="{{ $signature($sampleSignature['signature']) }}" class="sig-img" alt="Tanda tangan QC">
-                    @endif
-                    {{ $sampleSignature['date'] ?? '' }}
-                @else
-                    : {{ $sample[$row['key']] ?? '' }}
-                @endif
-            </td>
+            <td>: {{ $sample[$row['key']] ?? '' }}</td>
         </tr>
     @endforeach
 </table>

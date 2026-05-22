@@ -612,6 +612,7 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Supplier PIC', $submission->approval_data['brics_vendor']['label']);
         $this->assertSame('Customer Supervisor', $submission->approval_data['brics_customer_supervisor']['group']);
         $this->assertSame('Support PIC', $submission->approval_data['brics_customer_supervisor']['label']);
+        $this->assertSame('', $submission->approval_data['brics_approve_by']['label']);
 
         $submission->load(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
         $html = view('pdf.qc-submission', [
@@ -622,6 +623,7 @@ class QcFormSubmissionTest extends TestCase
         $this->assertStringContainsString('VENDOR', $html);
         $this->assertStringNotContainsString('SUPPLIER PARTNER', $html);
         $this->assertStringContainsString('SUPPLIER PIC', $html);
+        $this->assertStringNotContainsString('<td>APPROVE BY</td>', $html);
     }
 
     public function test_user_can_submit_fixed_castable_qc_with_dynamic_monitoring_rows(): void
@@ -634,6 +636,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Monitoring Installation Castable')
             ->assertSee('Tambah Row Monitoring')
+            ->assertDontSee('QC SIGN / DATE')
             ->assertSee('placeholder="Contoh: Nama/Jabatan"', false);
 
         $this->actingAs($user)
@@ -649,8 +652,8 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('120 x 80 x 40', $submission->body_data['castable_checks']['sample_dimention']['value']);
         $this->assertSame('120', $submission->body_data['castable_checks']['sample_dimention']['dimensions']['length']);
         $this->assertSame('6.5', $submission->body_data['castable_checks']['water_add']['value']);
-        $this->assertSame('2026-05-15', $submission->body_data['castable_sample']['qc_sign_date']['date']);
-        $this->assertStringStartsWith('data:image/png;base64,', $submission->body_data['castable_sample']['qc_sign_date']['signature']);
+        $this->assertSame('2026-05-15', $submission->body_data['castable_sample']['qc_date']);
+        $this->assertArrayNotHasKey('qc_sign_date', $submission->body_data['castable_sample']);
         $this->assertCount(2, $submission->body_data['castable_monitoring_rows']);
         $this->assertSame('BATCH-02', $submission->body_data['castable_monitoring_rows'][1]['batch_number']);
         $this->assertSame('Supervisor A', $submission->body_data['castable_monitoring_signatures']['prepared_by']['name']);
@@ -668,6 +671,9 @@ class QcFormSubmissionTest extends TestCase
 
         $this->assertStringContainsString('Supervisor Approval', $html);
         $this->assertStringContainsString('*1 diisi', $html);
+        $this->assertStringContainsString('QC DATE', $html);
+        $this->assertStringContainsString('2026-05-15', $html);
+        $this->assertStringNotContainsString('QC SIGN / DATE', $html);
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.pdf', $submission))
@@ -1118,12 +1124,7 @@ class QcFormSubmissionTest extends TestCase
                     'batch_number' => 'BN-01',
                     'quantity' => '12',
                     'qc_name' => 'User QC',
-                    'qc_sign_date' => [
-                        'name' => 'User QC',
-                        'date' => '2026-05-15',
-                        'signature' => 'data:image/png;base64,'.base64_encode('sample-signature'),
-                        'signed_at' => now()->toISOString(),
-                    ],
+                    'qc_date' => '2026-05-15',
                 ],
                 'castable_monitoring_type' => 'Castable LC-16',
                 'castable_monitoring_note' => 'Catatan khusus monitoring',

@@ -514,10 +514,10 @@ class FormController extends Controller
                 $key = $column['key'];
                 $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
                 $group = FixedQcTemplate::approvalGroupIsEditable($type, $key)
-                    ? (trim((string) ($approval['group'] ?? '')) ?: $column['group'])
+                    ? FixedQcTemplate::approvalEditableValue($type, $key, $approval['group'] ?? '')
                     : $column['group'];
                 $label = FixedQcTemplate::approvalLabelIsEditable($type, $key)
-                    ? (trim((string) ($approval['label'] ?? '')) ?: $column['label'])
+                    ? FixedQcTemplate::approvalEditableValue($type, $key, $approval['label'] ?? '')
                     : $column['label'];
 
                 return [$key => [
@@ -535,29 +535,6 @@ class FormController extends Controller
 
     private function bodyDataWithSignatureFiles(Request $request, array $bodyData, QcFormSubmission $submission): array
     {
-        $file = $request->file('body_signature_files.castable_sample_qc_sign_date');
-
-        if (! isset($bodyData['castable_sample']['qc_sign_date']) || ! is_array($bodyData['castable_sample']['qc_sign_date'])) {
-            if (! $file instanceof UploadedFile) {
-                return $bodyData;
-            }
-
-            $bodyData['castable_sample']['qc_sign_date'] = [];
-        }
-
-        if ($file instanceof UploadedFile) {
-            $bodyData['castable_sample']['qc_sign_date']['signature'] = $this->storeUploadedSignature($file, $submission);
-
-            return $bodyData;
-        }
-
-        $signature = trim((string) ($bodyData['castable_sample']['qc_sign_date']['signature'] ?? ''));
-        $storedSignature = $this->storeSignatureDataUrlIfNeeded($signature, $submission);
-
-        if ($storedSignature) {
-            $bodyData['castable_sample']['qc_sign_date']['signature'] = $storedSignature;
-        }
-
         return $bodyData;
     }
 
@@ -1001,18 +978,6 @@ class FormController extends Controller
         $sample = [];
 
         foreach (FixedQcTemplate::castableSampleRows() as $row) {
-            if ($row['key'] === 'qc_sign_date') {
-                $signature = is_array($values['qc_sign_date'] ?? null) ? $values['qc_sign_date'] : [];
-                $sample['qc_sign_date'] = [
-                    'name' => trim((string) ($signature['name'] ?? '')),
-                    'date' => trim((string) ($signature['date'] ?? '')),
-                    'signature' => trim((string) ($signature['signature'] ?? '')),
-                    'signed_at' => trim((string) ($signature['signed_at'] ?? '')),
-                ];
-
-                continue;
-            }
-
             $sample[$row['key']] = is_scalar($values[$row['key']] ?? null)
                 ? trim((string) $values[$row['key']])
                 : '';

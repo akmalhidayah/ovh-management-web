@@ -239,26 +239,38 @@ class FixedQcTemplate
             ->all();
     }
 
-    public static function approvalColumnsWithDefaults(?string $type = null, array $defaults = [], array $approvalData = []): array
+    public static function approvalColumnsWithDefaults(?string $type = null, array $defaults = [], array $approvalData = [], bool $preserveEditableBlank = false): array
     {
         $type = self::normalizeType($type);
 
         return collect(self::approvalColumns($type))
-            ->map(function (array $column) use ($type, $defaults, $approvalData) {
+            ->map(function (array $column) use ($type, $defaults, $approvalData, $preserveEditableBlank) {
                 $key = $column['key'];
                 $default = is_array($defaults[$key] ?? null) ? $defaults[$key] : [];
                 $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
+                $hasApproval = array_key_exists($key, $approvalData);
+                $groupEditable = self::approvalGroupIsEditable($type, $key);
+                $labelEditable = self::approvalLabelIsEditable($type, $key);
 
-                $column['group'] = self::approvalDisplayText(
-                    self::approvalGroupIsEditable($type, $key) ? ($approval['group'] ?? null) : null,
-                    $default['group'] ?? null,
-                    $column['group']
-                );
-                $column['label'] = self::approvalDisplayText(
-                    self::approvalLabelIsEditable($type, $key) ? ($approval['label'] ?? null) : null,
-                    $default['label'] ?? null,
-                    $column['label']
-                );
+                if ($preserveEditableBlank && $groupEditable && $hasApproval) {
+                    $column['group'] = self::approvalEditableValue($type, $key, $approval['group'] ?? '');
+                } else {
+                    $column['group'] = self::approvalDisplayText(
+                        $groupEditable ? ($approval['group'] ?? null) : null,
+                        $default['group'] ?? null,
+                        $column['group']
+                    );
+                }
+
+                if ($preserveEditableBlank && $labelEditable && $hasApproval) {
+                    $column['label'] = self::approvalEditableValue($type, $key, $approval['label'] ?? '');
+                } else {
+                    $column['label'] = self::approvalDisplayText(
+                        $labelEditable ? ($approval['label'] ?? null) : null,
+                        $default['label'] ?? null,
+                        $column['label']
+                    );
+                }
 
                 return $column;
             })
@@ -396,7 +408,7 @@ class FixedQcTemplate
             ['key' => 'batch_number', 'label' => 'Batch Number'],
             ['key' => 'quantity', 'label' => 'Quantity'],
             ['key' => 'qc_name', 'label' => 'QC NAME'],
-            ['key' => 'qc_sign_date', 'label' => 'QC SIGN / DATE'],
+            ['key' => 'qc_date', 'label' => 'QC DATE'],
         ];
     }
 

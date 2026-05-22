@@ -60,7 +60,7 @@
             ];
         }
     }
-    $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $approvalData);
+    $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $approvalData, true);
     $approvalByRole = collect($approvalColumns)->mapWithKeys(function ($column) use ($approvalData, $approvalDefaults) {
         $approval = $approvalData[$column['key']] ?? [];
 
