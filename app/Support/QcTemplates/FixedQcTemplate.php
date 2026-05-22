@@ -244,15 +244,18 @@ class FixedQcTemplate
         $type = self::normalizeType($type);
 
         return collect(self::approvalColumns($type))
-            ->map(function (array $column) use ($defaults) {
+            ->map(function (array $column) use ($type, $defaults, $approvalData) {
                 $key = $column['key'];
                 $default = is_array($defaults[$key] ?? null) ? $defaults[$key] : [];
+                $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
 
                 $column['group'] = self::approvalDisplayText(
+                    self::approvalGroupIsEditable($type, $key) ? ($approval['group'] ?? null) : null,
                     $default['group'] ?? null,
                     $column['group']
                 );
                 $column['label'] = self::approvalDisplayText(
+                    self::approvalLabelIsEditable($type, $key) ? ($approval['label'] ?? null) : null,
                     $default['label'] ?? null,
                     $column['label']
                 );

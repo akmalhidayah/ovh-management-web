@@ -446,13 +446,25 @@
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
                     $approvalGroup = $column['group'];
                     $approvalLabel = $column['label'];
-                    $castableApprovalTitle = $type === FixedQcTemplate::TYPE_CASTABLE;
+                    $groupEditable = FixedQcTemplate::approvalGroupIsEditable($type, $column['key']);
+                    $labelEditable = FixedQcTemplate::approvalLabelIsEditable($type, $column['key']);
                 @endphp
                 <div class="qc-user-approval-box {{ $isInspector ? '' : 'is-locked' }}" data-signature-card="{{ $column['key'] }}" @if ($isInspector) data-qc-inspector-approval @endif>
                     <div class="qc-approval-label-row">
-                        @if ($castableApprovalTitle)
+                        @if ($groupEditable)
                             <strong>{{ $approvalLabel }}</strong>
+                            <input type="text"
+                                   class="form-control form-control-sm mt-2"
+                                   name="approval[{{ $column['key'] }}][group]"
+                                   value="{{ $approvalGroup }}"
+                                   placeholder="Header approval">
+                        @elseif ($labelEditable)
                             <small class="text-muted d-block">{{ $approvalGroup }}</small>
+                            <input type="text"
+                                   class="form-control form-control-sm mt-2 fw-semibold"
+                                   name="approval[{{ $column['key'] }}][label]"
+                                   value="{{ $approvalLabel }}"
+                                   placeholder="Judul approval">
                         @else
                             <small class="text-muted d-block">{{ $approvalGroup }}</small>
                             <strong>{{ $approvalLabel }}</strong>

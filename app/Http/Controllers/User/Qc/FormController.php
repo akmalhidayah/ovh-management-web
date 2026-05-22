@@ -510,17 +510,23 @@ class FormController extends Controller
         $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
 
         return collect(FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults))
-            ->mapWithKeys(function (array $column) use ($approvalData, $approvalDefaults) {
+            ->mapWithKeys(function (array $column) use ($type, $approvalData, $approvalDefaults) {
                 $key = $column['key'];
                 $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
+                $group = FixedQcTemplate::approvalGroupIsEditable($type, $key)
+                    ? (trim((string) ($approval['group'] ?? '')) ?: $column['group'])
+                    : $column['group'];
+                $label = FixedQcTemplate::approvalLabelIsEditable($type, $key)
+                    ? (trim((string) ($approval['label'] ?? '')) ?: $column['label'])
+                    : $column['label'];
 
                 return [$key => [
                     'name' => trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? ''))),
                     'date' => trim((string) ($approval['date'] ?? '')),
                     'signature' => trim((string) ($approval['signature'] ?? '')),
                     'role' => $column['role'] ?? $column['label'],
-                    'group' => $column['group'],
-                    'label' => $column['label'],
+                    'group' => $group,
+                    'label' => $label,
                     'signed_at' => trim((string) ($approval['signed_at'] ?? '')),
                 ]];
             })
