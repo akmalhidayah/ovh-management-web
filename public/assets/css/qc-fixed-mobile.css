@@ -1,4 +1,4 @@
-/* Mobile card layout for fixed QC BRICS and Castable forms. */
+/* Mobile card layout for fixed QC forms. */
 @media (max-width: 767.98px) {
     .qc-mobile-card-wrap {
         overflow: visible;
@@ -89,6 +89,14 @@
         border-radius: 8px;
     }
 
+    .qc-mobile-card-wrap .qc-user-table-note {
+        min-height: 86px;
+    }
+
+    .qc-method-check-grid {
+        grid-template-columns: 1fr;
+    }
+
     .qc-castable-dimension-input {
         grid-template-columns: minmax(0, 1fr);
         gap: 0.42rem;
@@ -114,11 +122,20 @@
     .qc-brics-check-table td[data-label="OK"] input,
     .qc-brics-check-table td[data-label="NO"] input,
     .qc-brics-weather-table td[data-label="Rainy"] input,
-    .qc-brics-weather-table td[data-label="Clear"] input {
+    .qc-brics-weather-table td[data-label="Clear"] input,
+    .qc-welding-method-table input,
+    .qc-welding-check-step-table input,
+    .qc-welding-result-table input[type="radio"] {
         width: 20px;
         height: 20px;
         justify-self: start;
         accent-color: #8f2231;
+    }
+
+    .qc-welding-result-table td[data-label="Baik"],
+    .qc-welding-result-table td[data-label="Perlu Perbaikan"],
+    .qc-welding-result-table td[data-label="Tidak Layak"] {
+        grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
     }
 
     .qc-mobile-card-wrap .qc-mobile-section-row {
