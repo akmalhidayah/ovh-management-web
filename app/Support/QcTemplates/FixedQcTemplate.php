@@ -210,7 +210,11 @@ class FixedQcTemplate
     public static function defaultApprovalDefaults(?string $type = null): array
     {
         return collect(self::approvalColumns($type))
-            ->mapWithKeys(fn ($column) => [$column['key'] => ['name' => '']])
+            ->mapWithKeys(fn ($column) => [$column['key'] => [
+                'name' => '',
+                'group' => $column['group'],
+                'label' => $column['label'],
+            ]])
             ->all();
     }
 
@@ -223,10 +227,49 @@ class FixedQcTemplate
                 return [
                     $column['key'] => [
                         'name' => trim((string) Arr::get($data, 'name', '')),
+                        'group' => trim((string) Arr::get($data, 'group', '')) ?: $column['group'],
+                        'label' => trim((string) Arr::get($data, 'label', '')) ?: $column['label'],
                     ],
                 ];
             })
             ->all();
+    }
+
+    public static function approvalColumnsWithDefaults(?string $type = null, array $defaults = [], array $approvalData = []): array
+    {
+        return collect(self::approvalColumns($type))
+            ->map(function (array $column) use ($defaults, $approvalData) {
+                $key = $column['key'];
+                $default = is_array($defaults[$key] ?? null) ? $defaults[$key] : [];
+                $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
+
+                $column['group'] = self::approvalDisplayText(
+                    $approval['group'] ?? null,
+                    $default['group'] ?? null,
+                    $column['group']
+                );
+                $column['label'] = self::approvalDisplayText(
+                    $approval['label'] ?? null,
+                    $default['label'] ?? null,
+                    $column['label']
+                );
+
+                return $column;
+            })
+            ->all();
+    }
+
+    private static function approvalDisplayText(mixed ...$values): string
+    {
+        foreach ($values as $value) {
+            $text = trim((string) $value);
+
+            if ($text !== '') {
+                return $text;
+            }
+        }
+
+        return '';
     }
 
     public static function normalizeType(?string $type): string

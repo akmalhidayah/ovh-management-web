@@ -317,7 +317,7 @@
             <strong>Final Check</strong>
         </label>
         <div class="qc-approval-grid">
-            @foreach (FixedQcTemplate::approvalColumns($type) as $column)
+            @foreach (FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults) as $column)
                 @php
                     $approvalName = $approvalDefaults[$column['key']]['name'] ?? '';
                 @endphp

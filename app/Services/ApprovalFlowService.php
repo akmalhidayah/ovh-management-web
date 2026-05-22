@@ -69,16 +69,20 @@ class ApprovalFlowService
                 ->get();
 
             if ($configured->isNotEmpty()) {
+                $approvalColumns = $type === 'qc'
+                    ? $this->qcApprovalColumnsForSubmission($submission)
+                    : [];
+
                 return $configured
                     ->values()
-                    ->map(function (TemplateApprovalStep $step, int $index) use ($submission, $type) {
+                    ->map(function (TemplateApprovalStep $step, int $index) use ($submission, $type, $approvalColumns) {
                         $isSubmitter = $type === 'qc'
                             ? ($step->is_submitter_signature || $this->isQcSubmitterStep($submission, $step->label, $index))
                             : $step->is_submitter_signature;
 
                         return [
                             'step_order' => (int) $step->step_order,
-                            'label' => $step->label,
+                            'label' => $approvalColumns[$index]['label'] ?? $step->label,
                             'is_submitter_signature' => $isSubmitter,
                             'requires_magic_link' => $isSubmitter ? false : $step->requires_magic_link,
                             'is_required' => $step->is_required,
@@ -345,12 +349,11 @@ class ApprovalFlowService
 
     private function defaultQcSteps(Model $submission): array
     {
-        $templateType = FixedQcTemplate::normalizeType($submission->template?->template_type);
-        $columns = FixedQcTemplate::approvalColumns($templateType);
+        $columns = $this->qcApprovalColumnsForSubmission($submission);
 
         return collect($columns)
             ->values()
-            ->map(function (array $column, int $index) use ($templateType) {
+            ->map(function (array $column, int $index) {
                 $isSubmitter = $index === 0;
 
                 return [
@@ -362,6 +365,24 @@ class ApprovalFlowService
                 ];
             })
             ->all();
+    }
+
+    private function qcApprovalColumnsForSubmission(Model $submission): array
+    {
+        if (! $submission instanceof QcFormSubmission) {
+            return FixedQcTemplate::approvalColumns();
+        }
+
+        $templateSnapshot = $submission->template_snapshot ?? [];
+        $templateType = FixedQcTemplate::normalizeType($templateSnapshot['template_type'] ?? $submission->template?->template_type);
+        $templateBodySchema = $templateSnapshot['body_schema'] ?? $submission->template?->body_schema ?? [];
+        $schema = FixedQcTemplate::normalizeSchema($templateType, $templateBodySchema);
+
+        return FixedQcTemplate::approvalColumnsWithDefaults(
+            $templateType,
+            $schema['approval_defaults'] ?? [],
+            $submission->approval_data ?? []
+        );
     }
 
     private function defaultCommissioningSteps(): array

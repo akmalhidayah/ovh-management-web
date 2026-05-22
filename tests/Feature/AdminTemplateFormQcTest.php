@@ -194,6 +194,90 @@ class AdminTemplateFormQcTest extends TestCase
         $this->assertSame('Visual welding', $template->body_schema['result_rows'][0]['deskripsi']);
     }
 
+    public function test_admin_can_customize_brics_approval_titles(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'QCR-BRICS-001',
+            'name' => 'Template QC Brics',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_BRICS,
+            'approval_defaults' => [
+                'brics_vendor' => [
+                    'group' => 'Vendor Partner',
+                    'label' => 'Supplier',
+                    'name' => 'Vendor Default',
+                ],
+                'brics_customer_supervisor' => [
+                    'group' => 'Customer Support',
+                    'label' => 'Support PIC',
+                    'name' => 'Customer Default',
+                ],
+                'brics_name_unit' => [
+                    'group' => 'Name Unit',
+                    'label' => 'Unit Area',
+                    'name' => 'Unit Default',
+                ],
+            ],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-BRICS-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame('Vendor Partner', $template->body_schema['approval_defaults']['brics_vendor']['group']);
+        $this->assertSame('Supplier', $template->body_schema['approval_defaults']['brics_vendor']['label']);
+        $this->assertSame('Support PIC', $template->body_schema['approval_defaults']['brics_customer_supervisor']['label']);
+        $this->assertSame('Supplier', $template->approvalSteps()->where('step_order', 2)->first()?->label);
+
+        $this->actingAs($admin)
+            ->get(route('admin.template-form-qc.edit', $template))
+            ->assertOk()
+            ->assertSee('placeholder="Judul approval"', false)
+            ->assertSee('Supplier');
+    }
+
+    public function test_admin_can_customize_castable_approval_titles(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'QCR-CASTABLE-001',
+            'name' => 'Template QC Castable',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_CASTABLE,
+            'approval_defaults' => [
+                'castable_filled_by' => [
+                    'group' => 'Supervisor Approval',
+                    'label' => '*1 diperiksa',
+                    'name' => 'Supervisor Default',
+                ],
+                'castable_approved_1' => [
+                    'group' => 'Manager Approval',
+                    'label' => '*2 disetujui',
+                    'name' => 'Manager Default',
+                ],
+            ],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-CASTABLE-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame('Supervisor Approval', $template->body_schema['approval_defaults']['castable_filled_by']['group']);
+        $this->assertSame('*1 diperiksa', $template->body_schema['approval_defaults']['castable_filled_by']['label']);
+        $this->assertSame('*1 diperiksa', $template->approvalSteps()->where('step_order', 1)->first()?->label);
+
+        $this->actingAs($admin)
+            ->get(route('admin.template-form-qc.edit', $template))
+            ->assertOk()
+            ->assertSee('placeholder="Judul approval"', false)
+            ->assertSee('Supervisor Approval');
+    }
+
     public function test_admin_can_publish_template_form_qc(): void
     {
         $admin = User::factory()->create([

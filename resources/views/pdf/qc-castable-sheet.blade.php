@@ -206,7 +206,10 @@
                 <table class="castable-approval">
                     <tr>
                         @foreach ($approvalColumns as $column)
-                            <th>{{ $column['label'] }}</th>
+                            <th>
+                                <span style="font-size: 7.5px; font-weight: 400;">{{ $column['group'] }}</span><br>
+                                {{ $column['label'] }}
+                            </th>
                         @endforeach
                     </tr>
                     <tr class="castable-approval-sign">

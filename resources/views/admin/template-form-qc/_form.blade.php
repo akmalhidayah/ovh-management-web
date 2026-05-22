@@ -274,7 +274,7 @@
         <div class="card-heading">
             <div>
                 <h2>Body Form Fixed</h2>
-                <div class="text-muted small">Kolom dan isi tabel mengikuti format QC yang diberikan. Admin hanya mengatur nama approval.</div>
+                <div class="text-muted small">Kolom dan isi tabel mengikuti format QC yang diberikan. Admin mengatur nama dan judul approval.</div>
             </div>
             <span class="badge text-bg-secondary">Terkunci</span>
         </div>
@@ -328,18 +328,36 @@
                     ? $schema
                     : FixedQcTemplate::normalizeSchema($approvalType, $template->template_type === $approvalType ? ($template->body_schema ?? []) : []);
                 $typeApprovalDefaults = $typeSchema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($approvalType);
-                $approvalColumns = FixedQcTemplate::approvalColumns($approvalType);
+                $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($approvalType, $typeApprovalDefaults);
             @endphp
             <div class="qc-approval-grid {{ $selectedType === $approvalType ? '' : 'd-none' }}"
                  style="--qc-approval-columns: {{ count($approvalColumns) }}"
                  data-approval-editor="{{ $approvalType }}">
                 @foreach ($approvalColumns as $column)
                     @php
-                        $approvalName = $typeApprovalDefaults[$column['key']]['name'] ?? '';
+                        $approvalDefault = $typeApprovalDefaults[$column['key']] ?? [];
+                        $approvalName = $approvalDefault['name'] ?? '';
+                        $approvalGroup = old("approval_defaults.{$column['key']}.group", $approvalDefault['group'] ?? $column['group']);
+                        $approvalLabel = old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label']);
                     @endphp
                     <div class="qc-approval-box">
-                        <small>{{ $column['group'] }}</small>
-                        <strong>{{ $column['label'] }}</strong>
+                        @if (in_array($approvalType, [FixedQcTemplate::TYPE_BRICS, FixedQcTemplate::TYPE_CASTABLE], true))
+                            <input type="text"
+                                   name="approval_defaults[{{ $column['key'] }}][group]"
+                                   class="form-control form-control-sm text-center"
+                                   value="{{ $approvalGroup }}"
+                                   placeholder="Header approval"
+                                   @disabled($selectedType !== $approvalType)>
+                            <input type="text"
+                                   name="approval_defaults[{{ $column['key'] }}][label]"
+                                   class="form-control form-control-sm text-center mt-2 fw-semibold"
+                                   value="{{ $approvalLabel }}"
+                                   placeholder="Judul approval"
+                                   @disabled($selectedType !== $approvalType)>
+                        @else
+                            <small>{{ $column['group'] }}</small>
+                            <strong>{{ $column['label'] }}</strong>
+                        @endif
                         <input type="text"
                                name="approval_defaults[{{ $column['key'] }}][name]"
                                class="form-control mt-2"

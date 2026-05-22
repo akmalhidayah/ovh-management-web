@@ -19,8 +19,9 @@ class TemplateApprovalStepSeeder extends Seeder
             ->get()
             ->each(function (QcFormTemplate $template): void {
                 $type = FixedQcTemplate::normalizeType($template->template_type);
+                $schema = FixedQcTemplate::normalizeSchema($type, $template->body_schema ?? []);
 
-                collect(FixedQcTemplate::approvalColumns($type))
+                collect(FixedQcTemplate::approvalColumnsWithDefaults($type, $schema['approval_defaults'] ?? []))
                     ->values()
                     ->each(function (array $column, int $index) use ($template): void {
                         $isSubmitter = $index === 0;

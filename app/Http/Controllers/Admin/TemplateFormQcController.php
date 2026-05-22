@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\QcFormTemplate;
 use App\Models\QcFormTemplateBlock;
+use App\Models\TemplateApprovalStep;
 use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\QcTemplates\TemplateBuilder;
 use Illuminate\Http\RedirectResponse;
@@ -82,6 +83,7 @@ class TemplateFormQcController extends Controller
                 ]);
 
                 $this->syncFixedBodyBlocks($template);
+                $this->syncTemplateApprovalSteps($template);
 
                 return $template;
             });
@@ -130,6 +132,7 @@ class TemplateFormQcController extends Controller
                 $template->update($validated);
                 $template->blocks()->delete();
                 $this->syncFixedBodyBlocks($template);
+                $this->syncTemplateApprovalSteps($template);
             });
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_UPDATE, $exception, ['template_id' => $template->id]);
@@ -290,6 +293,9 @@ class TemplateFormQcController extends Controller
             'status' => ['required', Rule::in(['draft', 'active', 'inactive'])],
             'template_type' => ['required', Rule::in(array_keys(FixedQcTemplate::types()))],
             'approval_defaults' => ['nullable', 'array'],
+            'approval_defaults.*.name' => ['nullable', 'string', 'max:255'],
+            'approval_defaults.*.group' => ['nullable', 'string', 'max:255'],
+            'approval_defaults.*.label' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validated['version'] = ($validated['version'] ?? null) ?: '1.0';
@@ -443,6 +449,39 @@ class TemplateFormQcController extends Controller
                 'row_data' => $row,
             ]);
         }
+    }
+
+    private function syncTemplateApprovalSteps(QcFormTemplate $template): void
+    {
+        $schema = FixedQcTemplate::normalizeSchema($template->template_type, $template->body_schema);
+        $columns = FixedQcTemplate::approvalColumnsWithDefaults(
+            $template->template_type,
+            $schema['approval_defaults'] ?? []
+        );
+
+        collect($columns)
+            ->values()
+            ->each(function (array $column, int $index) use ($template): void {
+                $isSubmitter = $index === 0;
+
+                TemplateApprovalStep::updateOrCreate(
+                    [
+                        'template_type' => 'qc',
+                        'template_id' => $template->id,
+                        'step_order' => $index + 1,
+                    ],
+                    [
+                        'label' => $column['label'],
+                        'is_submitter_signature' => $isSubmitter,
+                        'requires_magic_link' => ! $isSubmitter,
+                        'is_required' => true,
+                    ]
+                );
+            });
+
+        $template->approvalSteps()
+            ->where('step_order', '>', count($columns))
+            ->delete();
     }
 
     private function syncBlocks(QcFormTemplate $template, array $blocks): void

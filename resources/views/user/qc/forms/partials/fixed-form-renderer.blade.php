@@ -436,21 +436,37 @@
             <strong>Final Check</strong>
         </label>
         @php
-            $approvalColumns = FixedQcTemplate::approvalColumns($type);
+            $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $oldApproval);
         @endphp
         <div class="qc-user-approval-grid" style="--qc-approval-columns: {{ count($approvalColumns) }}">
             @foreach ($approvalColumns as $column)
                 @php
                     $isInspector = ($column['role'] ?? null) === 'QC Inspektor';
+                    $hasEditableApprovalTitle = in_array($type, [FixedQcTemplate::TYPE_BRICS, FixedQcTemplate::TYPE_CASTABLE], true);
                     $defaultApprovalName = $approvalDefaults[$column['key']]['name'] ?? '';
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
+                    $approvalGroup = $oldApproval[$column['key']]['group'] ?? ($approvalDefaults[$column['key']]['group'] ?? $column['group']);
+                    $approvalLabel = $oldApproval[$column['key']]['label'] ?? ($approvalDefaults[$column['key']]['label'] ?? $column['label']);
                 @endphp
                 <div class="qc-user-approval-box {{ $isInspector ? '' : 'is-locked' }}" data-signature-card="{{ $column['key'] }}" @if ($isInspector) data-qc-inspector-approval @endif>
-                    <div class="qc-approval-label-row">
-                        <strong>{{ $column['label'] }}</strong>
-                    </div>
-                    <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama">
+                    @if ($hasEditableApprovalTitle)
+                        <input type="text"
+                               class="form-control form-control-sm mb-2"
+                               name="approval[{{ $column['key'] }}][label]"
+                               value="{{ $approvalLabel }}"
+                               placeholder="Judul approval">
+                        <input type="text"
+                               class="form-control form-control-sm mb-2"
+                               name="approval[{{ $column['key'] }}][group]"
+                               value="{{ $approvalGroup }}"
+                               placeholder="Header approval">
+                    @else
+                        <div class="qc-approval-label-row">
+                            <strong>{{ $column['label'] }}</strong>
+                        </div>
+                        <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
+                    @endif
+                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama penanda tangan">
                     @if ($isInspector)
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control>
                     @else
@@ -458,7 +474,7 @@
                     @endif
                     <input type="hidden" name="approval[{{ $column['key'] }}][signature]" value="{{ $oldApproval[$column['key']]['signature'] ?? '' }}" data-signature-input>
                     <input type="file" name="approval_signature_files[{{ $column['key'] }}]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
-                    <input type="hidden" name="approval[{{ $column['key'] }}][role]" value="{{ $column['label'] }}">
+                    <input type="hidden" name="approval[{{ $column['key'] }}][role]" value="{{ $column['role'] ?? $column['label'] }}">
                     <input type="hidden" name="approval[{{ $column['key'] }}][signed_at]" value="{{ $oldApproval[$column['key']]['signed_at'] ?? '' }}" data-signature-time-input>
                     @if ($isInspector)
                         <div class="qc-signature-empty" data-signature-empty>

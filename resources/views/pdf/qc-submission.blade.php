@@ -55,9 +55,12 @@
                 'signature' => $stepSignature ?: ($legacyApproval['signature'] ?? null),
                 'date' => $step->acted_at?->format('Y-m-d') ?: ($legacyApproval['date'] ?? ''),
                 'signed_at' => $step->acted_at?->toISOString() ?: ($legacyApproval['signed_at'] ?? null),
+                'group' => $legacyApproval['group'] ?? ($approvalDefaults[$column['key']]['group'] ?? $column['group']),
+                'label' => $legacyApproval['label'] ?? ($approvalDefaults[$column['key']]['label'] ?? $column['label']),
             ];
         }
     }
+    $approvalColumns = FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults, $approvalData);
     $approvalByRole = collect($approvalColumns)->mapWithKeys(function ($column) use ($approvalData, $approvalDefaults) {
         $approval = $approvalData[$column['key']] ?? [];
 
@@ -830,7 +833,10 @@
                     <tr>
                         <th style="width: 25%;">Tanggal</th>
                         @foreach ($approvalColumns as $column)
-                            <th>{{ $column['label'] }}</th>
+                            <th>
+                                <span style="font-size: 7.5px; font-weight: 400;">{{ strtoupper($column['group']) }}</span><br>
+                                {{ strtoupper($column['label']) }}
+                            </th>
                         @endforeach
                     </tr>
                     <tr class="approval-sign-row">
