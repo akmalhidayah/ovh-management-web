@@ -69,13 +69,22 @@ class ApprovalFlowService
                 ->get();
 
             if ($configured->isNotEmpty()) {
-                return $configured->map(fn (TemplateApprovalStep $step) => [
-                    'step_order' => (int) $step->step_order,
-                    'label' => $step->label,
-                    'is_submitter_signature' => $step->is_submitter_signature,
-                    'requires_magic_link' => $step->requires_magic_link,
-                    'is_required' => $step->is_required,
-                ])->all();
+                return $configured
+                    ->values()
+                    ->map(function (TemplateApprovalStep $step, int $index) use ($submission, $type) {
+                        $isSubmitter = $type === 'qc'
+                            ? ($step->is_submitter_signature || $this->isQcSubmitterStep($submission, $step->label, $index))
+                            : $step->is_submitter_signature;
+
+                        return [
+                            'step_order' => (int) $step->step_order,
+                            'label' => $step->label,
+                            'is_submitter_signature' => $isSubmitter,
+                            'requires_magic_link' => $isSubmitter ? false : $step->requires_magic_link,
+                            'is_required' => $step->is_required,
+                        ];
+                    })
+                    ->all();
             }
         }
 
@@ -289,16 +298,16 @@ class ApprovalFlowService
     private function approveSubmitterStep(ApprovalStep $step, Model $submission): void
     {
         $approvalData = $submission->approval_data ?? [];
-        $legacy = $this->legacyApprovalForSubmitter($step, $approvalData);
+        $legacy = $this->legacyApprovalForSubmitter($step, $approvalData, $submission);
         $legacySignature = $legacy['signature'] ?? null;
-        $signaturePath = $this->publicStoragePathFromUrl($legacySignature);
+        $signaturePath = $this->storeSignatureSource($legacySignature, $step);
 
         $step->update([
             'status' => ApprovalStep::STATUS_APPROVED,
             'approver_name' => $legacy['name'] ?? $submission->user?->name ?? 'Submitter',
             'approver_position' => $legacy['role'] ?? $step->label,
             'signature_path' => $signaturePath,
-            'signature_data' => $signaturePath ? null : $legacySignature,
+            'signature_data' => null,
             'acted_at' => isset($legacy['signed_at']) ? Carbon::parse($legacy['signed_at']) : now(),
         ]);
     }
@@ -403,8 +412,17 @@ class ApprovalFlowService
         $submission->forceFill(['status' => $status])->save();
     }
 
-    private function legacyApprovalForSubmitter(ApprovalStep $step, array $approvalData): array
+    private function legacyApprovalForSubmitter(ApprovalStep $step, array $approvalData, Model $submission): array
     {
+        if ($submission instanceof QcFormSubmission) {
+            $templateType = FixedQcTemplate::normalizeType($submission->template?->template_type);
+            $submitterKey = FixedQcTemplate::approvalColumns($templateType)[0]['key'] ?? null;
+
+            if ($submitterKey && is_array($approvalData[$submitterKey] ?? null)) {
+                return $approvalData[$submitterKey];
+            }
+        }
+
         foreach ($approvalData as $approval) {
             if (! is_array($approval)) {
                 continue;
@@ -417,6 +435,63 @@ class ApprovalFlowService
         }
 
         return [];
+    }
+
+    private function isQcSubmitterStep(Model $submission, string $label, int $index): bool
+    {
+        if (! $submission instanceof QcFormSubmission || $index !== 0) {
+            return false;
+        }
+
+        $templateType = FixedQcTemplate::normalizeType($submission->template?->template_type);
+        $submitterColumn = FixedQcTemplate::approvalColumns($templateType)[0] ?? [];
+        $expectedLabels = [
+            $submitterColumn['label'] ?? '',
+            $submitterColumn['role'] ?? '',
+        ];
+
+        $normalizedLabel = Str::of($label)->lower()->replace([' ', '/', '_', '-'], '')->toString();
+
+        foreach ($expectedLabels as $expectedLabel) {
+            $normalizedExpected = Str::of((string) $expectedLabel)->lower()->replace([' ', '/', '_', '-'], '')->toString();
+
+            if ($normalizedExpected !== '' && $normalizedLabel === $normalizedExpected) {
+                return true;
+            }
+        }
+
+        return str_contains($normalizedLabel, 'qcinspektor')
+            || str_contains($normalizedLabel, 'qcinspector')
+            || str_contains($normalizedLabel, 'diisi');
+    }
+
+    private function storeSignatureSource(mixed $source, ApprovalStep $step): ?string
+    {
+        $source = trim((string) $source);
+
+        if ($source === '') {
+            return null;
+        }
+
+        if (str_starts_with($source, 'data:image/')) {
+            return $this->isValidSignatureData($source) ? $this->storeSignature($source, $step) : null;
+        }
+
+        $publicPath = $this->publicStoragePathFromUrl($source);
+        if (! $publicPath || ! Storage::disk('public')->exists($publicPath)) {
+            return null;
+        }
+
+        $binary = Storage::disk('public')->get($publicPath);
+        if ($binary === '' || strlen($binary) > self::SIGNATURE_MAX_BYTES || @getimagesizefromstring($binary) === false) {
+            return null;
+        }
+
+        $extension = self::signatureExtensionFromPath($publicPath, $binary);
+        $path = 'signatures/approval/approval-step-'.$step->id.'-'.Str::random(16).'.'.$extension;
+        Storage::disk('public')->put($path, $binary);
+
+        return $path;
     }
 
     private function publicStoragePathFromUrl(mixed $source): ?string
@@ -458,6 +533,18 @@ class ApprovalFlowService
         Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
 
         return $path;
+    }
+
+    private static function signatureExtensionFromPath(string $path, string $binary): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($extension, ['png', 'jpg', 'jpeg'], true)) {
+            return $extension === 'jpeg' ? 'jpg' : $extension;
+        }
+
+        $info = @getimagesizefromstring($binary);
+
+        return ($info['mime'] ?? '') === 'image/png' ? 'png' : 'jpg';
     }
 
     private function isValidSignatureData(string $source): bool

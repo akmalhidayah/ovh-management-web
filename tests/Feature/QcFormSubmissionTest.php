@@ -87,6 +87,7 @@ class QcFormSubmissionTest extends TestCase
         $this->assertFalse($steps[0]->requires_magic_link);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
         $this->assertNotNull($steps[0]->signature_path);
+        $this->assertStringStartsWith('signatures/approval/', $steps[0]->signature_path);
         $this->assertNull($steps[0]->signature_data);
         Storage::disk('public')->assertExists($steps[0]->signature_path);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
@@ -489,6 +490,13 @@ class QcFormSubmissionTest extends TestCase
         $signature = $submission->approval_data['qc_inspector_q_c_inspektor']['signature'] ?? '';
         $this->assertStringStartsWith('/storage/signatures/qc/', $signature);
         Storage::disk('public')->assertExists(substr(parse_url($signature, PHP_URL_PATH), strlen('/storage/')));
+
+        $submission->load('approvalFlow.steps');
+        $submitterStep = $submission->approvalFlow->steps->firstWhere('is_submitter_signature', true);
+        $this->assertNotNull($submitterStep);
+        $this->assertStringStartsWith('signatures/approval/', $submitterStep->signature_path);
+        $this->assertNull($submitterStep->signature_data);
+        Storage::disk('public')->assertExists($submitterStep->signature_path);
 
         $pdfUrl = route('user.qc.submissions.pdf', $submission);
         $this->assertStringContainsString(QcFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);

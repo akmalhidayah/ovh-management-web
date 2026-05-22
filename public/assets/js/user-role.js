@@ -439,6 +439,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const inspectorCard = form.querySelector('[data-qc-inspector-approval]');
+            if (inspectorCard) {
+                const signatureInput = inspectorCard.querySelector('[data-signature-input]');
+                const fileInput = inspectorCard.querySelector('[data-signature-file-input]');
+                const hasSignature = Boolean(signatureInput?.value || fileInput?.files?.length);
+
+                if (!hasSignature) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+                    const focusSignatureButton = () => inspectorCard.querySelector('[data-signature-open]')?.focus();
+
+                    if (!window.Swal) {
+                        window.alert('Tanda tangan QC Inspektor wajib diisi sebelum submit.');
+                        focusSignatureButton();
+                        return;
+                    }
+
+                    window.Swal.fire({
+                        title: 'Tanda tangan belum diisi',
+                        text: 'Tanda tangan QC Inspektor wajib diisi sebelum submit final.',
+                        icon: 'warning',
+                        confirmButtonText: 'Isi Tanda Tangan',
+                        confirmButtonColor: '#2563eb',
+                    }).then(focusSignatureButton);
+
+                    return;
+                }
+            }
+
             event.preventDefault();
 
             const confirmSubmit = () => {

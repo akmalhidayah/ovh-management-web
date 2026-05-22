@@ -230,6 +230,22 @@
                 input.files = transfer.files;
             };
 
+            const showWarning = (message, callback = null) => {
+                if (!window.Swal) {
+                    window.alert(message);
+                    callback?.();
+                    return;
+                }
+
+                window.Swal.fire({
+                    title: 'Periksa Form',
+                    text: message,
+                    icon: 'warning',
+                    confirmButtonText: 'Mengerti',
+                    confirmButtonColor: '#2563eb',
+                }).then(() => callback?.());
+            };
+
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             window.addEventListener('mouseup', stopDrawing);
@@ -250,7 +266,7 @@
 
             modalElement.querySelector('[data-signature-save]')?.addEventListener('click', () => {
                 if (!activeCard || !hasDrawing) {
-                    window.alert('Silakan buat tanda tangan terlebih dahulu.');
+                    showWarning('Silakan buat tanda tangan terlebih dahulu.');
                     return;
                 }
 
@@ -264,7 +280,7 @@
                 });
 
                 setFileInput(fileInput, dataUrlToFile(dataUrl, `signature-${Date.now()}.png`));
-                signatureInput.value = '';
+                signatureInput.value = dataUrl;
                 activeCard.querySelector('[data-signature-time-input]').value = signedAt.toISOString();
                 activeCard.querySelector('[data-signature-preview]').src = dataUrl;
                 activeCard.querySelector('[data-signature-time]').textContent = signedText;
@@ -304,8 +320,10 @@
 
                         if (!hasSignature) {
                             event.preventDefault();
-                            window.alert('Tanda tangan QC Inspektor wajib diisi sebelum submit.');
-                            inspectorCard.querySelector('[data-signature-open]')?.focus();
+                            showWarning(
+                                'Tanda tangan QC Inspektor wajib diisi sebelum submit final.',
+                                () => inspectorCard.querySelector('[data-signature-open]')?.focus()
+                            );
                             return;
                         }
                     }
@@ -322,7 +340,9 @@
                             setFileInput(fileInput, dataUrlToFile(input.value, `signature-${Date.now()}.png`));
                         }
 
-                        input.value = '';
+                        if (fileInput?.files?.length) {
+                            input.value = '';
+                        }
                     });
                 });
             });
