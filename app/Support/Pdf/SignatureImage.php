@@ -46,16 +46,24 @@ class SignatureImage
         if (str_starts_with($path, '/storage/')) {
             $relative = urldecode(substr($path, strlen('/storage/')));
 
-            return Storage::disk('public')->exists($relative)
-                ? Storage::disk('public')->path($relative)
-                : null;
+            if (Storage::disk('public')->exists($relative)) {
+                return Storage::disk('public')->path($relative);
+            }
+
+            $publicStoragePath = public_path('storage/'.$relative);
+
+            return is_file($publicStoragePath) ? $publicStoragePath : null;
         }
 
         $relative = ltrim($source, '/');
 
-        return Storage::disk('public')->exists($relative)
-            ? Storage::disk('public')->path($relative)
-            : null;
+        if (Storage::disk('public')->exists($relative)) {
+            return Storage::disk('public')->path($relative);
+        }
+
+        $publicPath = public_path($relative);
+
+        return is_file($publicPath) ? $publicPath : null;
     }
 
 }

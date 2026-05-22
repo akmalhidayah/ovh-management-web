@@ -39,7 +39,7 @@
         return $step?->signature_data;
     };
     $flowSteps = $submission->approvalFlow?->steps ?? collect();
-    $approvalData = $flowSteps->isNotEmpty() ? [] : $legacyApprovalData;
+    $approvalData = $legacyApprovalData;
     if ($flowSteps->isNotEmpty()) {
         foreach (array_values($approvalColumns) as $index => $column) {
             $step = $flowSteps->firstWhere('step_order', $index + 1);
@@ -47,12 +47,14 @@
                 continue;
             }
 
+            $legacyApproval = $legacyApprovalData[$column['key']] ?? [];
+            $stepSignature = $approvalSignatureSource($step);
             $approvalData[$column['key']] = [
-                'name' => $step->approver_name ?? '',
-                'role' => $step->approver_position ?? $column['label'],
-                'signature' => $approvalSignatureSource($step),
-                'date' => $step->acted_at?->format('Y-m-d') ?? '',
-                'signed_at' => $step->acted_at?->toISOString(),
+                'name' => $step->approver_name ?: ($legacyApproval['name'] ?? ''),
+                'role' => $step->approver_position ?: ($legacyApproval['role'] ?? $column['label']),
+                'signature' => $stepSignature ?: ($legacyApproval['signature'] ?? null),
+                'date' => $step->acted_at?->format('Y-m-d') ?: ($legacyApproval['date'] ?? ''),
+                'signed_at' => $step->acted_at?->toISOString() ?: ($legacyApproval['signed_at'] ?? null),
             ];
         }
     }
