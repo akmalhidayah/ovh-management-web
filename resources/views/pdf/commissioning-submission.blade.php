@@ -47,7 +47,8 @@
     $imageAttachments = $submission->attachments
         ->where('type', 'image')
         ->values();
-    $check = fn (bool $checked) => $checked ? '<span class="pdf-check-mark">&#10003;</span>' : '';
+    $checkMarkSvg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 22"><path d="M3 11.5 10.4 18.5 25 3.5" fill="none" stroke="#000" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    $check = fn (bool $checked) => $checked ? '<img src="'.$checkMarkSvg.'" class="pdf-check-mark" alt="check">' : '';
     $signature = fn (?string $source) => SignatureImage::forPdf($source);
     $headerRows = [
         [
@@ -164,10 +165,9 @@
         .gearbox-test-table { width: 100%; margin-top: 0; table-layout: fixed; }
         .field-unit { display: block; font-size: 7px; font-weight: normal; }
         .pdf-check-mark {
-            display: inline-block;
-            font-size: 13px;
-            font-weight: 800;
-            line-height: 1;
+            display: block;
+            width: 4.6mm;
+            height: 3.6mm;
             margin: 0 auto;
         }
         .sig-img {

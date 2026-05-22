@@ -13,7 +13,19 @@ class SignatureImage
         }
 
         if ($path = self::localPathForSource($source)) {
-            return $path;
+            $binary = @file_get_contents($path);
+
+            if (! is_string($binary)) {
+                return $source;
+            }
+
+            $fallback = self::dataUri($binary, self::mimeType($path));
+
+            if (! function_exists('imagecreatefromstring')) {
+                return $fallback;
+            }
+
+            return self::cropBinary($binary, $fallback);
         }
 
         if (! preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/', $source, $matches)) {
@@ -21,18 +33,15 @@ class SignatureImage
         }
 
         $binary = base64_decode($matches[2], true);
-        if ($binary === false || @getimagesizefromstring($binary) === false) {
-            return null;
+        if ($binary === false) {
+            return $source;
         }
 
-        $extension = $matches[1] === 'png' ? 'png' : 'jpg';
-        $relativePath = 'signatures/pdf-cache/'.sha1($binary).'.'.$extension;
-
-        if (! Storage::disk('public')->exists($relativePath)) {
-            Storage::disk('public')->put($relativePath, $binary);
+        if (! function_exists('imagecreatefromstring')) {
+            return $source;
         }
 
-        return Storage::disk('public')->path($relativePath);
+        return self::cropBinary($binary, $source);
     }
 
     private static function localPathForSource(string $source): ?string
@@ -66,4 +75,126 @@ class SignatureImage
         return is_file($publicPath) ? $publicPath : null;
     }
 
+    private static function dataUri(string $binary, string $mime): string
+    {
+        return 'data:'.$mime.';base64,'.base64_encode($binary);
+    }
+
+    private static function mimeType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return match ($extension) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+    }
+
+    private static function cropBinary(string $binary, string $fallback): string
+    {
+        $image = @imagecreatefromstring($binary);
+
+        if (! $image) {
+            return $fallback;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $bounds = self::signatureBounds($image, $width, $height);
+
+        if (! $bounds) {
+            imagedestroy($image);
+
+            return $fallback;
+        }
+
+        $padding = max(2, (int) round(max($width, $height) * 0.015));
+        $minX = max(0, $bounds['minX'] - $padding);
+        $minY = max(0, $bounds['minY'] - $padding);
+        $maxX = min($width - 1, $bounds['maxX'] + $padding);
+        $maxY = min($height - 1, $bounds['maxY'] + $padding);
+        $cropWidth = $maxX - $minX + 1;
+        $cropHeight = $maxY - $minY + 1;
+
+        $crop = imagecreatetruecolor($cropWidth, $cropHeight);
+        imagesavealpha($crop, true);
+        $transparent = imagecolorallocatealpha($crop, 255, 255, 255, 127);
+        imagefill($crop, 0, 0, $transparent);
+        imagecopy($crop, $image, 0, 0, $minX, $minY, $cropWidth, $cropHeight);
+
+        self::makeWhiteTransparent($crop);
+
+        ob_start();
+        imagepng($crop);
+        $png = ob_get_clean();
+
+        imagedestroy($crop);
+        imagedestroy($image);
+
+        return is_string($png) && $png !== ''
+            ? self::dataUri($png, 'image/png')
+            : $fallback;
+    }
+
+    private static function makeWhiteTransparent($image): void
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $color = imagecolorat($image, $x, $y);
+                $rgba = imagecolorsforindex($image, $color);
+
+                if (($rgba['red'] ?? 255) > 245 && ($rgba['green'] ?? 255) > 245 && ($rgba['blue'] ?? 255) > 245) {
+                    imagesetpixel($image, $x, $y, imagecolorallocatealpha($image, 255, 255, 255, 127));
+                }
+            }
+        }
+    }
+
+    private static function signatureBounds($image, int $width, int $height): ?array
+    {
+        $minX = $width;
+        $minY = $height;
+        $maxX = -1;
+        $maxY = -1;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $color = imagecolorat($image, $x, $y);
+                $rgba = imagecolorsforindex($image, $color);
+
+                if (! self::isInkPixel($rgba)) {
+                    continue;
+                }
+
+                $minX = min($minX, $x);
+                $minY = min($minY, $y);
+                $maxX = max($maxX, $x);
+                $maxY = max($maxY, $y);
+            }
+        }
+
+        if ($maxX < $minX || $maxY < $minY) {
+            return null;
+        }
+
+        return compact('minX', 'minY', 'maxX', 'maxY');
+    }
+
+    private static function isInkPixel(array $rgba): bool
+    {
+        $alpha = $rgba['alpha'] ?? 0;
+
+        if ($alpha >= 120) {
+            return false;
+        }
+
+        return ($rgba['red'] ?? 255) < 235
+            || ($rgba['green'] ?? 255) < 235
+            || ($rgba['blue'] ?? 255) < 235;
+    }
 }
