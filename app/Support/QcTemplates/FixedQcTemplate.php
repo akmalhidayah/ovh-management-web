@@ -220,15 +220,18 @@ class FixedQcTemplate
 
     public static function normalizeApprovalDefaults(array $defaults, ?string $type = null): array
     {
+        $type = self::normalizeType($type);
+
         return collect(self::approvalColumns($type))
-            ->mapWithKeys(function ($column) use ($defaults) {
+            ->mapWithKeys(function ($column) use ($defaults, $type) {
                 $data = Arr::get($defaults, $column['key'], []);
+                $titleEditable = self::approvalTitleIsEditable($type, $column['key']);
 
                 return [
                     $column['key'] => [
                         'name' => trim((string) Arr::get($data, 'name', '')),
-                        'group' => trim((string) Arr::get($data, 'group', '')) ?: $column['group'],
-                        'label' => trim((string) Arr::get($data, 'label', '')) ?: $column['label'],
+                        'group' => $titleEditable ? (trim((string) Arr::get($data, 'group', '')) ?: $column['group']) : $column['group'],
+                        'label' => $titleEditable ? (trim((string) Arr::get($data, 'label', '')) ?: $column['label']) : $column['label'],
                     ],
                 ];
             })
@@ -237,19 +240,18 @@ class FixedQcTemplate
 
     public static function approvalColumnsWithDefaults(?string $type = null, array $defaults = [], array $approvalData = []): array
     {
+        $type = self::normalizeType($type);
+
         return collect(self::approvalColumns($type))
-            ->map(function (array $column) use ($defaults, $approvalData) {
+            ->map(function (array $column) use ($defaults) {
                 $key = $column['key'];
                 $default = is_array($defaults[$key] ?? null) ? $defaults[$key] : [];
-                $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
 
                 $column['group'] = self::approvalDisplayText(
-                    $approval['group'] ?? null,
                     $default['group'] ?? null,
                     $column['group']
                 );
                 $column['label'] = self::approvalDisplayText(
-                    $approval['label'] ?? null,
                     $default['label'] ?? null,
                     $column['label']
                 );
@@ -285,6 +287,17 @@ class FixedQcTemplate
     public static function isLockedBodyType(?string $type): bool
     {
         return in_array(self::normalizeType($type), [self::TYPE_CASTABLE, self::TYPE_BRICS], true);
+    }
+
+    public static function approvalTitleIsEditable(?string $type, string $key): bool
+    {
+        $type = self::normalizeType($type);
+
+        if ($type === self::TYPE_BRICS) {
+            return $key === 'brics_approve_by';
+        }
+
+        return $type === self::TYPE_CASTABLE;
     }
 
     public static function castableCustomerRows(): array

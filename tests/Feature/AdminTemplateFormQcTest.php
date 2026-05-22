@@ -206,20 +206,20 @@ class AdminTemplateFormQcTest extends TestCase
             'status' => 'active',
             'template_type' => FixedQcTemplate::TYPE_BRICS,
             'approval_defaults' => [
+                'brics_report_by' => [
+                    'group' => 'Report Custom',
+                    'label' => 'QC Custom',
+                    'name' => 'QC Default',
+                ],
                 'brics_vendor' => [
                     'group' => 'Vendor Partner',
                     'label' => 'Supplier',
                     'name' => 'Vendor Default',
                 ],
-                'brics_customer_supervisor' => [
-                    'group' => 'Customer Support',
-                    'label' => 'Support PIC',
-                    'name' => 'Customer Default',
-                ],
-                'brics_name_unit' => [
-                    'group' => 'Name Unit',
-                    'label' => 'Unit Area',
-                    'name' => 'Unit Default',
+                'brics_approve_by' => [
+                    'group' => 'Approval Final',
+                    'label' => 'Approver Final',
+                    'name' => 'Approver Default',
                 ],
             ],
         ]);
@@ -227,16 +227,19 @@ class AdminTemplateFormQcTest extends TestCase
         $template = QcFormTemplate::where('code', 'QCR-BRICS-001')->firstOrFail();
 
         $response->assertRedirect(route('admin.template-form-qc.preview', $template));
-        $this->assertSame('Vendor Partner', $template->body_schema['approval_defaults']['brics_vendor']['group']);
-        $this->assertSame('Supplier', $template->body_schema['approval_defaults']['brics_vendor']['label']);
-        $this->assertSame('Support PIC', $template->body_schema['approval_defaults']['brics_customer_supervisor']['label']);
-        $this->assertSame('Supplier', $template->approvalSteps()->where('step_order', 2)->first()?->label);
+        $this->assertSame('Report by', $template->body_schema['approval_defaults']['brics_report_by']['group']);
+        $this->assertSame('Vendor', $template->body_schema['approval_defaults']['brics_vendor']['label']);
+        $this->assertSame('Approval Final', $template->body_schema['approval_defaults']['brics_approve_by']['group']);
+        $this->assertSame('Approver Final', $template->body_schema['approval_defaults']['brics_approve_by']['label']);
+        $this->assertSame('Vendor', $template->approvalSteps()->where('step_order', 2)->first()?->label);
+        $this->assertSame('Approver Final', $template->approvalSteps()->where('step_order', 5)->first()?->label);
 
         $this->actingAs($admin)
             ->get(route('admin.template-form-qc.edit', $template))
             ->assertOk()
             ->assertSee('placeholder="Judul approval"', false)
-            ->assertSee('Supplier');
+            ->assertSee('Approver Final')
+            ->assertDontSee('Supplier');
     }
 
     public function test_admin_can_customize_castable_approval_titles(): void

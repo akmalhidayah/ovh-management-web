@@ -337,11 +337,16 @@
                     @php
                         $approvalDefault = $typeApprovalDefaults[$column['key']] ?? [];
                         $approvalName = $approvalDefault['name'] ?? '';
-                        $approvalGroup = old("approval_defaults.{$column['key']}.group", $approvalDefault['group'] ?? $column['group']);
-                        $approvalLabel = old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label']);
+                        $titleEditable = FixedQcTemplate::approvalTitleIsEditable($approvalType, $column['key']);
+                        $approvalGroup = $titleEditable
+                            ? old("approval_defaults.{$column['key']}.group", $approvalDefault['group'] ?? $column['group'])
+                            : ($approvalDefault['group'] ?? $column['group']);
+                        $approvalLabel = $titleEditable
+                            ? old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label'])
+                            : ($approvalDefault['label'] ?? $column['label']);
                     @endphp
                     <div class="qc-approval-box">
-                        @if (in_array($approvalType, [FixedQcTemplate::TYPE_BRICS, FixedQcTemplate::TYPE_CASTABLE], true))
+                        @if ($titleEditable)
                             <input type="text"
                                    name="approval_defaults[{{ $column['key'] }}][group]"
                                    class="form-control form-control-sm text-center"
@@ -355,8 +360,8 @@
                                    placeholder="Judul approval"
                                    @disabled($selectedType !== $approvalType)>
                         @else
-                            <small>{{ $column['group'] }}</small>
-                            <strong>{{ $column['label'] }}</strong>
+                            <small>{{ $approvalGroup }}</small>
+                            <strong>{{ $approvalLabel }}</strong>
                         @endif
                         <input type="text"
                                name="approval_defaults[{{ $column['key'] }}][name]"

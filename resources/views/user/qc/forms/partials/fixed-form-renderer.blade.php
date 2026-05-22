@@ -442,30 +442,16 @@
             @foreach ($approvalColumns as $column)
                 @php
                     $isInspector = ($column['role'] ?? null) === 'QC Inspektor';
-                    $hasEditableApprovalTitle = in_array($type, [FixedQcTemplate::TYPE_BRICS, FixedQcTemplate::TYPE_CASTABLE], true);
                     $defaultApprovalName = $approvalDefaults[$column['key']]['name'] ?? '';
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
-                    $approvalGroup = $oldApproval[$column['key']]['group'] ?? ($approvalDefaults[$column['key']]['group'] ?? $column['group']);
-                    $approvalLabel = $oldApproval[$column['key']]['label'] ?? ($approvalDefaults[$column['key']]['label'] ?? $column['label']);
+                    $approvalGroup = $column['group'];
+                    $approvalLabel = $column['label'];
                 @endphp
                 <div class="qc-user-approval-box {{ $isInspector ? '' : 'is-locked' }}" data-signature-card="{{ $column['key'] }}" @if ($isInspector) data-qc-inspector-approval @endif>
-                    @if ($hasEditableApprovalTitle)
-                        <input type="text"
-                               class="form-control form-control-sm mb-2"
-                               name="approval[{{ $column['key'] }}][label]"
-                               value="{{ $approvalLabel }}"
-                               placeholder="Judul approval">
-                        <input type="text"
-                               class="form-control form-control-sm mb-2"
-                               name="approval[{{ $column['key'] }}][group]"
-                               value="{{ $approvalGroup }}"
-                               placeholder="Header approval">
-                    @else
-                        <div class="qc-approval-label-row">
-                            <strong>{{ $column['label'] }}</strong>
-                        </div>
-                        <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    @endif
+                    <div class="qc-approval-label-row">
+                        <small class="text-muted d-block">{{ $approvalGroup }}</small>
+                        <strong>{{ $approvalLabel }}</strong>
+                    </div>
                     <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama penanda tangan">
                     @if ($isInspector)
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control>

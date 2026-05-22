@@ -125,10 +125,11 @@ class FormController extends Controller
                     'general_info' => $generalInfo,
                     'body_data' => $bodyData,
                     'note' => $request->input('note'),
-                    'approval_data' => $request->input('approval', []),
+                    'approval_data' => [],
                 ]);
 
                 $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
+                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData);
                 $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
 
                 $submission->forceFill([
@@ -234,6 +235,7 @@ class FormController extends Controller
                 $dateTime = $generalInfo['date_time'] ?? null;
 
                 $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
+                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData);
                 $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
 
                 $submission->update([
@@ -495,6 +497,34 @@ class FormController extends Controller
         }
 
         return $approvalData;
+    }
+
+    private function normalizedFixedApprovalData(QcFormTemplate $template, array $approvalData): array
+    {
+        if (! $template->template_type) {
+            return $approvalData;
+        }
+
+        $type = FixedQcTemplate::normalizeType($template->template_type);
+        $schema = FixedQcTemplate::schemaForTemplate($template);
+        $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
+
+        return collect(FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults))
+            ->mapWithKeys(function (array $column) use ($approvalData, $approvalDefaults) {
+                $key = $column['key'];
+                $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
+
+                return [$key => [
+                    'name' => trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? ''))),
+                    'date' => trim((string) ($approval['date'] ?? '')),
+                    'signature' => trim((string) ($approval['signature'] ?? '')),
+                    'role' => $column['role'] ?? $column['label'],
+                    'group' => $column['group'],
+                    'label' => $column['label'],
+                    'signed_at' => trim((string) ($approval['signed_at'] ?? '')),
+                ]];
+            })
+            ->all();
     }
 
     private function bodyDataWithSignatureFiles(Request $request, array $bodyData, QcFormSubmission $submission): array

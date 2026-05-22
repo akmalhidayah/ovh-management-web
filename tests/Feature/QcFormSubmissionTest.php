@@ -126,7 +126,7 @@ class QcFormSubmissionTest extends TestCase
 
         $this->assertSame('pending_approval', $submission->status);
         $this->assertCount(3, $steps);
-        $this->assertSame('*1 diperiksa', $steps[0]->label);
+        $this->assertSame('*1 diisi', $steps[0]->label);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
         $this->assertSame(ApprovalStep::STATUS_PENDING, $steps[2]->status);
@@ -594,8 +594,8 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.qc.forms.create', ['template' => $template->id]))
             ->assertOk()
-            ->assertSee('placeholder="Judul approval"', false)
-            ->assertSee('placeholder="Header approval"', false);
+            ->assertDontSee('placeholder="Judul approval"', false)
+            ->assertDontSee('placeholder="Header approval"', false);
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)
@@ -608,9 +608,9 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Andi', $submission->body_data['brics_manpower_rows'][0]['left_value']);
         $this->assertSame('CUSTOM CREW', $submission->body_data['brics_manpower_rows'][2]['left_label']);
         $this->assertSame('Andi', $submission->body_data['brics_manpower']['spv_shift']);
-        $this->assertSame('Supplier Partner', $submission->approval_data['brics_vendor']['group']);
-        $this->assertSame('Supplier PIC', $submission->approval_data['brics_vendor']['label']);
-        $this->assertSame('Customer Support', $submission->approval_data['brics_customer_supervisor']['group']);
+        $this->assertSame('Vendor', $submission->approval_data['brics_vendor']['group']);
+        $this->assertSame('Vendor', $submission->approval_data['brics_vendor']['label']);
+        $this->assertSame('Customer Supervisor', $submission->approval_data['brics_customer_supervisor']['group']);
 
         $submission->load(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
         $html = view('pdf.qc-submission', [
@@ -618,8 +618,9 @@ class QcFormSubmissionTest extends TestCase
             'statusLabels' => \App\Http\Controllers\User\Qc\FormController::statusLabels(),
         ])->render();
 
-        $this->assertStringContainsString('SUPPLIER PARTNER', $html);
-        $this->assertStringContainsString('SUPPLIER PIC', $html);
+        $this->assertStringContainsString('VENDOR', $html);
+        $this->assertStringNotContainsString('SUPPLIER PARTNER', $html);
+        $this->assertStringNotContainsString('SUPPLIER PIC', $html);
     }
 
     public function test_user_can_submit_fixed_castable_qc_with_dynamic_monitoring_rows(): void
@@ -632,8 +633,8 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Monitoring Installation Castable')
             ->assertSee('Tambah Row Monitoring')
-            ->assertSee('placeholder="Judul approval"', false)
-            ->assertSee('placeholder="Header approval"', false);
+            ->assertDontSee('placeholder="Judul approval"', false)
+            ->assertDontSee('placeholder="Header approval"', false);
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)
@@ -655,9 +656,9 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Supervisor A', $submission->body_data['castable_monitoring_signatures']['prepared_by']['name']);
         $this->assertSame('', $submission->body_data['castable_monitoring_signatures']['known_by']['name']);
         $this->assertSame(2, $submission->rows()->where('block_type', 'castable_monitoring')->count());
-        $this->assertSame('Supervisor Approval', $submission->approval_data['castable_filled_by']['group']);
-        $this->assertSame('*1 diperiksa', $submission->approval_data['castable_filled_by']['label']);
-        $this->assertSame('Manager Approval', $submission->approval_data['castable_approved_1']['group']);
+        $this->assertSame('Approval Castable', $submission->approval_data['castable_filled_by']['group']);
+        $this->assertSame('*1 diisi', $submission->approval_data['castable_filled_by']['label']);
+        $this->assertSame('Approval Castable', $submission->approval_data['castable_approved_1']['group']);
 
         $submission->load(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
         $html = view('pdf.qc-submission', [
@@ -665,8 +666,8 @@ class QcFormSubmissionTest extends TestCase
             'statusLabels' => \App\Http\Controllers\User\Qc\FormController::statusLabels(),
         ])->render();
 
-        $this->assertStringContainsString('Supervisor Approval', $html);
-        $this->assertStringContainsString('*1 diperiksa', $html);
+        $this->assertStringContainsString('Approval Castable', $html);
+        $this->assertStringContainsString('*1 diisi', $html);
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.pdf', $submission))
