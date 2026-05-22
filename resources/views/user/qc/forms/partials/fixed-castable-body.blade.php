@@ -14,8 +14,8 @@
 
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Customer Data</h3></div>
-    <div class="qc-user-table-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-castable-customer-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-castable-customer-table">
             <colgroup>
                 <col style="width: 7%">
                 <col style="width: 31%">
@@ -24,9 +24,9 @@
             <tbody>
                 @foreach (FixedQcTemplate::castableCustomerRows() as $row)
                     <tr>
-                        <td class="text-center">{{ $row['no'] }}</td>
-                        <td>{{ $row['label'] }}</td>
-                        <td>
+                        <td class="text-center" data-label="No">{{ $row['no'] }}</td>
+                        <td data-label="Item">{{ $row['label'] }}</td>
+                        <td data-label="Data">
                             <input type="text"
                                    name="body[castable_customer][{{ $row['key'] }}]"
                                    value="{{ $castableCustomer[$row['key']] ?? '' }}"
@@ -61,8 +61,8 @@
                placeholder="Contoh: Castable LC-16">
     </label>
 
-    <div class="qc-user-table-wrap qc-castable-monitoring-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table qc-castable-monitoring-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-castable-monitoring-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-castable-monitoring-table">
             <thead>
                 <tr>
                     <th rowspan="3">No.</th>
@@ -89,12 +89,12 @@
             <tbody data-castable-monitoring-body>
                 @foreach ($monitoringRows as $index => $row)
                     <tr data-castable-monitoring-row>
-                        <td class="text-center">
+                        <td class="text-center" data-label="No">
                             <span data-castable-row-number>{{ $index + 1 }}</span>
                             <input type="hidden" name="body[castable_monitoring_rows][{{ $index }}][no]" value="{{ $index + 1 }}" data-castable-row-no>
                         </td>
                         @foreach ($monitoringColumns as $column)
-                            <td>
+                            <td data-label="{{ $column['label'] }}">
                                 <input type="text"
                                        class="form-control form-control-sm"
                                        name="body[castable_monitoring_rows][{{ $index }}][{{ $column['key'] }}]"
@@ -102,7 +102,7 @@
                                        placeholder="{{ $column['placeholder'] ?? $column['label'] }}">
                             </td>
                         @endforeach
-                        <td class="text-center">
+                        <td class="text-center" data-label="Aksi">
                             <button type="button" class="btn btn-outline-danger btn-sm qc-castable-row-remove" data-castable-remove-row title="Hapus row">
                                 <i class="bi bi-trash3"></i>
                             </button>
@@ -116,8 +116,8 @@
 
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
-    <div class="qc-user-table-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-castable-check-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-castable-check-table">
             <colgroup>
                 <col style="width: 5%">
                 <col style="width: 28%">
@@ -131,9 +131,9 @@
                         $saved = $castableChecks[$row['key']] ?? [];
                     @endphp
                     <tr>
-                        <td class="text-center">{{ $row['no'] }}</td>
-                        <td>{{ $row['label'] }}</td>
-                        <td>
+                        <td class="text-center" data-label="No">{{ $row['no'] }}</td>
+                        <td data-label="Item">{{ $row['label'] }}</td>
+                        <td data-label="Status / Data">
                             @if (! empty($row['options']))
                                 <div class="qc-user-status-inline">
                                     @foreach ($row['options'] as $option)
@@ -168,8 +168,8 @@
                                        class="form-control form-control-sm">
                             @endif
                         </td>
-                        <td class="text-muted">{{ $row['unit'] ?? '' }}</td>
-                        <td>
+                        <td class="text-muted" data-label="Satuan">{{ $row['unit'] ?? '' }}</td>
+                        <td data-label="Detail">
                             @if (! empty($row['detail_label']))
                                 <label class="d-flex align-items-center gap-2 mb-0">
                                     <span class="small text-muted text-nowrap">{{ $row['detail_label'] }}</span>
@@ -241,19 +241,19 @@
                 const row = document.createElement('tr');
                 row.dataset.castableMonitoringRow = '';
                 row.innerHTML = `
-                    <td class="text-center">
+                    <td class="text-center" data-label="No">
                         <span data-castable-row-number></span>
                         <input type="hidden" data-castable-row-no>
                     </td>
                     ${columns.map((column) => `
-                        <td>
+                        <td data-label="${escapeAttribute(column.label)}">
                             <input type="text"
                                    class="form-control form-control-sm"
                                    data-castable-column="${escapeAttribute(column.key)}"
                                    placeholder="${escapeAttribute(column.placeholder || column.label)}">
                         </td>
                     `).join('')}
-                    <td class="text-center">
+                    <td class="text-center" data-label="Aksi">
                         <button type="button" class="btn btn-outline-danger btn-sm qc-castable-row-remove" data-castable-remove-row title="Hapus row">
                             <i class="bi bi-trash3"></i>
                         </button>

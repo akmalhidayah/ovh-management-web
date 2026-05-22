@@ -32,8 +32,8 @@
 
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Customer Data</h3></div>
-    <div class="qc-user-table-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-customer-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-customer-table">
             <colgroup>
                 <col style="width: 7%">
                 <col style="width: 25%">
@@ -44,33 +44,33 @@
             <tbody>
                 @foreach (FixedQcTemplate::bricsCustomerRows() as $row)
                     <tr>
-                        <td class="text-center">{{ $row['no'] }}</td>
-                        <td>{{ $row['label'] }}</td>
-                        <td>
+                        <td class="text-center" data-label="No">{{ $row['no'] }}</td>
+                        <td data-label="Item">{{ $row['label'] }}</td>
+                        <td data-label="Data">
                             <input type="text"
                                    name="body[brics_customer][{{ $row['key'] }}]"
                                    value="{{ $bricsCustomer[$row['key']] ?? ($row['default'] ?? '') }}"
                                    class="form-control form-control-sm">
                         </td>
                         @if ($loop->first)
-                            <td rowspan="2" class="text-center fw-semibold">OWNER</td>
-                            <td rowspan="2">
+                            <td rowspan="2" class="text-center fw-semibold" data-label="Meta">OWNER</td>
+                            <td rowspan="2" data-label="Owner">
                                 <input type="text"
                                        name="body[brics_meta][owner]"
                                        value="{{ $bricsMeta['owner'] ?? '' }}"
                                        class="form-control form-control-sm">
                             </td>
                         @elseif ($loop->iteration === 3)
-                            <td rowspan="2" class="text-center fw-semibold">TYPE<br>INSPECT</td>
-                            <td rowspan="2">
+                            <td rowspan="2" class="text-center fw-semibold" data-label="Meta">TYPE<br>INSPECT</td>
+                            <td rowspan="2" data-label="Type Inspect">
                                 <input type="text"
                                        name="body[brics_meta][type_inspect]"
                                        value="{{ $bricsMeta['type_inspect'] ?? '' }}"
                                        class="form-control form-control-sm">
                             </td>
                         @elseif ($loop->iteration === 5)
-                            <td rowspan="2" class="text-center fw-semibold">NO.<br>REPORT</td>
-                            <td rowspan="2">
+                            <td rowspan="2" class="text-center fw-semibold" data-label="Meta">NO.<br>REPORT</td>
+                            <td rowspan="2" data-label="No. Report">
                                 <input type="text"
                                        name="body[brics_meta][no_report]"
                                        value="{{ $bricsMeta['no_report'] ?? '' }}"
@@ -101,8 +101,8 @@
 
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Manpower & Weather</h3></div>
-    <div class="qc-user-table-wrap mb-3">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-manpower-wrap mb-3">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-manpower-table">
             <colgroup>
                 <col style="width: 22%">
                 <col style="width: 28%">
@@ -122,35 +122,35 @@
             <tbody data-brics-manpower-list>
                 @foreach ($bricsManpowerRows as $index => $row)
                     <tr data-brics-manpower-row>
-                        <td>
+                        <td data-label="Manpower">
                             <input type="text"
                                    name="body[brics_manpower_rows][{{ $index }}][left_label]"
                                    value="{{ $row['left_label'] }}"
                                    class="form-control form-control-sm"
                                    placeholder="Contoh: SPV">
                         </td>
-                        <td>
+                        <td data-label="Nama / Jumlah">
                             <input type="text"
                                    name="body[brics_manpower_rows][{{ $index }}][left_value]"
                                    value="{{ $row['left_value'] }}"
                                    class="form-control form-control-sm"
                                    placeholder="Contoh: Andi / 4 orang">
                         </td>
-                        <td>
+                        <td data-label="Manpower">
                             <input type="text"
                                    name="body[brics_manpower_rows][{{ $index }}][right_label]"
                                    value="{{ $row['right_label'] }}"
                                    class="form-control form-control-sm"
                                    placeholder="Contoh: ME">
                         </td>
-                        <td>
+                        <td data-label="Nama / Jumlah">
                             <input type="text"
                                    name="body[brics_manpower_rows][{{ $index }}][right_value]"
                                    value="{{ $row['right_value'] }}"
                                    class="form-control form-control-sm"
                                    placeholder="Contoh: Budi / 2 orang">
                         </td>
-                        <td class="text-center" style="width: 56px;">
+                        <td class="text-center" style="width: 56px;" data-label="Aksi">
                             <button type="button" class="btn btn-outline-danger btn-sm" data-brics-manpower-remove title="Hapus row">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -165,15 +165,15 @@
             <i class="bi bi-plus-lg me-1"></i>Tambah Row Manpower
         </button>
     </div>
-    <div class="qc-user-table-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-weather-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-weather-table">
             <thead><tr><th>Weather</th><th>Rainy</th><th>Clear</th></tr></thead>
             <tbody>
                 @foreach (['day' => 'DAY', 'night' => 'NIGHT'] as $key => $label)
                     <tr>
-                        <td>{{ $label }}</td>
+                        <td data-label="Waktu">{{ $label }}</td>
                         @foreach (['Rainy', 'Clear'] as $weather)
-                            <td class="text-center">
+                            <td class="text-center" data-label="{{ $weather }}">
                                 <input type="radio"
                                        name="body[brics_weather][{{ $key }}]"
                                        value="{{ $weather }}"
@@ -198,11 +198,11 @@
 
             const rowTemplate = (index) => `
                 <tr data-brics-manpower-row>
-                    <td><input type="text" name="body[brics_manpower_rows][${index}][left_label]" class="form-control form-control-sm" placeholder="Contoh: SPV"></td>
-                    <td><input type="text" name="body[brics_manpower_rows][${index}][left_value]" class="form-control form-control-sm" placeholder="Contoh: Andi / 4 orang"></td>
-                    <td><input type="text" name="body[brics_manpower_rows][${index}][right_label]" class="form-control form-control-sm" placeholder="Contoh: ME"></td>
-                    <td><input type="text" name="body[brics_manpower_rows][${index}][right_value]" class="form-control form-control-sm" placeholder="Contoh: Budi / 2 orang"></td>
-                    <td class="text-center" style="width: 56px;">
+                    <td data-label="Manpower"><input type="text" name="body[brics_manpower_rows][${index}][left_label]" class="form-control form-control-sm" placeholder="Contoh: SPV"></td>
+                    <td data-label="Nama / Jumlah"><input type="text" name="body[brics_manpower_rows][${index}][left_value]" class="form-control form-control-sm" placeholder="Contoh: Andi / 4 orang"></td>
+                    <td data-label="Manpower"><input type="text" name="body[brics_manpower_rows][${index}][right_label]" class="form-control form-control-sm" placeholder="Contoh: ME"></td>
+                    <td data-label="Nama / Jumlah"><input type="text" name="body[brics_manpower_rows][${index}][right_value]" class="form-control form-control-sm" placeholder="Contoh: Budi / 2 orang"></td>
+                    <td class="text-center" style="width: 56px;" data-label="Aksi">
                         <button type="button" class="btn btn-outline-danger btn-sm" data-brics-manpower-remove title="Hapus row">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -236,8 +236,8 @@
 
 <section class="inspector-panel qc-form-card">
     <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
-    <div class="qc-user-table-wrap">
-        <table class="qc-user-checklist-table qc-user-fixed-table">
+    <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-check-wrap">
+        <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-check-table">
             <colgroup>
                 <col style="width: 7%">
                 <col style="width: 29%">
@@ -255,7 +255,7 @@
             </thead>
             <tbody>
                 @foreach (FixedQcTemplate::bricsInspectionSections() as $section)
-                    <tr>
+                    <tr class="qc-mobile-section-row">
                         <th colspan="5">{{ trim(($section['number'] ?? '').' '.$section['title']) }}</th>
                     </tr>
                     @foreach ($section['items'] as $row)
@@ -263,10 +263,10 @@
                             $saved = $bricsChecks[$row['key']] ?? [];
                         @endphp
                         <tr>
-                            <td class="text-center">{{ $row['no'] }}</td>
-                            <td>{{ $row['label'] }}</td>
+                            <td class="text-center" data-label="No">{{ $row['no'] }}</td>
+                            <td data-label="Item">{{ $row['label'] }}</td>
                             @foreach (['OK', 'NO'] as $status)
-                                <td class="text-center">
+                                <td class="text-center" data-label="{{ $status }}">
                                     <input type="radio"
                                            name="body[brics_checks][{{ $row['key'] }}][status]"
                                            value="{{ $status }}"
@@ -274,7 +274,7 @@
                                            @checked(($saved['status'] ?? null) === $status)>
                                 </td>
                             @endforeach
-                            <td>
+                            <td data-label="Remark">
                                 <input type="text"
                                        name="body[brics_checks][{{ $row['key'] }}][remark]"
                                        value="{{ $saved['remark'] ?? '' }}"

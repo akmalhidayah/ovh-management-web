@@ -2,6 +2,10 @@
 
 @section('title', 'Buat Form QC')
 
+@push('styles')
+    <link href="{{ asset('assets/css/qc-fixed-mobile.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
     @php
         $qcMasterDataRecords = collect($activeQcMasterDataRecords ?? []);

@@ -1,0 +1,156 @@
+/* Mobile card layout for fixed QC BRICS and Castable forms. */
+@media (max-width: 767.98px) {
+    .qc-mobile-card-wrap {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .qc-mobile-card-wrap .qc-mobile-card-table {
+        display: block;
+        min-width: 0 !important;
+        table-layout: auto;
+    }
+
+    .qc-mobile-card-wrap colgroup,
+    .qc-mobile-card-wrap thead {
+        display: none;
+    }
+
+    .qc-mobile-card-wrap tbody {
+        display: grid;
+        gap: 0.72rem;
+    }
+
+    .qc-mobile-card-wrap tr {
+        display: grid;
+        gap: 0.58rem;
+        padding: 0.78rem;
+        border: 1px solid #d7dee8;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    .qc-mobile-card-wrap td {
+        display: grid;
+        grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: center;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        text-align: left !important;
+    }
+
+    .qc-mobile-card-wrap td::before {
+        content: attr(data-label);
+        color: #667085;
+        font-size: 0.72rem;
+        font-weight: 800;
+        line-height: 1.25;
+        text-transform: uppercase;
+    }
+
+    .qc-mobile-card-wrap td[data-label="No"],
+    .qc-mobile-card-wrap td[data-label="Aksi"] {
+        grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+    }
+
+    .qc-mobile-card-wrap td[data-label="Aksi"] .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .qc-mobile-card-wrap td[data-label="Satuan"]:empty,
+    .qc-mobile-card-wrap td[data-label="Detail"]:empty {
+        display: none;
+    }
+
+    .qc-mobile-card-wrap .form-control {
+        min-width: 0;
+        min-height: 42px;
+        font-size: 0.9rem;
+    }
+
+    .qc-mobile-card-wrap .qc-user-status-inline {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .qc-mobile-card-wrap .qc-user-status-inline label {
+        justify-content: center;
+        min-height: 38px;
+        border-radius: 8px;
+    }
+
+    .qc-castable-dimension-input {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.42rem;
+    }
+
+    .qc-castable-dimension-input span {
+        display: none;
+    }
+
+    .qc-castable-monitoring-table input {
+        min-width: 0;
+        min-height: 42px;
+        font-size: 0.9rem;
+    }
+
+    .qc-brics-check-table td[data-label="OK"],
+    .qc-brics-check-table td[data-label="NO"],
+    .qc-brics-weather-table td[data-label="Rainy"],
+    .qc-brics-weather-table td[data-label="Clear"] {
+        grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+    }
+
+    .qc-brics-check-table td[data-label="OK"] input,
+    .qc-brics-check-table td[data-label="NO"] input,
+    .qc-brics-weather-table td[data-label="Rainy"] input,
+    .qc-brics-weather-table td[data-label="Clear"] input {
+        width: 20px;
+        height: 20px;
+        justify-self: start;
+        accent-color: #8f2231;
+    }
+
+    .qc-mobile-card-wrap .qc-mobile-section-row {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .qc-mobile-card-wrap .qc-mobile-section-row th {
+        display: block;
+        width: 100%;
+        padding: 0.72rem 0.85rem;
+        border: 1px solid #ead6da;
+        border-radius: 12px;
+        background: #fff4f6 !important;
+        color: #8f2231;
+        font-size: 0.78rem;
+        font-weight: 850;
+        letter-spacing: 0.02em;
+        text-align: left;
+    }
+
+    .qc-castable-monitoring-type {
+        grid-template-columns: 1fr;
+    }
+
+    .qc-form-card-head .btn,
+    [data-castable-add-row],
+    [data-brics-manpower-add] {
+        width: 100%;
+        justify-content: center;
+    }
+}
