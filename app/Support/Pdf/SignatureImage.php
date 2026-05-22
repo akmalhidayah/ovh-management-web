@@ -50,18 +50,8 @@ class SignatureImage
             return $source;
         }
 
-        $path = parse_url($source, PHP_URL_PATH) ?: $source;
-
-        if (str_starts_with($path, '/storage/')) {
-            $relative = urldecode(substr($path, strlen('/storage/')));
-
-            if (Storage::disk('public')->exists($relative)) {
-                return Storage::disk('public')->path($relative);
-            }
-
-            $publicStoragePath = public_path('storage/'.$relative);
-
-            return is_file($publicStoragePath) ? $publicStoragePath : null;
+        if ($path = self::localPublicStoragePathForSource($source)) {
+            return $path;
         }
 
         $relative = ltrim($source, '/');
@@ -73,6 +63,53 @@ class SignatureImage
         $publicPath = public_path($relative);
 
         return is_file($publicPath) ? $publicPath : null;
+    }
+
+    private static function localPublicStoragePathForSource(string $source): ?string
+    {
+        $source = trim($source);
+        $path = parse_url($source, PHP_URL_PATH) ?: $source;
+        $path = '/'.ltrim(str_replace('\\', '/', urldecode($path)), '/');
+
+        $storagePrefixes = collect([
+            parse_url((string) config('filesystems.disks.public.url'), PHP_URL_PATH) ?: null,
+            '/storage',
+        ])
+            ->filter()
+            ->map(fn (string $prefix) => '/'.trim(str_replace('\\', '/', $prefix), '/').'/')
+            ->unique()
+            ->values();
+
+        foreach ($storagePrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return self::existingPublicDiskLocalPath(substr($path, strlen($prefix)));
+            }
+        }
+
+        $storageSegment = '/storage/';
+        $position = strpos($path, $storageSegment);
+        if ($position !== false) {
+            return self::existingPublicDiskLocalPath(substr($path, $position + strlen($storageSegment)));
+        }
+
+        return null;
+    }
+
+    private static function existingPublicDiskLocalPath(string $relative): ?string
+    {
+        $relative = ltrim($relative, '/');
+
+        if ($relative === '' || str_contains($relative, '..')) {
+            return null;
+        }
+
+        if (Storage::disk('public')->exists($relative)) {
+            return Storage::disk('public')->path($relative);
+        }
+
+        $publicStoragePath = public_path('storage/'.$relative);
+
+        return is_file($publicStoragePath) ? $publicStoragePath : null;
     }
 
     private static function dataUri(string $binary, string $mime): string

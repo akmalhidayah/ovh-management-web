@@ -7,6 +7,7 @@ use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Models\User;
+use App\Services\ApprovalFlowService;
 use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -509,6 +510,62 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get("/user/qc/submissions/{$submission->id}/pdf")
             ->assertNotFound();
+    }
+
+    public function test_qc_submitter_signature_storage_url_with_subpath_is_available_for_pdf(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+
+        $relativeSignaturePath = 'signatures/qc/submission-subpath-signature.png';
+        Storage::disk('public')->put($relativeSignaturePath, $this->validSignatureBinary());
+
+        $signatureUrl = 'https://dept-pmms.com/ovh/storage/'.$relativeSignaturePath;
+        $submission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '006/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'report_no' => '006/QC/05-2026',
+            'pekerjaan' => 'Inspection',
+            'general_info' => $this->fixedHeader(),
+            'body_data' => [
+                'final_check' => true,
+                'general_rows' => [],
+            ],
+            'approval_data' => [
+                'qc_inspector_q_c_inspektor' => [
+                    'signature' => $signatureUrl,
+                    'name' => 'User QC',
+                    'date' => '2026-05-22',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
+        ]);
+
+        app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
+
+        $submitterStep = $submission->refresh()
+            ->approvalFlow
+            ->steps
+            ->firstWhere('is_submitter_signature', true);
+
+        $this->assertNotNull($submitterStep);
+        $this->assertStringStartsWith('signatures/approval/', $submitterStep->signature_path);
+        Storage::disk('public')->assertExists($submitterStep->signature_path);
+
+        $submitterStep->forceFill(['signature_path' => null])->save();
+        $submission->refresh()->load(['template.blocks', 'rows', 'attachments', 'user', 'approvalFlow.steps']);
+
+        $html = view('pdf.qc-submission', [
+            'submission' => $submission,
+            'statusLabels' => \App\Http\Controllers\User\Qc\FormController::statusLabels(),
+        ])->render();
+
+        $this->assertStringContainsString('<img src="data:image/png;base64,', $html);
+        $this->assertStringContainsString('class="sig-img"', $html);
     }
 
     public function test_user_can_submit_fixed_general_qc_with_not_ok_status(): void
@@ -1116,8 +1173,13 @@ class QcFormSubmissionTest extends TestCase
 
     private function validSignatureData(): string
     {
-        return 'data:image/png;base64,'.base64_encode(base64_decode(
+        return 'data:image/png;base64,'.base64_encode($this->validSignatureBinary());
+    }
+
+    private function validSignatureBinary(): string
+    {
+        return base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-        ));
+        );
     }
 }

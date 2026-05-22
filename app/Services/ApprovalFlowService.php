@@ -503,12 +503,43 @@ class ApprovalFlowService
         }
 
         $path = parse_url($source, PHP_URL_PATH) ?: $source;
+        $path = '/'.ltrim(str_replace('\\', '/', urldecode($path)), '/');
 
-        if (! str_starts_with($path, '/storage/')) {
-            return null;
+        $storagePrefixes = collect([
+            parse_url((string) config('filesystems.disks.public.url'), PHP_URL_PATH) ?: null,
+            '/storage',
+        ])
+            ->filter()
+            ->map(fn (string $prefix) => '/'.trim(str_replace('\\', '/', $prefix), '/').'/')
+            ->unique()
+            ->values();
+
+        foreach ($storagePrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return $this->existingPublicStoragePath(substr($path, strlen($prefix)));
+            }
         }
 
-        $relative = urldecode(substr($path, strlen('/storage/')));
+        $storageSegment = '/storage/';
+        $position = strpos($path, $storageSegment);
+        if ($position !== false) {
+            return $this->existingPublicStoragePath(substr($path, $position + strlen($storageSegment)));
+        }
+
+        if (! str_contains($source, '://')) {
+            return $this->existingPublicStoragePath($path);
+        }
+
+        return null;
+    }
+
+    private function existingPublicStoragePath(string $relative): ?string
+    {
+        $relative = ltrim($relative, '/');
+
+        if ($relative === '' || str_contains($relative, '..')) {
+            return null;
+        }
 
         return Storage::disk('public')->exists($relative) ? $relative : null;
     }
