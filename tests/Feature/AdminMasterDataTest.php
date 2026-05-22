@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MasterDataRecord;
+use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\User;
 use Database\Seeders\MasterDataRecordSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -156,5 +157,44 @@ class AdminMasterDataTest extends TestCase
         foreach ($records as $record) {
             $this->assertDatabaseHas('master_data_records', ['id' => $record->id, 'status' => 'active']);
         }
+    }
+
+    public function test_admin_inspection_status_update_creates_history_snapshot(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $record = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-MANUAL',
+            'equipment_no' => 'EQ-COM-MANUAL',
+            'section_no' => 'SEC-COM-MANUAL',
+            'description' => 'MANUAL PAPER EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.master-data.inspection-status', $record), [
+                'inspection_status' => 'close',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'status' => 'close',
+                'label' => 'Close',
+            ]);
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $record->id,
+            'inspection_status' => 'close',
+        ]);
+
+        $history = MasterDataInspectionStatusHistory::firstOrFail();
+        $this->assertSame($record->id, $history->master_data_record_id);
+        $this->assertNull($history->previous_status);
+        $this->assertSame('close', $history->status);
+        $this->assertSame('manual_admin', $history->source);
+        $this->assertSame($admin->id, $history->changed_by);
+        $this->assertSame('EQ-COM-MANUAL', $history->snapshot['master_data']['equipment_no']);
     }
 }

@@ -183,6 +183,7 @@
                                     <select class="admin-work-status-select @if (($submission->work_status ?? null) === 'close') admin-work-status-close @elseif (($submission->work_status ?? null) === 'ongoing') admin-work-status-ongoing @endif"
                                             data-inspection-status-select
                                             data-update-url="{{ $submission->inspection_status_update_url }}"
+                                            data-has-digital-form="{{ $submission->form_number ? 'true' : 'false' }}"
                                             aria-label="Status equipment">
                                         @if (! in_array($submission->work_status ?? null, ['close', 'ongoing'], true))
                                             <option value="" selected disabled>Pilih Status</option>
@@ -417,7 +418,17 @@
 
             document.querySelectorAll('[data-inspection-status-select]').forEach(function (select) {
                 select.addEventListener('change', async function () {
-                    const previousValue = select.dataset.previousValue || select.value;
+                    const previousValue = select.dataset.previousValue ?? '';
+
+                    if (select.value === 'close' && select.dataset.hasDigitalForm !== 'true') {
+                        const confirmed = confirm('Belum ada form commissioning digital untuk equipment ini. Jika dilanjutkan, status akan Close dan tersimpan ke riwayat. Lanjutkan?');
+
+                        if (!confirmed) {
+                            select.value = previousValue;
+                            return;
+                        }
+                    }
+
                     select.disabled = true;
 
                     try {

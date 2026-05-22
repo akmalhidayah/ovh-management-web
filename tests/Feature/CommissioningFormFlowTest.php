@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
+use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,7 +99,9 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSessionHas('success', 'Form Commissioning berhasil disubmit.');
 
         $submission = CommissioningFormSubmission::firstOrFail();
+        $master->refresh();
         $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame('close', $master->inspection_status);
         $this->assertNotNull($submission->approvalFlow);
         $this->assertSame('ST-COM-LOC-001', $submission->functional_location);
         $this->assertSame('SEC-COM-001', $submission->tag_num);
@@ -115,6 +118,11 @@ class CommissioningFormFlowTest extends TestCase
             'period' => now()->format('m-Y'),
             'last_number' => 1,
         ]);
+        $history = MasterDataInspectionStatusHistory::firstOrFail();
+        $this->assertSame($master->id, $history->master_data_record_id);
+        $this->assertSame('digital_form', $history->source);
+        $this->assertSame($submission->id, $history->submission_id);
+        $this->assertSame($submission->form_number, $history->snapshot['submission']['form_number']);
 
         $pdfUrl = route('user.commissioning.submissions.pdf', $submission);
         $this->assertStringContainsString(CommissioningFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);

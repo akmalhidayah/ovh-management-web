@@ -164,7 +164,7 @@
                             <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
                             <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
                             <select name="header[unit_kerja]" class="form-select" data-organization-section-select>
-                                <option value="">Pilih seksi</option>
+                                <option value="">Pilih Unit Kerja</option>
                                 @foreach ($organizationSectionOptions as $sectionOption)
                                     <option value="{{ $sectionOption['section'] }}"
                                             data-id="{{ $sectionOption['id'] }}"
@@ -612,7 +612,7 @@
                     allowEmptyOption: true,
                     maxOptions: 1000,
                     searchField: ['text'],
-                    placeholder: 'Cari seksi...',
+                    placeholder: 'Cari Unit Kerja...',
                     render: {
                         option: function (data, escape) {
                             const option = data.$option;
@@ -625,7 +625,7 @@
                                 ${meta ? `<small class="text-muted">${escape(meta)}</small>` : ''}
                             </div>`;
                         },
-                        no_results: () => '<div class="no-results">Seksi tidak ditemukan</div>',
+                        no_results: () => '<div class="no-results">Unit Kerja tidak ditemukan</div>',
                     },
                 });
             };
@@ -712,6 +712,44 @@
             initOrganizationSectionSearch();
             syncOrganizationSection();
 
+        })();
+
+        (() => {
+            document.querySelectorAll('[data-qc-inspector-approval]').forEach((card) => {
+                const input = card.querySelector('[data-signature-input]');
+                const signature = input?.value || '';
+
+                if (!signature) {
+                    return;
+                }
+
+                const preview = card.querySelector('[data-signature-preview]');
+                const signedAtInput = card.querySelector('[data-signature-time-input]');
+                const signedAt = signedAtInput?.value ? new Date(signedAtInput.value) : null;
+
+                if (preview) {
+                    preview.src = signature;
+                }
+
+                card.querySelector('[data-signature-empty]')?.classList.add('d-none');
+                card.querySelector('[data-signature-result]')?.classList.remove('d-none');
+                card.querySelector('[data-signature-remove]')?.classList.remove('d-none');
+
+                const buttonLabel = card.querySelector('[data-signature-button-label]');
+                if (buttonLabel) {
+                    buttonLabel.textContent = 'Ubah';
+                }
+
+                if (signedAt && !Number.isNaN(signedAt.getTime())) {
+                    const time = card.querySelector('[data-signature-time]');
+                    if (time) {
+                        time.textContent = signedAt.toLocaleString('id-ID', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                        });
+                    }
+                }
+            });
         })();
     </script>
 @endpush

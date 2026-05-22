@@ -747,6 +747,14 @@ class FormController extends Controller
             $errors['body.final_check'] = 'Submit QC hanya bisa dilakukan jika Final Check sudah dicentang.';
         }
 
+        $inspectorApprovalColumn = collect(FixedQcTemplate::approvalColumns($template->template_type))
+            ->firstWhere('role', 'QC Inspektor');
+        $inspectorApprovalKey = $inspectorApprovalColumn['key'] ?? null;
+
+        if ($inspectorApprovalKey && ! $this->hasApprovalSignature($request, $inspectorApprovalKey)) {
+            $errors["approval.{$inspectorApprovalKey}.signature"] = 'Tanda tangan QC Inspektor wajib diisi.';
+        }
+
         if (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_WELDING) {
             if (($body['methods'] ?? []) === []) {
                 $errors['body.methods'] = 'Minimal satu metode QC wajib dipilih.';
@@ -824,6 +832,15 @@ class FormController extends Controller
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    private function hasApprovalSignature(Request $request, string $key): bool
+    {
+        if ($request->file("approval_signature_files.{$key}") instanceof UploadedFile) {
+            return true;
+        }
+
+        return filled($request->input("approval.{$key}.signature"));
     }
 
     private function storeFixedRows(QcFormSubmission $submission, QcFormTemplate $template, array $bodyData): void

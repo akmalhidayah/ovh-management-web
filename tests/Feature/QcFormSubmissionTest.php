@@ -86,9 +86,27 @@ class QcFormSubmissionTest extends TestCase
         $this->assertTrue($steps[0]->is_submitter_signature);
         $this->assertFalse($steps[0]->requires_magic_link);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[0]->status);
+        $this->assertNotNull($steps[0]->signature_data);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
         $this->assertSame(1, $steps[1]->links->whereNull('used_at')->whereNull('revoked_at')->count());
         $this->assertSame(0, $steps[2]->links->count());
+    }
+
+    public function test_user_cannot_submit_fixed_qc_without_inspector_signature(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        unset($payload['approval']['qc_inspector_q_c_inspektor']);
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors([
+                'approval.qc_inspector_q_c_inspektor.signature' => 'Tanda tangan QC Inspektor wajib diisi.',
+            ]);
+
+        $this->assertSame(0, QcFormSubmission::count());
     }
 
     public function test_qc_castable_submit_creates_three_step_approval_flow(): void
@@ -816,7 +834,15 @@ class QcFormSubmissionTest extends TestCase
                 ],
             ],
             'note' => 'Catatan fixed general',
-            'approval' => [],
+            'approval' => [
+                'qc_inspector_q_c_inspektor' => [
+                    'signature' => $this->validSignatureData(),
+                    'name' => 'User QC',
+                    'date' => '2026-05-15',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
         ];
     }
 
@@ -851,7 +877,15 @@ class QcFormSubmissionTest extends TestCase
                 ],
             ],
             'note' => 'Catatan fixed welding',
-            'approval' => [],
+            'approval' => [
+                'qc_inspector_q_c_inspektor' => [
+                    'signature' => $this->validSignatureData(),
+                    'name' => 'User QC',
+                    'date' => '2026-05-15',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
         ];
     }
 
@@ -888,7 +922,15 @@ class QcFormSubmissionTest extends TestCase
                 ],
                 'brics_checks' => $checks,
             ],
-            'approval' => [],
+            'approval' => [
+                'brics_report_by' => [
+                    'signature' => $this->validSignatureData(),
+                    'name' => 'User QC',
+                    'date' => '2026-05-15',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
         ];
     }
 
@@ -1007,7 +1049,7 @@ class QcFormSubmissionTest extends TestCase
             'note' => 'Catatan form QC castable',
             'approval' => [
                 'castable_filled_by' => [
-                    'signature' => 'data:image/png;base64,'.base64_encode('signature'),
+                    'signature' => $this->validSignatureData(),
                     'name' => 'User QC',
                     'date' => '2026-05-15',
                     'role' => 'QC Inspektor',

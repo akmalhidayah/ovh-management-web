@@ -47,7 +47,7 @@ class FixedQcTemplate
                 ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
                 ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
                 ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
-                ['key' => 'unit_kerja', 'label' => 'Seksi', 'type' => 'text'],
+                ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
                 ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
                 ['key' => 'durasi', 'label' => 'Durasi (Menit)', 'type' => 'text'],
             ];
@@ -64,7 +64,7 @@ class FixedQcTemplate
             ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
             ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
             ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
-            ['key' => 'unit_kerja', 'label' => 'Seksi', 'type' => 'text'],
+            ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
             ['key' => 'durasi', 'label' => 'Durasi (menit)', 'type' => 'text'],
         ];
     }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MasterDataRecord extends Model
 {
@@ -56,6 +57,11 @@ class MasterDataRecord extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function inspectionStatusHistories(): HasMany
+    {
+        return $this->hasMany(MasterDataInspectionStatusHistory::class);
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

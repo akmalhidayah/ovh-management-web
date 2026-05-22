@@ -9,6 +9,7 @@ use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\MasterDataInspectionStatusService;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
@@ -100,6 +101,7 @@ class FormController extends Controller
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
+                    $this->closeMasterDataInspectionStatus($submission, $request);
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
                 }
 
@@ -188,6 +190,7 @@ class FormController extends Controller
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
 
                 if ($validated['action'] === 'submit') {
+                    $this->closeMasterDataInspectionStatus($submission, $request);
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
                 }
             });
@@ -625,6 +628,45 @@ class FormController extends Controller
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->where('status', 'active')
             ->first();
+    }
+
+    private function closeMasterDataInspectionStatus(CommissioningFormSubmission $submission, Request $request): void
+    {
+        $record = $this->masterDataRecordForSubmission($submission);
+
+        if (! $record) {
+            return;
+        }
+
+        app(MasterDataInspectionStatusService::class)->setStatus(
+            $record,
+            'close',
+            MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
+            $request->user(),
+            $submission
+        );
+    }
+
+    private function masterDataRecordForSubmission(CommissioningFormSubmission $submission): ?MasterDataRecord
+    {
+        $header = $submission->header_data ?? [];
+        $query = MasterDataRecord::query()
+            ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
+            ->where('status', 'active');
+
+        if (filled($header['master_data_record_id'] ?? null)) {
+            return (clone $query)->whereKey($header['master_data_record_id'])->first();
+        }
+
+        if (filled($submission->functional_location)) {
+            return (clone $query)->where('func_location', $submission->functional_location)->first();
+        }
+
+        if (filled($submission->equipment_no)) {
+            return (clone $query)->where('equipment_no', $submission->equipment_no)->first();
+        }
+
+        return null;
     }
 
     private function generateDocumentNumber(): string

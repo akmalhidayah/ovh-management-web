@@ -292,7 +292,24 @@
             });
 
             document.querySelectorAll('form[data-confirm-submit]').forEach((form) => {
-                form.addEventListener('submit', () => {
+                form.addEventListener('submit', (event) => {
+                    const submitter = event.submitter;
+                    const isSubmitAction = submitter?.name === 'action' && submitter?.value === 'submit';
+                    const inspectorCard = form.querySelector('[data-qc-inspector-approval]');
+
+                    if (isSubmitAction && inspectorCard) {
+                        const signatureInput = inspectorCard.querySelector('[data-signature-input]');
+                        const fileInput = inspectorCard.querySelector('[data-signature-file-input]');
+                        const hasSignature = Boolean(signatureInput?.value || fileInput?.files?.length);
+
+                        if (!hasSignature) {
+                            event.preventDefault();
+                            window.alert('Tanda tangan QC Inspektor wajib diisi sebelum submit.');
+                            inspectorCard.querySelector('[data-signature-open]')?.focus();
+                            return;
+                        }
+                    }
+
                     form.querySelectorAll('[data-signature-input]').forEach((input) => {
                         if (!input.value.startsWith('data:image/')) {
                             return;

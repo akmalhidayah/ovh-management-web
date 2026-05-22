@@ -11,7 +11,7 @@
             ['label' => 'Plant', 'value' => $headerValue('plant', $submission->plant ?: '')],
             ['label' => 'ID Equipment', 'value' => $headerValue('id_equipment')],
             ['label' => 'Date & Time', 'value' => $dateTime ?: ''],
-            ['label' => 'Seksi', 'value' => $headerValue('unit_kerja', $submission->unit ?: '')],
+            ['label' => 'Unit Kerja', 'value' => $headerValue('unit_kerja', $submission->unit ?: '')],
         ],
         [
             ['label' => 'Section No.', 'value' => $headerValue('tag_num', $submission->tag_num ?: '')],

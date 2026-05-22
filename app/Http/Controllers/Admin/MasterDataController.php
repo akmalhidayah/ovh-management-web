@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterDataRecord;
+use App\Services\MasterDataInspectionStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -94,15 +95,22 @@ class MasterDataController extends Controller
         return back()->with('success', "{$updated} master data berhasil diubah menjadi {$label}.");
     }
 
-    public function updateInspectionStatus(Request $request, MasterDataRecord $masterDataRecord): JsonResponse
+    public function updateInspectionStatus(
+        Request $request,
+        MasterDataRecord $masterDataRecord,
+        MasterDataInspectionStatusService $inspectionStatus
+    ): JsonResponse
     {
         $validated = $request->validate([
             'inspection_status' => ['required', Rule::in(array_keys(MasterDataRecord::inspectionStatuses()))],
         ]);
 
-        $masterDataRecord->update([
-            'inspection_status' => $validated['inspection_status'],
-        ]);
+        $inspectionStatus->setStatus(
+            $masterDataRecord,
+            $validated['inspection_status'],
+            MasterDataInspectionStatusService::SOURCE_MANUAL_ADMIN,
+            $request->user()
+        );
 
         return response()->json([
             'status' => $masterDataRecord->inspection_status,
