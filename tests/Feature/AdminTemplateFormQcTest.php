@@ -240,7 +240,6 @@ class AdminTemplateFormQcTest extends TestCase
             ->get(route('admin.template-form-qc.edit', $template))
             ->assertOk()
             ->assertSee('placeholder="Judul approval"', false)
-            ->assertDontSee('placeholder="Header approval"', false)
             ->assertSee('Supplier')
             ->assertSee('Approver Final')
             ->assertDontSee('Vendor Partner')
@@ -275,17 +274,17 @@ class AdminTemplateFormQcTest extends TestCase
         $template = QcFormTemplate::where('code', 'QCR-CASTABLE-001')->firstOrFail();
 
         $response->assertRedirect(route('admin.template-form-qc.preview', $template));
-        $this->assertSame('Approval Castable', $template->body_schema['approval_defaults']['castable_filled_by']['group']);
-        $this->assertSame('*1 diperiksa', $template->body_schema['approval_defaults']['castable_filled_by']['label']);
-        $this->assertSame('*1 diperiksa', $template->approvalSteps()->where('step_order', 1)->first()?->label);
+        $this->assertSame('Supervisor Approval', $template->body_schema['approval_defaults']['castable_filled_by']['group']);
+        $this->assertSame('*1 diisi', $template->body_schema['approval_defaults']['castable_filled_by']['label']);
+        $this->assertSame('*1 diisi', $template->approvalSteps()->where('step_order', 1)->first()?->label);
 
         $this->actingAs($admin)
             ->get(route('admin.template-form-qc.edit', $template))
             ->assertOk()
-            ->assertSee('placeholder="Judul approval"', false)
-            ->assertDontSee('placeholder="Header approval"', false)
-            ->assertSee('Approval Castable')
-            ->assertDontSee('Supervisor Approval');
+            ->assertSee('placeholder="Header approval"', false)
+            ->assertSee('Supervisor Approval')
+            ->assertSee('*1 diisi')
+            ->assertDontSee('*1 diperiksa');
     }
 
     public function test_admin_can_publish_template_form_qc(): void

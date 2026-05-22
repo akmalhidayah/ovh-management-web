@@ -322,8 +322,13 @@
                     $approvalName = $approvalDefaults[$column['key']]['name'] ?? '';
                 @endphp
                 <div class="qc-approval-box">
-                    <small>{{ $column['group'] }}</small>
-                    <strong>{{ $column['label'] }}</strong>
+                    @if ($type === FixedQcTemplate::TYPE_CASTABLE)
+                        <strong>{{ $column['label'] }}</strong>
+                        <small>{{ $column['group'] }}</small>
+                    @else
+                        <small>{{ $column['group'] }}</small>
+                        <strong>{{ $column['label'] }}</strong>
+                    @endif
                     <input type="text" class="form-control mt-2" value="{{ $approvalName }}" placeholder="Nama" disabled>
                     <input type="date" class="form-control mt-2" disabled>
                     <span>{{ ($column['role'] ?? null) === 'QC Inspektor' ? 'Tanda tangan user QC' : 'Tanda tangan terkunci' }}</span>

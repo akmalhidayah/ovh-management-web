@@ -207,8 +207,8 @@
                     <tr>
                         @foreach ($approvalColumns as $column)
                             <th>
-                                <span style="font-size: 7.5px; font-weight: 400;">{{ $column['group'] }}</span><br>
-                                {{ $column['label'] }}
+                                {{ $column['label'] }}<br>
+                                <span style="font-size: 7.5px; font-weight: 400;">{{ $column['group'] }}</span>
                             </th>
                         @endforeach
                     </tr>

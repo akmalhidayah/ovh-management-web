@@ -337,20 +337,31 @@
                     @php
                         $approvalDefault = $typeApprovalDefaults[$column['key']] ?? [];
                         $approvalName = $approvalDefault['name'] ?? '';
-                        $titleEditable = FixedQcTemplate::approvalTitleIsEditable($approvalType, $column['key']);
-                        $approvalGroup = $approvalDefault['group'] ?? $column['group'];
-                        $approvalLabel = $titleEditable
+                        $groupEditable = FixedQcTemplate::approvalGroupIsEditable($approvalType, $column['key']);
+                        $labelEditable = FixedQcTemplate::approvalLabelIsEditable($approvalType, $column['key']);
+                        $approvalGroup = $groupEditable
+                            ? old("approval_defaults.{$column['key']}.group", $approvalDefault['group'] ?? $column['group'])
+                            : ($approvalDefault['group'] ?? $column['group']);
+                        $approvalLabel = $labelEditable
                             ? old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label'])
                             : ($approvalDefault['label'] ?? $column['label']);
                     @endphp
                     <div class="qc-approval-box">
-                        @if ($titleEditable)
+                        @if ($labelEditable)
                             <small>{{ $approvalGroup }}</small>
                             <input type="text"
                                    name="approval_defaults[{{ $column['key'] }}][label]"
                                    class="form-control form-control-sm text-center mt-2 fw-semibold"
                                    value="{{ $approvalLabel }}"
                                    placeholder="Judul approval"
+                                   @disabled($selectedType !== $approvalType)>
+                        @elseif ($groupEditable)
+                            <strong>{{ $approvalLabel }}</strong>
+                            <input type="text"
+                                   name="approval_defaults[{{ $column['key'] }}][group]"
+                                   class="form-control form-control-sm text-center mt-2 fw-semibold"
+                                   value="{{ $approvalGroup }}"
+                                   placeholder="Header approval"
                                    @disabled($selectedType !== $approvalType)>
                         @else
                             <small>{{ $approvalGroup }}</small>

@@ -225,13 +225,14 @@ class FixedQcTemplate
         return collect(self::approvalColumns($type))
             ->mapWithKeys(function ($column) use ($defaults, $type) {
                 $data = Arr::get($defaults, $column['key'], []);
-                $titleEditable = self::approvalTitleIsEditable($type, $column['key']);
+                $groupEditable = self::approvalGroupIsEditable($type, $column['key']);
+                $labelEditable = self::approvalLabelIsEditable($type, $column['key']);
 
                 return [
                     $column['key'] => [
                         'name' => trim((string) Arr::get($data, 'name', '')),
-                        'group' => $column['group'],
-                        'label' => $titleEditable ? (trim((string) Arr::get($data, 'label', '')) ?: $column['label']) : $column['label'],
+                        'group' => $groupEditable ? (trim((string) Arr::get($data, 'group', '')) ?: $column['group']) : $column['group'],
+                        'label' => $labelEditable ? (trim((string) Arr::get($data, 'label', '')) ?: $column['label']) : $column['label'],
                     ],
                 ];
             })
@@ -291,9 +292,19 @@ class FixedQcTemplate
 
     public static function approvalTitleIsEditable(?string $type, string $key): bool
     {
+        return self::approvalGroupIsEditable($type, $key) || self::approvalLabelIsEditable($type, $key);
+    }
+
+    public static function approvalGroupIsEditable(?string $type, string $key): bool
+    {
+        return self::normalizeType($type) === self::TYPE_CASTABLE;
+    }
+
+    public static function approvalLabelIsEditable(?string $type, string $key): bool
+    {
         $type = self::normalizeType($type);
 
-        return in_array($type, [self::TYPE_CASTABLE, self::TYPE_BRICS], true);
+        return $type === self::TYPE_BRICS;
     }
 
     public static function castableCustomerRows(): array

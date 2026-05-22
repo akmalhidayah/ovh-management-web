@@ -834,8 +834,8 @@
                         <th style="width: 25%;">Tanggal</th>
                         @foreach ($approvalColumns as $column)
                             <th>
-                                <span style="font-size: 7.5px; font-weight: 400;">{{ strtoupper($column['group']) }}</span><br>
-                                {{ strtoupper($column['label']) }}
+                                {{ strtoupper($column['label']) }}<br>
+                                <span style="font-size: 7.5px; font-weight: 400;">{{ strtoupper($column['group']) }}</span>
                             </th>
                         @endforeach
                     </tr>
