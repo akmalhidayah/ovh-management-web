@@ -448,6 +448,9 @@
                     $approvalLabel = $column['label'];
                     $groupEditable = FixedQcTemplate::approvalGroupIsEditable($type, $column['key']);
                     $labelEditable = FixedQcTemplate::approvalLabelIsEditable($type, $column['key']);
+                    $editablePlaceholder = FixedQcTemplate::approvalEditablePlaceholder($type, $column['key']);
+                    $approvalGroupInput = FixedQcTemplate::approvalEditableValue($type, $column['key'], $approvalGroup);
+                    $approvalLabelInput = FixedQcTemplate::approvalEditableValue($type, $column['key'], $approvalLabel);
                 @endphp
                 <div class="qc-user-approval-box {{ $isInspector ? '' : 'is-locked' }}" data-signature-card="{{ $column['key'] }}" @if ($isInspector) data-qc-inspector-approval @endif>
                     <div class="qc-approval-label-row">
@@ -456,15 +459,15 @@
                             <input type="text"
                                    class="form-control form-control-sm mt-2"
                                    name="approval[{{ $column['key'] }}][group]"
-                                   value="{{ $approvalGroup }}"
-                                   placeholder="Header approval">
+                                   value="{{ $approvalGroupInput }}"
+                                   placeholder="{{ $editablePlaceholder }}">
                         @elseif ($labelEditable)
                             <small class="text-muted d-block">{{ $approvalGroup }}</small>
                             <input type="text"
                                    class="form-control form-control-sm mt-2 fw-semibold"
                                    name="approval[{{ $column['key'] }}][label]"
-                                   value="{{ $approvalLabel }}"
-                                   placeholder="Judul approval">
+                                   value="{{ $approvalLabelInput }}"
+                                   placeholder="{{ $editablePlaceholder }}">
                         @else
                             <small class="text-muted d-block">{{ $approvalGroup }}</small>
                             <strong>{{ $approvalLabel }}</strong>

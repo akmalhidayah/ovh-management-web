@@ -345,6 +345,9 @@
                         $approvalLabel = $labelEditable
                             ? old("approval_defaults.{$column['key']}.label", $approvalDefault['label'] ?? $column['label'])
                             : ($approvalDefault['label'] ?? $column['label']);
+                        $editablePlaceholder = FixedQcTemplate::approvalEditablePlaceholder($approvalType, $column['key']);
+                        $approvalGroupInput = FixedQcTemplate::approvalEditableValue($approvalType, $column['key'], $approvalGroup);
+                        $approvalLabelInput = FixedQcTemplate::approvalEditableValue($approvalType, $column['key'], $approvalLabel);
                     @endphp
                     <div class="qc-approval-box">
                         @if ($labelEditable)
@@ -352,16 +355,16 @@
                             <input type="text"
                                    name="approval_defaults[{{ $column['key'] }}][label]"
                                    class="form-control form-control-sm text-center mt-2 fw-semibold"
-                                   value="{{ $approvalLabel }}"
-                                   placeholder="Judul approval"
+                                   value="{{ $approvalLabelInput }}"
+                                   placeholder="{{ $editablePlaceholder }}"
                                    @disabled($selectedType !== $approvalType)>
                         @elseif ($groupEditable)
                             <strong>{{ $approvalLabel }}</strong>
                             <input type="text"
                                    name="approval_defaults[{{ $column['key'] }}][group]"
                                    class="form-control form-control-sm text-center mt-2 fw-semibold"
-                                   value="{{ $approvalGroup }}"
-                                   placeholder="Header approval"
+                                   value="{{ $approvalGroupInput }}"
+                                   placeholder="{{ $editablePlaceholder }}"
                                    @disabled($selectedType !== $approvalType)>
                         @else
                             <small>{{ $approvalGroup }}</small>

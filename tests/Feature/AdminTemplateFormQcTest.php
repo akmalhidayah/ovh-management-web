@@ -239,7 +239,7 @@ class AdminTemplateFormQcTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.template-form-qc.edit', $template))
             ->assertOk()
-            ->assertSee('placeholder="Judul approval"', false)
+            ->assertSee('placeholder="Contoh: Nama Vendor"', false)
             ->assertSee('Supplier')
             ->assertSee('Approver Final')
             ->assertDontSee('Vendor Partner')
@@ -281,7 +281,7 @@ class AdminTemplateFormQcTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.template-form-qc.edit', $template))
             ->assertOk()
-            ->assertSee('placeholder="Header approval"', false)
+            ->assertSee('placeholder="Contoh: Nama/Jabatan"', false)
             ->assertSee('Supervisor Approval')
             ->assertSee('*1 diisi')
             ->assertDontSee('*1 diperiksa');

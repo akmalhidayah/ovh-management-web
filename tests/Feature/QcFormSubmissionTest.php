@@ -594,8 +594,8 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.qc.forms.create', ['template' => $template->id]))
             ->assertOk()
-            ->assertSee('placeholder="Judul approval"', false)
-            ->assertDontSee('placeholder="Header approval"', false);
+            ->assertSee('placeholder="Contoh: Nama Vendor"', false)
+            ->assertSee('placeholder="Contoh: Nama/Jabatan"', false);
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)
@@ -634,8 +634,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Monitoring Installation Castable')
             ->assertSee('Tambah Row Monitoring')
-            ->assertDontSee('placeholder="Judul approval"', false)
-            ->assertSee('placeholder="Header approval"', false);
+            ->assertSee('placeholder="Contoh: Nama/Jabatan"', false);
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)

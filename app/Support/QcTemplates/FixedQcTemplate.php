@@ -310,6 +310,44 @@ class FixedQcTemplate
         return $type === self::TYPE_BRICS;
     }
 
+    public static function approvalEditablePlaceholder(?string $type, string $key): string
+    {
+        $type = self::normalizeType($type);
+
+        if ($type === self::TYPE_BRICS) {
+            return match ($key) {
+                'brics_report_by' => 'Contoh: Nama/Jabatan QC',
+                'brics_vendor' => 'Contoh: Nama Vendor',
+                'brics_customer_supervisor' => 'Contoh: Nama Customer Supervisor',
+                'brics_name_unit' => 'Contoh: Nama/Unit',
+                'brics_approve_by' => 'Contoh: Nama/Jabatan',
+                default => 'Contoh: Nama/Jabatan',
+            };
+        }
+
+        if ($type === self::TYPE_CASTABLE) {
+            return 'Contoh: Nama/Jabatan';
+        }
+
+        return 'Nama/Jabatan';
+    }
+
+    public static function approvalEditableValue(?string $type, string $key, mixed $value): string
+    {
+        $value = trim((string) $value);
+        $column = collect(self::approvalColumns($type))->firstWhere('key', $key) ?? [];
+
+        if (self::approvalGroupIsEditable($type, $key) && $value === ($column['group'] ?? '')) {
+            return '';
+        }
+
+        if (self::approvalLabelIsEditable($type, $key) && $value === ($column['label'] ?? '')) {
+            return '';
+        }
+
+        return $value;
+    }
+
     public static function castableCustomerRows(): array
     {
         return [
