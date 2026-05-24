@@ -50,8 +50,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
     Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
-    Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-    Route::post('/register', [RegisterController::class, 'register'])->name('register.store');
+    // REGISTRATION_DISABLED: akun baru untuk sementara hanya dibuat dari Admin > Userpanel.
+    // Aktifkan lagi public register dengan membuka komentar dua route di bawah ini.
+    // Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    // Route::post('/register', [RegisterController::class, 'register'])->name('register.store');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])
