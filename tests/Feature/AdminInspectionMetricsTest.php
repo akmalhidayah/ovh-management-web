@@ -223,4 +223,95 @@ class AdminInspectionMetricsTest extends TestCase
         $this->assertSame(33.3, $data['inspectionMetrics']['cards']['percentage']);
         $this->assertSame(3, $data['inspectionMetrics']['areaRows']->sum('equipment'));
     }
+
+    public function test_qc_admin_rows_collect_row_catatan_as_remarks_and_count_one_remarked_form(): void
+    {
+        $template = QcFormTemplate::create([
+            'code' => 'QC-REMARK-001',
+            'name' => 'QC Remark Template',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'LOC-QC-REMARK',
+            'equipment_no' => 'EQ-QC-REMARK',
+            'section_no' => 'SEC-QC-REMARK',
+            'description' => 'QC Equipment Remark',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        $submission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '010/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'QC Equipment Remark',
+            'general_info' => [
+                'master_data_record_id' => $master->id,
+                'id_equipment' => 'EQ-QC-REMARK',
+                'name_equipment' => 'QC Equipment Remark',
+                'functional_location' => 'LOC-QC-REMARK',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $submission->rows()->createMany([
+            [
+                'block_type' => 'brics_check',
+                'order_no' => 1,
+                'row_data' => ['key' => 'surface_condition', 'label' => 'Surface condition'],
+                'status_value' => 'NO',
+                'catatan' => 'Permukaan retak',
+            ],
+            [
+                'block_type' => 'castable_monitoring',
+                'order_no' => 2,
+                'row_data' => ['no' => '2', 'item' => 'Water mixing'],
+                'catatan' => 'Kadar air terlalu tinggi',
+            ],
+            [
+                'block_type' => 'general',
+                'order_no' => 3,
+                'row_data' => ['item_pengecekan' => 'Alignment'],
+                'status_value' => 'Not Ok',
+                'catatan' => 'Alignment belum sesuai',
+            ],
+            [
+                'block_type' => 'general',
+                'order_no' => 4,
+                'row_data' => ['item_pengecekan' => 'Cleanliness'],
+                'status_value' => 'Ok',
+                'catatan' => '',
+            ],
+        ]);
+
+        $data = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.qc'), 'GET', [
+                'year' => '2026',
+                'plant' => 'TONASA 4',
+            ]),
+            'qc'
+        );
+
+        $row = $data['submissions']->getCollection()->first();
+
+        $this->assertSame(1, $data['inspectionMetrics']['remarkForms']);
+        $this->assertSame('010/QC/05-2026', $row->form_number);
+        $this->assertSame(3, $row->remarks_count);
+        $this->assertCount(3, $row->remarks);
+        $this->assertSame('QC Brics', $row->remarks[0]['section']);
+        $this->assertSame('Surface condition', $row->remarks[0]['item']);
+        $this->assertSame('QC General', $row->remarks[2]['section']);
+        $this->assertSame('Alignment belum sesuai', $row->remarks[2]['text']);
+    }
 }

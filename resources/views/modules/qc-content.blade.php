@@ -16,7 +16,7 @@
     $filterRoute = $filters['type'] === 'commissioning' ? 'admin.commissioning' : 'admin.qc';
     $formatPercentage = fn ($value) => rtrim(rtrim(number_format((float) $value, 1, ',', '.'), '0'), ',');
     $metricsLabel = $inspectionMetrics['label'] ?? ($filters['type'] === 'commissioning' ? 'Commissioning' : 'QC');
-    $isCommissioningPage = ($filters['type'] ?? null) === 'commissioning';
+    $supportsRemarks = in_array(($filters['type'] ?? null), ['qc', 'commissioning'], true);
 @endphp
 
 <form method="GET" action="{{ route($filterRoute) }}">
@@ -58,7 +58,7 @@
 </form>
 
 @if ($inspectionMetrics)
-    <div class="qc-progress-dashboard">
+    <div class="qc-progress-dashboard @if ($supportsRemarks) has-remarks-metric @endif">
         <div class="qc-progress-card qc-progress-card-total">
             <div class="qc-progress-card-icon"><i class="bi bi-database"></i></div>
             <div class="min-w-0">
@@ -87,7 +87,7 @@
                 <div class="qc-progress-card-value" data-count-value="{{ $inspectionMetrics['cards']['percentage'] }}" data-count-decimals="1" data-count-trim="true" data-count-suffix="%">{{ $formatPercentage($inspectionMetrics['cards']['percentage']) }}%</div>
             </div>
         </div>
-        @if ($isCommissioningPage)
+        @if ($supportsRemarks)
             <div class="qc-progress-card qc-progress-card-remarks">
                 <div class="qc-progress-card-icon"><i class="bi bi-chat-left-text"></i></div>
                 <div class="min-w-0">
@@ -151,18 +151,14 @@
 
 <div class="content-card">
     <div class="table-responsive">
-        <table class="table align-middle ovh-table admin-submission-table @if ($isCommissioningPage) has-remarks-column @endif">
+        <table class="table align-middle ovh-table admin-submission-table has-location-column">
             <colgroup>
                 <col class="admin-submission-col-no">
                 <col class="admin-submission-col-type">
                 <col class="admin-submission-col-year">
-                <col class="admin-submission-col-plant">
-                <col class="admin-submission-col-area">
+                <col class="admin-submission-col-location">
                 <col>
                 <col class="admin-submission-col-status">
-                @if ($isCommissioningPage)
-                    <col class="admin-submission-col-remarks">
-                @endif
                 <col class="admin-submission-col-action">
             </colgroup>
             <thead>
@@ -170,13 +166,9 @@
                     <th>No</th>
                     <th>Jenis</th>
                     <th>Tahun</th>
-                    <th>Plant</th>
-                    <th>Area</th>
+                    <th>Lokasi</th>
                     <th>Equipment</th>
                     <th>Approval</th>
-                    @if ($isCommissioningPage)
-                        <th>Remarks</th>
-                    @endif
                     <th class="text-end">Action</th>
                 </tr>
             </thead>
@@ -190,8 +182,10 @@
                             </span>
                         </td>
                         <td>{{ $submission->year ?: '-' }}</td>
-                        <td>{{ $submission->plant ?: '-' }}</td>
-                        <td>{{ $submission->area ?: '-' }}</td>
+                        <td>
+                            <div class="admin-submission-location">{{ $submission->plant ?: '-' }}</div>
+                            <div class="admin-submission-location-meta">{{ $submission->area ?: '-' }}</div>
+                        </td>
                         <td>
                             <div class="admin-submission-equipment-row">
                                 <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
@@ -232,27 +226,20 @@
                                 <span class="text-muted small">Belum submit</span>
                             @endif
                         </td>
-                        @if ($isCommissioningPage)
-                            <td>
-                                @php
-                                    $remarks = collect($submission->remarks ?? []);
-                                    $remarksCount = (int) ($submission->remarks_count ?? $remarks->count());
-                                    $remarksModalId = $submission->model ? 'adminRemarksModal'.$submission->type.$submission->model->id : null;
-                                @endphp
-                                @if ($remarksCount > 0 && $remarksModalId)
-                                    <button type="button" class="admin-remarks-card" data-bs-toggle="modal" data-bs-target="#{{ $remarksModalId }}">
-                                        <span class="admin-remarks-count">{{ $remarksCount }}</span>
-                                        <span class="admin-remarks-label">Remarks</span>
-                                    </button>
-                                @elseif ($submission->form_number)
-                                    <span class="admin-remarks-empty">0 Remarks</span>
-                                @else
-                                    <span class="text-muted small">-</span>
-                                @endif
-                            </td>
-                        @endif
                         <td class="text-end">
+                            @php
+                                $remarks = collect($submission->remarks ?? []);
+                                $remarksCount = (int) ($submission->remarks_count ?? $remarks->count());
+                                $remarksModalId = $submission->model ? 'adminRemarksModal'.$submission->type.$submission->model->id : null;
+                            @endphp
                             <div class="d-inline-flex align-items-center gap-2">
+                                @if ($supportsRemarks && $remarksCount > 0 && $remarksModalId)
+                                    <button type="button" class="admin-remarks-card" data-bs-toggle="modal" data-bs-target="#{{ $remarksModalId }}" title="Remarks" aria-label="Remarks">
+                                        <i class="bi bi-exclamation-lg" aria-hidden="true"></i>
+                                        <span class="admin-remarks-count">{{ $remarksCount }}</span>
+                                    </button>
+                                @endif
+
                                 @if ($submission->model?->approvalFlow)
                                     <button type="button" class="btn btn-sm btn-outline-primary admin-inspection-icon-btn" data-bs-toggle="modal" data-bs-target="#adminApprovalProgressModal{{ $submission->type }}{{ $submission->model->id }}" title="Detail Approval" aria-label="Detail Approval">
                                         <i class="bi bi-list-check"></i>
@@ -271,7 +258,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $isCommissioningPage ? 9 : 8 }}" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             {{ $filters['type'] === 'commissioning' ? 'Belum ada master data equipment untuk filter ini.' : 'Belum ada submission untuk filter ini.' }}
                         </td>
                     </tr>
@@ -285,7 +272,7 @@
     </div>
 </div>
 
-@if ($isCommissioningPage)
+@if ($supportsRemarks)
     @foreach ($submissions->getCollection()->filter(fn ($submission) => ($submission->remarks_count ?? 0) > 0 && $submission->model) as $submission)
         @php
             $remarksModalId = 'adminRemarksModal'.$submission->type.$submission->model->id;
@@ -543,9 +530,14 @@
     <style>
         .qc-progress-dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: .85rem;
             margin: 1rem 0 1rem;
+        }
+
+        .qc-progress-dashboard.has-remarks-metric {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: .72rem;
         }
 
         .qc-progress-card {
@@ -602,6 +594,30 @@
             line-height: 1.12;
             font-variant-numeric: tabular-nums;
             letter-spacing: 0;
+        }
+
+        .qc-progress-dashboard.has-remarks-metric .qc-progress-card {
+            min-height: 76px;
+            gap: .7rem;
+            padding: .66rem .78rem;
+            border-radius: .65rem;
+        }
+
+        .qc-progress-dashboard.has-remarks-metric .qc-progress-card-icon {
+            width: 40px;
+            height: 40px;
+            flex-basis: 40px;
+            border-radius: .58rem;
+            font-size: 1.08rem;
+        }
+
+        .qc-progress-dashboard.has-remarks-metric .qc-progress-card-title {
+            max-width: 9.2rem;
+            font-size: .78rem;
+        }
+
+        .qc-progress-dashboard.has-remarks-metric .qc-progress-card-value {
+            font-size: clamp(1.28rem, 1.55vw, 1.58rem);
         }
 
         .qc-progress-card-total {
@@ -712,10 +728,6 @@
             font-size: .82rem;
         }
 
-        .admin-submission-table.has-remarks-column {
-            min-width: 900px;
-        }
-
         .admin-submission-table thead th {
             padding: .72rem .7rem;
             font-size: .7rem;
@@ -732,9 +744,9 @@
         .admin-submission-col-year { width: 62px; }
         .admin-submission-col-plant { width: 104px; }
         .admin-submission-col-area { width: 112px; }
+        .admin-submission-col-location { width: 132px; }
         .admin-submission-col-status { width: 138px; }
-        .admin-submission-col-remarks { width: 118px; }
-        .admin-submission-col-action { width: 88px; }
+        .admin-submission-col-action { width: 124px; }
 
         .admin-submission-table .badge {
             padding: .36rem .56rem;
@@ -756,6 +768,20 @@
             align-items: center;
             justify-content: space-between;
             gap: .65rem;
+        }
+
+        .admin-submission-location {
+            color: #172033;
+            font-size: .8rem;
+            font-weight: 750;
+            line-height: 1.2;
+        }
+
+        .admin-submission-location-meta {
+            margin-top: .18rem;
+            color: #64748b;
+            font-size: .72rem;
+            line-height: 1.2;
         }
 
         .admin-work-status-badge {
@@ -815,7 +841,8 @@
             line-height: 1.35;
         }
 
-        .admin-submission-table td:not(:nth-child(6)) {
+        .admin-submission-table:not(.has-location-column) td:not(:nth-child(6)),
+        .admin-submission-table.has-location-column td:not(:nth-child(5)) {
             white-space: nowrap;
         }
 
@@ -829,48 +856,51 @@
         }
 
         .admin-remarks-card {
-            width: 100%;
-            min-width: 5.8rem;
+            position: relative;
+            width: 1.95rem;
+            height: 1.95rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: .34rem;
-            padding: .38rem .48rem;
-            border: 1px solid #99f6e4;
-            border-radius: .58rem;
-            color: #0f766e;
-            background: #f0fdfa;
+            padding: 0;
+            border: 1px solid #f59e0b;
+            border-radius: .36rem;
+            color: #ffffff;
+            background: #f59e0b;
             font-weight: 800;
             line-height: 1.1;
         }
 
         .admin-remarks-card:hover,
         .admin-remarks-card:focus {
-            color: #115e59;
-            background: #ccfbf1;
-            border-color: #5eead4;
+            color: #ffffff;
+            background: #d97706;
+            border-color: #d97706;
+        }
+
+        .admin-remarks-card i {
+            font-size: 1.05rem;
+            line-height: 1;
         }
 
         .admin-remarks-count {
-            font-size: 1rem;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .admin-remarks-label,
-        .admin-remarks-empty {
-            font-size: .68rem;
-            font-weight: 800;
-        }
-
-        .admin-remarks-empty {
+            position: absolute;
+            top: -.46rem;
+            right: -.46rem;
+            min-width: 1.14rem;
+            height: 1.14rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            padding: .38rem .48rem;
-            border-radius: .58rem;
-            color: #94a3b8;
-            background: #f8fafc;
+            padding: 0 .25rem;
+            border: 2px solid #ffffff;
+            border-radius: 999px;
+            color: #ffffff;
+            background: #dc2626;
+            font-size: .62rem;
+            font-weight: 900;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
         }
 
         .admin-remarks-modal-subtitle {
@@ -929,18 +959,27 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .qc-progress-dashboard.has-remarks-metric {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .admin-submission-table {
                 min-width: 720px;
             }
 
             .admin-submission-col-plant { width: 96px; }
             .admin-submission-col-area { width: 96px; }
+            .admin-submission-col-location { width: 124px; }
             .admin-submission-col-status { width: 126px; }
-            .admin-submission-col-remarks { width: 112px; }
+            .admin-submission-col-action { width: 118px; }
         }
 
         @media (max-width: 575.98px) {
             .qc-progress-dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .qc-progress-dashboard.has-remarks-metric {
                 grid-template-columns: 1fr;
             }
 

@@ -70,7 +70,7 @@ class AdminInspectionSubmissionPageData
         if ($type === null || $type === 'qc') {
             $rows = $rows->merge(
                 QcFormSubmission::query()
-                    ->with(['user', 'approvalFlow.steps'])
+                    ->with(['user', 'approvalFlow.steps', 'rows'])
                     ->whereIn('status', ['draft', 'submitted', 'pending_approval', 'approved', 'revision', 'revision_required', 'rejected', 'cancelled'])
                     ->latest('submitted_at')
                     ->get()
@@ -123,7 +123,10 @@ class AdminInspectionSubmissionPageData
             'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
             'pdf_route' => $submission->status !== 'draft' ? route('admin.qc.submissions.pdf', $submission) : null,
+            'remarks' => self::qcRemarks($submission),
         ];
+
+        $row->remarks_count = count($row->remarks);
 
         return self::withMasterInspectionStatus($row);
     }
@@ -380,7 +383,9 @@ class AdminInspectionSubmissionPageData
                 MasterDataRecord::CATEGORY_QC,
                 fn (array $filters): Collection => self::qcDashboardSubmissionRows($filters),
                 'QC'
-            ),
+            ) + [
+                'remarkForms' => self::qcRemarkFormCount($filters),
+            ],
             'commissioning' => self::metricsForType(
                 $filters,
                 MasterDataRecord::CATEGORY_COMMISSIONING,
@@ -460,7 +465,7 @@ class AdminInspectionSubmissionPageData
     private static function qcDashboardSubmissionRows(array $filters): Collection
     {
         return QcFormSubmission::query()
-            ->with('user')
+            ->with(['user', 'rows'])
             ->latest('updated_at')
             ->get()
             ->map(fn (QcFormSubmission $submission) => self::qcRow($submission))
@@ -562,6 +567,16 @@ class AdminInspectionSubmissionPageData
         return $value === '' ? null : mb_strtolower($value);
     }
 
+    private static function qcRemarkFormCount(array $filters): int
+    {
+        return self::qcDashboardSubmissionRows($filters)
+            ->filter(fn (object $row) => ($row->remarks_count ?? 0) > 0)
+            ->pluck('model.id')
+            ->filter()
+            ->unique()
+            ->count();
+    }
+
     private static function commissioningRemarkFormCount(array $filters): int
     {
         return self::commissioningDashboardSubmissionRows($filters)
@@ -570,6 +585,47 @@ class AdminInspectionSubmissionPageData
             ->filter()
             ->unique()
             ->count();
+    }
+
+    private static function qcRemarks(QcFormSubmission $submission): array
+    {
+        $submission->loadMissing('rows');
+
+        return $submission->rows
+            ->filter(fn ($row) => filled($row->catatan))
+            ->map(function ($row): array {
+                $data = $row->row_data ?? [];
+
+                return [
+                    'section' => self::qcRemarkSection($row->block_type),
+                    'row' => (string) self::firstFilled($data['no'] ?? null, $data['urutan'] ?? null, $row->order_no),
+                    'item' => self::firstFilled(
+                        $data['item_pengecekan'] ?? null,
+                        $data['deskripsi'] ?? null,
+                        $data['nama_welder'] ?? null,
+                        $data['label'] ?? null,
+                        $data['item'] ?? null,
+                        $data['key'] ?? null
+                    ),
+                    'result' => self::firstFilled($row->status_value, $data['status'] ?? null, $data['result'] ?? null),
+                    'text' => trim((string) $row->catatan),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private static function qcRemarkSection(?string $blockType): string
+    {
+        return match ($blockType) {
+            'brics_check' => 'QC Brics',
+            'castable_check' => 'QC Castable Check',
+            'castable_monitoring' => 'QC Castable Monitoring',
+            'welding_welder' => 'QC Welding Welder',
+            'welding_result' => 'QC Welding Result',
+            'general' => 'QC General',
+            default => 'QC',
+        };
     }
 
     private static function commissioningRemarks(CommissioningFormSubmission $submission): array
