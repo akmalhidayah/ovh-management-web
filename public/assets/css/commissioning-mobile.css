@@ -1,0 +1,90 @@
+/* Mobile card layout for fixed Commissioning forms. */
+@media (max-width: 767.98px) {
+    .commissioning-mobile-card-wrap {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .commissioning-mobile-card-table {
+        display: block;
+        min-width: 0 !important;
+        table-layout: auto;
+    }
+
+    .commissioning-mobile-card-table colgroup,
+    .commissioning-mobile-card-table thead {
+        display: none;
+    }
+
+    .commissioning-mobile-card-table tbody {
+        display: grid;
+        gap: 0.72rem;
+    }
+
+    .commissioning-mobile-card-table tr {
+        display: grid;
+        gap: 0.58rem;
+        padding: 0.78rem;
+        border: 1px solid #d7dee8;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    .commissioning-mobile-card-table td {
+        display: grid;
+        grid-template-columns: minmax(98px, 0.42fr) minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: center;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        text-align: left !important;
+    }
+
+    .commissioning-mobile-card-table td::before {
+        content: attr(data-label);
+        color: #667085;
+        font-size: 0.72rem;
+        font-weight: 800;
+        line-height: 1.25;
+        text-transform: uppercase;
+    }
+
+    .commissioning-mobile-card-table .form-control {
+        min-width: 0;
+        min-height: 42px;
+        font-size: 0.9rem;
+    }
+
+    .commissioning-rating-table tr {
+        border-color: #cfd8e3;
+        background: #f8fafc;
+    }
+
+    .commissioning-rms-info {
+        align-items: start;
+        color: #344054;
+        line-height: 1.55;
+    }
+
+    .commissioning-equipment-check-table td[data-label="Check"],
+    .commissioning-equipment-check-table td[data-label="YES"],
+    .commissioning-equipment-check-table td[data-label="NO"],
+    .commissioning-equipment-check-table td[data-label="NA"] {
+        grid-template-columns: minmax(98px, 0.42fr) minmax(0, 1fr);
+    }
+
+    .commissioning-equipment-check-table input[type="checkbox"],
+    .commissioning-equipment-check-table input[type="radio"] {
+        width: 20px;
+        height: 20px;
+        justify-self: start;
+        accent-color: #8f2231;
+    }
+}

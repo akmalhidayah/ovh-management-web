@@ -79,6 +79,81 @@ class AdminInspectionMetricsTest extends TestCase
         $this->assertSame(3, $data['inspectionMetrics']['areaRows']->sum('equipment'));
     }
 
+    public function test_commissioning_admin_rows_collect_remarks_and_count_one_remarked_form(): void
+    {
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-REMARK-001',
+            'name' => 'Remark Template',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+            'body_schema' => ['equipment_check_rows' => []],
+        ]);
+
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-REMARK',
+            'equipment_no' => 'EQ-COM-REMARK',
+            'section_no' => 'SEC-COM-REMARK',
+            'description' => 'Equipment Remark',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'form_number' => '010/COM/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'area' => 'RAW MILL',
+            'equipment' => 'Equipment Remark',
+            'equipment_no' => 'EQ-COM-REMARK',
+            'functional_location' => 'LOC-COM-REMARK',
+            'header_data' => [
+                'master_data_record_id' => $master->id,
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+            'body_data' => [
+                'motor_test_rows' => [
+                    ['remarks' => 'Motor vibration high'],
+                    ['remarks' => 'Motor current imbalance'],
+                    ['remarks' => ''],
+                ],
+                'gearbox_test_rows' => [
+                    ['remarks' => 'Gearbox temperature high'],
+                    ['remarks' => 'Oil leak at seal'],
+                ],
+                'equipment_check_rows' => [
+                    ['no' => '1', 'item' => 'Visual inspection', 'result' => 'NO', 'remark' => 'Paint damage'],
+                    ['no' => '2', 'item' => 'Mounting bolt', 'result' => 'NO', 'remark' => 'Bolt loose'],
+                    ['no' => '3', 'item' => 'Safety guard', 'result' => 'NO', 'remark' => 'Guard missing'],
+                ],
+            ],
+        ]);
+
+        $data = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET', [
+                'year' => '2026',
+                'plant' => 'TONASA 4',
+            ]),
+            'commissioning'
+        );
+
+        $row = $data['submissions']->getCollection()->first();
+
+        $this->assertSame(1, $data['inspectionMetrics']['remarkForms']);
+        $this->assertSame('010/COM/05-2026', $row->form_number);
+        $this->assertSame(7, $row->remarks_count);
+        $this->assertCount(7, $row->remarks);
+        $this->assertSame('Motor Test Report', $row->remarks[0]['section']);
+        $this->assertSame('Equipment Check Data', $row->remarks[6]['section']);
+        $this->assertSame('Safety guard', $row->remarks[6]['item']);
+    }
+
     public function test_qc_equipment_card_uses_total_master_equipment_rows(): void
     {
         $template = QcFormTemplate::create([

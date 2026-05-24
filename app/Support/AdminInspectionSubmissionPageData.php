@@ -162,7 +162,10 @@ class AdminInspectionSubmissionPageData
             'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
             'pdf_route' => $submission->status !== 'draft' ? route('admin.commissioning.submissions.pdf', $submission) : null,
+            'remarks' => self::commissioningRemarks($submission),
         ];
+
+        $row->remarks_count = count($row->remarks);
 
         return self::withMasterInspectionStatus($row);
     }
@@ -237,6 +240,8 @@ class AdminInspectionSubmissionPageData
             'work_status' => self::effectiveWorkStatus($record, $submissionRow?->work_status),
             'submitted_at' => $submissionRow?->submitted_at,
             'pdf_route' => $submissionRow?->pdf_route,
+            'remarks' => $submissionRow?->remarks ?? [],
+            'remarks_count' => $submissionRow?->remarks_count ?? 0,
             'inspection_status_update_url' => route('admin.master-data.inspection-status', $record),
         ];
     }
@@ -381,7 +386,9 @@ class AdminInspectionSubmissionPageData
                 MasterDataRecord::CATEGORY_COMMISSIONING,
                 fn (array $filters): Collection => self::commissioningDashboardSubmissionRows($filters),
                 'Commissioning'
-            ),
+            ) + [
+                'remarkForms' => self::commissioningRemarkFormCount($filters),
+            ],
             default => null,
         };
     }
@@ -553,6 +560,64 @@ class AdminInspectionSubmissionPageData
         $value = trim((string) $value);
 
         return $value === '' ? null : mb_strtolower($value);
+    }
+
+    private static function commissioningRemarkFormCount(array $filters): int
+    {
+        return self::commissioningDashboardSubmissionRows($filters)
+            ->filter(fn (object $row) => ($row->remarks_count ?? 0) > 0)
+            ->pluck('model.id')
+            ->filter()
+            ->unique()
+            ->count();
+    }
+
+    private static function commissioningRemarks(CommissioningFormSubmission $submission): array
+    {
+        $body = $submission->body_data ?? [];
+
+        return collect()
+            ->merge(self::remarksFromRows(
+                $body['motor_test_rows'] ?? [],
+                'Motor Test Report',
+                ['remarks', 'remark']
+            ))
+            ->merge(self::remarksFromRows(
+                $body['gearbox_test_rows'] ?? [],
+                'Gearbox Test Report',
+                ['remarks', 'remark']
+            ))
+            ->merge(self::remarksFromRows(
+                $body['equipment_check_rows'] ?? [],
+                'Equipment Check Data',
+                ['remark', 'remarks'],
+                true
+            ))
+            ->values()
+            ->all();
+    }
+
+    private static function remarksFromRows(array $rows, string $section, array $keys, bool $includeItem = false): array
+    {
+        return collect($rows)
+            ->map(function (array $row, int $index) use ($section, $keys, $includeItem): ?array {
+                $text = self::firstFilled(...array_map(fn (string $key) => $row[$key] ?? null, $keys));
+
+                if (blank($text)) {
+                    return null;
+                }
+
+                return [
+                    'section' => $section,
+                    'row' => (string) ($row['no'] ?? $index + 1),
+                    'item' => $includeItem ? self::firstFilled($row['item'] ?? null, $row['result'] ?? null) : null,
+                    'result' => $includeItem ? ($row['result'] ?? null) : null,
+                    'text' => trim((string) $text),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private static function statusLabels(): array

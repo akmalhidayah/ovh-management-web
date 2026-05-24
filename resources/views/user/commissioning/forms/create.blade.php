@@ -2,6 +2,10 @@
 
 @section('title', 'Buat Form Commissioning')
 
+@push('styles')
+    <link href="{{ asset('assets/css/commissioning-mobile.css') }}?v=20260522-1" rel="stylesheet">
+@endpush
+
 @section('content')
     @php
         $commissioningMasterDataRecords = collect($activeMasterDataRecords ?? []);

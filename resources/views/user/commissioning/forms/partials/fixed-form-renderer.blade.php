@@ -105,8 +105,8 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="commissioning-section-title">{{ $labels['motor_title'] }}</div>
-        <div class="table-responsive mb-3">
-            <table class="commissioning-table compact">
+        <div class="table-responsive commissioning-mobile-card-wrap mb-3">
+            <table class="commissioning-table commissioning-mobile-card-table compact commissioning-rating-table commissioning-motor-rating-table">
                 <thead>
                     <tr>
                         @foreach ($motorRatingFields as $field)
@@ -124,10 +124,11 @@
                     @foreach ($motorRatingFields as $field)
                         @php
                             $key = $field['key'];
+                            $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                         @endphp
-                        <td><input type="text" name="body[motor_rating][{{ $key }}]" value="{{ $motorRating[$key] ?? '' }}" class="form-control" required></td>
+                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_rating][{{ $key }}]" value="{{ $motorRating[$key] ?? '' }}" class="form-control" required></td>
                     @endforeach
-                    <td colspan="4" class="text-center small">
+                    <td colspan="4" class="text-center small commissioning-rms-info" data-label="RMS Vibration">
                         Power &lt;= 15 kW : &lt; 4.5 mm/s<br>
                         15 kW &lt; Power &lt;= 300 kW : &lt; 7.1 mm/s<br>
                         300 kW &lt; Power &lt;= 10 MW : &lt; 11.2 mm/s
@@ -135,8 +136,8 @@
                 </tr></tbody>
             </table>
         </div>
-        <div class="table-responsive">
-            <table class="commissioning-table test-table">
+        <div class="table-responsive commissioning-mobile-card-wrap">
+            <table class="commissioning-table commissioning-mobile-card-table test-table commissioning-motor-test-table">
                 <thead>
                     <tr>
                         @foreach ($motorTestFields as $field)
@@ -156,8 +157,9 @@
                                 @php
                                     $key = $field['key'];
                                     $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
+                                    $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                                 @endphp
-                                <td><input type="text" name="body[motor_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
+                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
                             @endforeach
                         </tr>
                     @endforeach
@@ -168,8 +170,8 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="commissioning-section-title">{{ $labels['gearbox_title'] }}</div>
-        <div class="table-responsive mb-3">
-            <table class="commissioning-table compact">
+        <div class="table-responsive commissioning-mobile-card-wrap mb-3">
+            <table class="commissioning-table commissioning-mobile-card-table compact commissioning-rating-table commissioning-gearbox-rating-table">
                 <thead>
                     <tr>
                         @foreach ($gearboxRatingFields as $field)
@@ -186,14 +188,15 @@
                     @foreach ($gearboxRatingFields as $field)
                         @php
                             $key = $field['key'];
+                            $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                         @endphp
-                        <td><input type="text" name="body[gearbox_rating][{{ $key }}]" value="{{ $gearboxRating[$key] ?? '' }}" class="form-control" required></td>
+                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_rating][{{ $key }}]" value="{{ $gearboxRating[$key] ?? '' }}" class="form-control" required></td>
                     @endforeach
                 </tr></tbody>
             </table>
         </div>
-        <div class="table-responsive">
-            <table class="commissioning-table test-table">
+        <div class="table-responsive commissioning-mobile-card-wrap">
+            <table class="commissioning-table commissioning-mobile-card-table test-table commissioning-gearbox-test-table">
                 <thead>
                     <tr>
                         @foreach ($gearboxTestFields as $field)
@@ -229,8 +232,9 @@
                                 @php
                                     $key = $field['key'];
                                     $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
+                                    $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                                 @endphp
-                                <td><input type="text" name="body[gearbox_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
+                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
                             @endforeach
                         </tr>
                     @endforeach
@@ -241,25 +245,25 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>{{ $labels['equipment_check_title'] }}</h3></div>
-        <div class="table-responsive">
-            <table class="commissioning-table check-table">
+        <div class="table-responsive commissioning-mobile-card-wrap">
+            <table class="commissioning-table commissioning-mobile-card-table check-table commissioning-equipment-check-table">
                 <thead><tr><th>No</th><th>Item</th><th>Check</th><th>YES</th><th>NO</th><th>NA</th><th>Remark</th></tr></thead>
                 <tbody data-check-row-list>
                     @foreach ($checkRows as $index => $row)
                         <tr data-check-row>
-                            <td>
+                            <td data-label="No">
                                 {{ $row['no'] ?? $loop->iteration }}
                                 <input type="hidden" name="body[equipment_check_rows][{{ $index }}][no]" value="{{ $row['no'] ?? $loop->iteration }}">
                             </td>
-                            <td>
+                            <td data-label="Item">
                                 {{ $row['item'] ?? '' }}
                                 <input type="hidden" name="body[equipment_check_rows][{{ $index }}][item]" value="{{ $row['item'] ?? '' }}">
                             </td>
-                            <td class="text-center"><input type="checkbox" name="body[equipment_check_rows][{{ $index }}][check]" value="1" @checked(! empty($row['check'])) required></td>
+                            <td class="text-center" data-label="Check"><input type="checkbox" name="body[equipment_check_rows][{{ $index }}][check]" value="1" @checked(! empty($row['check'])) required></td>
                             @foreach (['YES', 'NO', 'NA'] as $result)
-                                <td class="text-center"><input type="radio" name="body[equipment_check_rows][{{ $index }}][result]" value="{{ $result }}" @checked(($row['result'] ?? null) === $result) required></td>
+                                <td class="text-center" data-label="{{ $result }}"><input type="radio" name="body[equipment_check_rows][{{ $index }}][result]" value="{{ $result }}" @checked(($row['result'] ?? null) === $result) required></td>
                             @endforeach
-                            <td><input type="text" name="body[equipment_check_rows][{{ $index }}][remark]" value="{{ $row['remark'] ?? '' }}" class="form-control form-control-sm"></td>
+                            <td data-label="Remark"><input type="text" name="body[equipment_check_rows][{{ $index }}][remark]" value="{{ $row['remark'] ?? '' }}" class="form-control form-control-sm"></td>
                         </tr>
                     @endforeach
                 </tbody>
