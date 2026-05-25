@@ -356,9 +356,10 @@
                     const action = form.dataset.filteredBulkAction || 'ubah status';
                     const category = form.querySelector('[name="document_category"]')?.value || 'all';
                     const affectsBothCategories = category === 'all';
+                    const categoryLabel = category === 'qc' ? 'QC' : (category === 'commissioning' ? 'Commissioning' : '');
                     const message = affectsBothCategories
                         ? `Kategori masih Semua Dokumen. Aksi ini akan ${action} semua master data QC dan Commissioning yang cocok dengan filter saat ini. Lanjutkan?`
-                        : `Aksi ini akan ${action} semua master data yang cocok dengan filter saat ini, termasuk data di halaman pagination lain. Lanjutkan?`;
+                        : `Filter kategori ${categoryLabel} sedang aktif. Aksi ini akan ${action} semua master data ${categoryLabel} yang cocok dengan filter saat ini, termasuk data di halaman pagination lain. Lanjutkan?`;
 
                     if (!confirm(message)) {
                         event.preventDefault();
