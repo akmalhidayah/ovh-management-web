@@ -124,6 +124,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/master-data', [MasterDataController::class, 'index'])->name('master-data');
     Route::post('/master-data', [MasterDataController::class, 'store'])->name('master-data.store');
     Route::patch('/master-data/bulk-status', [MasterDataController::class, 'bulkStatus'])->name('master-data.bulk-status');
+    Route::patch('/master-data/bulk-filtered-status', [MasterDataController::class, 'bulkFilteredStatus'])->name('master-data.bulk-filtered-status');
     Route::patch('/master-data/{masterDataRecord}/inspection-status', [MasterDataController::class, 'updateInspectionStatus'])->name('master-data.inspection-status');
     Route::put('/master-data/{masterDataRecord}', [MasterDataController::class, 'update'])->name('master-data.update');
     Route::delete('/master-data/{masterDataRecord}', [MasterDataController::class, 'destroy'])->name('master-data.destroy');

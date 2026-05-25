@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\MasterDataRecord;
 use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\User;
-use Database\Seeders\MasterDataRecordSeeder;
+use Database\Seeders\Crusher4MasterDataRecordSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,7 +34,9 @@ class AdminMasterDataTest extends TestCase
             ->assertOk()
             ->assertSee('Data Equipment Per Dokumen')
             ->assertSee('MOTOR BELT CONVEYOR')
-            ->assertSee('QC');
+            ->assertSee('QC')
+            ->assertSee('data-filtered-bulk-form', false)
+            ->assertSee('QC dan Commissioning');
     }
 
     public function test_admin_can_create_filter_update_and_delete_master_data(): void
@@ -96,22 +98,22 @@ class AdminMasterDataTest extends TestCase
 
     public function test_master_data_seed_is_idempotent(): void
     {
-        $this->seed(MasterDataRecordSeeder::class);
+        $this->seed(Crusher4MasterDataRecordSeeder::class);
         $firstCount = MasterDataRecord::count();
 
-        $this->seed(MasterDataRecordSeeder::class);
+        $this->seed(Crusher4MasterDataRecordSeeder::class);
 
         $this->assertSame($firstCount, MasterDataRecord::count());
         $this->assertDatabaseHas('master_data_records', [
             'document_category' => MasterDataRecord::CATEGORY_QC,
-            'equipment_no' => '20007019',
-            'description' => 'MOTOR BELT CONVEYOR',
+            'equipment_no' => '50003948',
+            'description' => 'BELT CONVEYOR',
             'plant' => 'TONASA 4',
-            'area' => 'RAW MILL',
+            'area' => 'CRUSHER 4',
         ]);
         $this->assertDatabaseHas('master_data_records', [
             'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
-            'equipment_no' => '20007019',
+            'equipment_no' => '50003948',
         ]);
     }
 
@@ -126,7 +128,7 @@ class AdminMasterDataTest extends TestCase
         ])->map(fn ($row) => MasterDataRecord::create([
             'document_category' => MasterDataRecord::CATEGORY_QC,
             'year' => '2026',
-            'func_location' => 'ST-4302-RM-405-BC99',
+            'func_location' => 'ST-4302-RM-405-BC99-'.$row['equipment_no'],
             'equipment_no' => $row['equipment_no'],
             'section_no' => '405BC99',
             'description' => 'BULK TEST EQUIPMENT',
@@ -157,6 +159,56 @@ class AdminMasterDataTest extends TestCase
         foreach ($records as $record) {
             $this->assertDatabaseHas('master_data_records', ['id' => $record->id, 'status' => 'active']);
         }
+    }
+
+    public function test_admin_can_bulk_update_all_filtered_master_data_across_pages(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        for ($index = 1; $index <= 25; $index++) {
+            MasterDataRecord::create([
+                'document_category' => MasterDataRecord::CATEGORY_QC,
+                'year' => '2026',
+                'func_location' => "ST-FILTERED-QC-{$index}",
+                'equipment_no' => "FILTERED-QC-{$index}",
+                'section_no' => "SEC-QC-{$index}",
+                'description' => 'FILTERED RAW MILL EQUIPMENT',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+                'status' => 'active',
+            ]);
+        }
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-UNFILTERED-QC-1',
+            'equipment_no' => 'UNFILTERED-QC-1',
+            'section_no' => 'SEC-UNFILTERED-QC-1',
+            'description' => 'UNFILTERED KILN EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'KILN',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-filtered-status'), [
+                'document_category' => MasterDataRecord::CATEGORY_QC,
+                'year' => '2026',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+                'current_status' => 'active',
+                'search' => 'FILTERED RAW MILL',
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', '25 master data hasil filter berhasil diubah menjadi Nonaktif.');
+
+        $this->assertSame(25, MasterDataRecord::where('area', 'RAW MILL')->where('status', 'inactive')->count());
+        $this->assertDatabaseHas('master_data_records', [
+            'equipment_no' => 'UNFILTERED-QC-1',
+            'status' => 'active',
+        ]);
     }
 
     public function test_admin_inspection_status_update_creates_history_snapshot(): void

@@ -15,24 +15,9 @@ class MasterDataController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = [
-            'document_category' => $request->query('document_category', 'all'),
-            'year' => $request->query('year', 'all'),
-            'plant' => $request->query('plant', 'all'),
-            'area' => $request->query('area', 'all'),
-            'status' => $request->query('status', 'all'),
-            'search' => $request->query('search'),
-        ];
+        $filters = $this->filtersFromRequest($request);
 
-        $baseQuery = MasterDataRecord::query();
-
-        $records = (clone $baseQuery)
-            ->when($filters['document_category'] !== 'all', fn ($query) => $query->where('document_category', $filters['document_category']))
-            ->when($filters['year'] !== 'all', fn ($query) => $query->where('year', $filters['year']))
-            ->when($filters['plant'] !== 'all', fn ($query) => $query->where('plant', $filters['plant']))
-            ->when($filters['area'] !== 'all', fn ($query) => $query->where('area', $filters['area']))
-            ->when($filters['status'] !== 'all', fn ($query) => $query->where('status', $filters['status']))
-            ->search($filters['search'])
+        $records = $this->filteredRecordsQuery($filters)
             ->orderBy('document_category')
             ->orderBy('plant')
             ->orderBy('area')
@@ -95,6 +80,40 @@ class MasterDataController extends Controller
         return back()->with('success', "{$updated} master data berhasil diubah menjadi {$label}.");
     }
 
+    public function bulkFilteredStatus(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(array_keys(MasterDataRecord::statuses()))],
+            'document_category' => ['nullable', Rule::in(['all', ...array_keys(MasterDataRecord::documentCategories())])],
+            'year' => ['nullable', 'string', 'max:10'],
+            'plant' => ['nullable', 'string', 'max:255'],
+            'area' => ['nullable', 'string', 'max:255'],
+            'current_status' => ['nullable', Rule::in(['all', ...array_keys(MasterDataRecord::statuses())])],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $filters = [
+            'document_category' => $validated['document_category'] ?? 'all',
+            'year' => $validated['year'] ?? 'all',
+            'plant' => $validated['plant'] ?? 'all',
+            'area' => $validated['area'] ?? 'all',
+            'status' => $validated['current_status'] ?? 'all',
+            'search' => $validated['search'] ?? null,
+        ];
+
+        $query = $this->filteredRecordsQuery($filters);
+        $matched = (clone $query)->count();
+        $label = MasterDataRecord::statuses()[$validated['status']];
+
+        if ($matched === 0) {
+            return back()->with('success', 'Tidak ada master data yang cocok dengan filter saat ini.');
+        }
+
+        $query->update(['status' => $validated['status']]);
+
+        return back()->with('success', "{$matched} master data hasil filter berhasil diubah menjadi {$label}.");
+    }
+
     public function updateInspectionStatus(
         Request $request,
         MasterDataRecord $masterDataRecord,
@@ -150,6 +169,29 @@ class MasterDataController extends Controller
         $validated['equipment_no'] = $this->nullableEquipmentNo($validated['equipment_no'] ?? null);
 
         return $validated;
+    }
+
+    private function filtersFromRequest(Request $request): array
+    {
+        return [
+            'document_category' => $request->input('document_category', 'all'),
+            'year' => $request->input('year', 'all'),
+            'plant' => $request->input('plant', 'all'),
+            'area' => $request->input('area', 'all'),
+            'status' => $request->input('status', 'all'),
+            'search' => $request->input('search'),
+        ];
+    }
+
+    private function filteredRecordsQuery(array $filters)
+    {
+        return MasterDataRecord::query()
+            ->when(($filters['document_category'] ?? 'all') !== 'all', fn ($query) => $query->where('document_category', $filters['document_category']))
+            ->when(($filters['year'] ?? 'all') !== 'all', fn ($query) => $query->where('year', $filters['year']))
+            ->when(($filters['plant'] ?? 'all') !== 'all', fn ($query) => $query->where('plant', $filters['plant']))
+            ->when(($filters['area'] ?? 'all') !== 'all', fn ($query) => $query->where('area', $filters['area']))
+            ->when(($filters['status'] ?? 'all') !== 'all', fn ($query) => $query->where('status', $filters['status']))
+            ->search($filters['search'] ?? null);
     }
 
     private function nullableEquipmentNo(mixed $value): ?string

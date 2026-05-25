@@ -13,7 +13,15 @@
             'active' => 'text-bg-success',
             'inactive' => 'text-bg-secondary',
         ];
-        $showBulkSelection = in_array($filters['document_category'], ['qc', 'commissioning'], true);
+        $showBulkSelection = true;
+        $bulkFilterInputs = [
+            'document_category' => $filters['document_category'],
+            'year' => $filters['year'],
+            'plant' => $filters['plant'],
+            'area' => $filters['area'],
+            'current_status' => $filters['status'],
+            'search' => $filters['search'],
+        ];
     @endphp
 
     @if (session('success'))
@@ -171,6 +179,26 @@
                     <button type="submit" form="bulkMasterDataForm" name="status" value="inactive" class="btn btn-sm btn-outline-secondary" data-bulk-action disabled>
                         <i class="bi bi-pause-circle me-1"></i>Nonaktifkan
                     </button>
+                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="aktifkan">
+                        @csrf
+                        @method('PATCH')
+                        @foreach ($bulkFilterInputs as $name => $value)
+                            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                        @endforeach
+                        <button type="submit" name="status" value="active" class="btn btn-sm btn-success">
+                            <i class="bi bi-check-all me-1"></i>Aktifkan Semua
+                        </button>
+                    </form>
+                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="nonaktifkan">
+                        @csrf
+                        @method('PATCH')
+                        @foreach ($bulkFilterInputs as $name => $value)
+                            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                        @endforeach
+                        <button type="submit" name="status" value="inactive" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-slash-circle me-1"></i>Nonaktifkan Semua
+                        </button>
+                    </form>
                 </div>
             @endif
         </div>
@@ -294,6 +322,7 @@
             const rowChecks = Array.from(document.querySelectorAll('[data-master-row-check]'));
             const bulkActions = document.querySelectorAll('[data-bulk-action]');
             const selectedCount = document.querySelector('[data-bulk-selected-count]');
+            const filteredBulkForms = document.querySelectorAll('[data-filtered-bulk-form]');
 
             const syncBulkControls = () => {
                 const checkedCount = rowChecks.filter((checkbox) => checkbox.checked).length;
@@ -320,6 +349,21 @@
 
             rowChecks.forEach((checkbox) => {
                 checkbox.addEventListener('change', syncBulkControls);
+            });
+
+            filteredBulkForms.forEach((form) => {
+                form.addEventListener('submit', (event) => {
+                    const action = form.dataset.filteredBulkAction || 'ubah status';
+                    const category = form.querySelector('[name="document_category"]')?.value || 'all';
+                    const affectsBothCategories = category === 'all';
+                    const message = affectsBothCategories
+                        ? `Kategori masih Semua Dokumen. Aksi ini akan ${action} semua master data QC dan Commissioning yang cocok dengan filter saat ini. Lanjutkan?`
+                        : `Aksi ini akan ${action} semua master data yang cocok dengan filter saat ini, termasuk data di halaman pagination lain. Lanjutkan?`;
+
+                    if (!confirm(message)) {
+                        event.preventDefault();
+                    }
+                });
             });
 
             syncBulkControls();
