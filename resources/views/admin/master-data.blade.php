@@ -452,6 +452,34 @@
             });
 
             filteredBulkForms.forEach((form) => {
+                form.querySelectorAll('button[type="submit"][name]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        form.dataset.submitterName = button.name;
+                        form.dataset.submitterValue = button.value;
+                    });
+                });
+
+                const syncSubmitterValue = (submitter) => {
+                    const name = submitter?.name || form.dataset.submitterName;
+                    const value = submitter?.value || form.dataset.submitterValue;
+
+                    if (!name) {
+                        return;
+                    }
+
+                    let submitterValue = form.querySelector('[data-confirmed-submit-value]');
+
+                    if (!submitterValue) {
+                        submitterValue = document.createElement('input');
+                        submitterValue.type = 'hidden';
+                        submitterValue.dataset.confirmedSubmitValue = '1';
+                        form.appendChild(submitterValue);
+                    }
+
+                    submitterValue.name = name;
+                    submitterValue.value = value;
+                };
+
                 form.addEventListener('submit', async (event) => {
                     const submitter = event.submitter;
                     const action = form.dataset.filteredBulkAction || 'ubah status';
@@ -474,20 +502,8 @@
                         confirmButtonText: action === 'aktifkan' ? 'Ya, aktifkan' : 'Ya, nonaktifkan',
                     })) {
                         form.dataset.confirmed = '1';
-                        if (submitter?.name) {
-                            let submitterValue = form.querySelector('[data-confirmed-submit-value]');
-
-                            if (!submitterValue) {
-                                submitterValue = document.createElement('input');
-                                submitterValue.type = 'hidden';
-                                submitterValue.dataset.confirmedSubmitValue = '1';
-                                form.appendChild(submitterValue);
-                            }
-
-                            submitterValue.name = submitter.name;
-                            submitterValue.value = submitter.value;
-                        }
-                        form.requestSubmit();
+                        syncSubmitterValue(submitter);
+                        HTMLFormElement.prototype.submit.call(form);
                     }
                 });
             });
