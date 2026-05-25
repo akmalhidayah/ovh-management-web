@@ -3,6 +3,69 @@
 @section('title', 'MASTER DATA EQUIPMENT')
 @section('page_title', 'MASTER DATA EQUIPMENT')
 
+@push('styles')
+    <style>
+        .master-data-stat-row .stat-card {
+            gap: .75rem;
+            padding: .8rem;
+        }
+
+        .master-data-stat-row .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: .55rem;
+            font-size: 1.05rem;
+        }
+
+        .master-data-stat-row .stat-title {
+            font-size: .78rem;
+            line-height: 1.25;
+        }
+
+        .master-data-stat-row .stat-value {
+            font-size: 1.08rem;
+        }
+
+        .master-data-bulk-actions {
+            align-items: center;
+            gap: .45rem;
+        }
+
+        .master-data-bulk-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .35rem .55rem;
+            line-height: 1.15;
+        }
+
+        .master-data-bulk-actions .btn i {
+            margin: 0 !important;
+            font-size: .9rem;
+            line-height: 1;
+        }
+
+        .master-data-location {
+            display: grid;
+            gap: .15rem;
+            line-height: 1.25;
+        }
+
+        .master-data-location small {
+            color: #64748b;
+        }
+
+        .master-data-actions .btn {
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+    </style>
+@endpush
+
 @section('content')
     @php
         $categoryBadge = [
@@ -49,7 +112,7 @@
         </div>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3 mb-3">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3 mb-3 master-data-stat-row">
         <div class="col">
             <div class="stat-card">
                 <div class="stat-icon text-bg-primary"><i class="bi bi-database"></i></div>
@@ -176,17 +239,16 @@
 
         <div class="card-heading">
             <div>
-                <h2>Data Equipment Per Dokumen</h2>
-                <div class="text-muted small">Kolom mengikuti data source: Func. Location, Equipment No., Section No., Descriptions, Plant, Area.</div>
+                <h2>Data Equipment</h2>
             </div>
             @if ($showBulkSelection)
-                <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                <div class="d-flex flex-wrap justify-content-end master-data-bulk-actions">
                     <span class="text-muted small" data-bulk-selected-count>0 dipilih</span>
                     <button type="submit" form="bulkMasterDataForm" name="status" value="active" class="btn btn-sm btn-success" data-bulk-action disabled>
-                        <i class="bi bi-check2-circle me-1"></i>Aktifkan
+                        <i class="bi bi-check2-circle"></i><span>Aktifkan</span>
                     </button>
                     <button type="submit" form="bulkMasterDataForm" name="status" value="inactive" class="btn btn-sm btn-outline-secondary" data-bulk-action disabled>
-                        <i class="bi bi-pause-circle me-1"></i>Nonaktifkan
+                        <i class="bi bi-pause-circle"></i><span>Nonaktifkan</span>
                     </button>
                     <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="aktifkan">
                         @csrf
@@ -195,7 +257,7 @@
                             <input type="hidden" name="{{ $name }}" value="{{ $value }}">
                         @endforeach
                         <button type="submit" name="status" value="active" class="btn btn-sm btn-success">
-                            <i class="bi bi-check-all me-1"></i>Aktifkan Semua
+                            <i class="bi bi-check-all"></i><span>Aktifkan Semua</span>
                         </button>
                     </form>
                     <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="nonaktifkan">
@@ -205,7 +267,7 @@
                             <input type="hidden" name="{{ $name }}" value="{{ $value }}">
                         @endforeach
                         <button type="submit" name="status" value="inactive" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-slash-circle me-1"></i>Nonaktifkan Semua
+                            <i class="bi bi-slash-circle"></i><span>Nonaktifkan Semua</span>
                         </button>
                     </form>
                 </div>
@@ -226,8 +288,7 @@
                         <th>Equipment No.</th>
                         <th>Section No.</th>
                         <th>Descriptions</th>
-                        <th>Plant</th>
-                        <th>Area</th>
+                        <th>Lokasi</th>
                         <th>Status</th>
                         <th class="text-end">Aksi</th>
                     </tr>
@@ -258,11 +319,15 @@
                             <td>{{ $record->equipment_no }}</td>
                             <td>{{ $record->section_no ?: '-' }}</td>
                             <td>{{ $record->description }}</td>
-                            <td>{{ $record->plant }}</td>
-                            <td>{{ $record->area }}</td>
+                            <td>
+                                <span class="master-data-location">
+                                    <strong>{{ $record->plant }}</strong>
+                                    <small>{{ $record->area }}</small>
+                                </span>
+                            </td>
                             <td><span class="badge {{ $statusBadge[$record->status] ?? 'text-bg-secondary' }}">{{ $record->status_label }}</span></td>
                             <td>
-                                <div class="template-actions">
+                                <div class="template-actions master-data-actions">
                                     <button type="button"
                                             class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
@@ -276,25 +341,25 @@
                                             data-description="{{ $record->description }}"
                                             data-plant="{{ $record->plant }}"
                                             data-area="{{ $record->area }}"
-                                             data-status="{{ $record->status }}"
-                                             data-notes="{{ $record->notes }}"
-                                             title="Edit"
-                                             aria-label="Edit {{ $record->func_location }}">
+                                            data-status="{{ $record->status }}"
+                                            data-notes="{{ $record->notes }}"
+                                            title="Edit"
+                                            aria-label="Edit {{ $record->func_location }}">
                                         <i class="bi bi-pencil-square"></i>
-                                     </button>
-                                     <form action="{{ route('admin.master-data.destroy', $record) }}" method="POST" data-delete-master-data-form data-delete-label="{{ $record->func_location }}">
-                                         @csrf
-                                         @method('DELETE')
-                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus" aria-label="Hapus {{ $record->func_location }}">
-                                             <i class="bi bi-trash3"></i>
-                                         </button>
-                                     </form>
-                                 </div>
-                             </td>
+                                    </button>
+                                    <form action="{{ route('admin.master-data.destroy', $record) }}" method="POST" data-delete-master-data-form data-delete-label="{{ $record->func_location }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus" aria-label="Hapus {{ $record->func_location }}">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $showBulkSelection ? 10 : 9 }}" class="text-center text-muted py-4">Belum ada master data sesuai filter.</td>
+                            <td colspan="{{ $showBulkSelection ? 9 : 8 }}" class="text-center text-muted py-4">Belum ada master data sesuai filter.</td>
                         </tr>
                     @endforelse
                 </tbody>

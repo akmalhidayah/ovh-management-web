@@ -32,7 +32,7 @@ class AdminMasterDataTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.master-data'))
             ->assertOk()
-            ->assertSee('Data Equipment Per Dokumen')
+            ->assertSee('Data Equipment')
             ->assertSee('MOTOR BELT CONVEYOR')
             ->assertSee('QC')
             ->assertSee('Aktif QC')
