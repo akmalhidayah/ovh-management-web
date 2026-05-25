@@ -45,6 +45,11 @@ class OrganizationSections
                     'Crusher Machine & Conveyor Maint',
                     'Packer Machine Maintenance',
                 ],
+                 'Machine Maintenance 2' => [
+                    'Line 4/5 FM Machine Maint',
+                    'Line 4/5 Kiln & CM Mach Maint',
+                    'Line 4/5 RM Machine Maint',
+                ],
                 'Port Product Discharge Maintenance' => [
                     'Port Facility Elins Maintenance',
                 ],
