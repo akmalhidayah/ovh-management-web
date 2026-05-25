@@ -225,6 +225,8 @@ class MasterDataController extends Controller
             'qc' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_QC)->count(),
             'commissioning' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)->count(),
             'active' => MasterDataRecord::where('status', 'active')->count(),
+            'active_qc' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_QC)->where('status', 'active')->count(),
+            'active_commissioning' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)->where('status', 'active')->count(),
         ];
     }
 }

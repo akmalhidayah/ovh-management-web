@@ -49,8 +49,8 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-md-6 col-xl-3">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3 mb-3">
+        <div class="col">
             <div class="stat-card">
                 <div class="stat-icon text-bg-primary"><i class="bi bi-database"></i></div>
                 <div>
@@ -59,7 +59,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col">
             <div class="stat-card">
                 <div class="stat-icon text-bg-primary"><i class="bi bi-shield-check"></i></div>
                 <div>
@@ -68,7 +68,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col">
             <div class="stat-card">
                 <div class="stat-icon text-bg-info"><i class="bi bi-tools"></i></div>
                 <div>
@@ -77,12 +77,21 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col">
             <div class="stat-card">
                 <div class="stat-icon text-bg-success"><i class="bi bi-check2-circle"></i></div>
                 <div>
-                    <div class="stat-title">Aktif</div>
-                    <div class="stat-value">{{ $summary['active'] }}</div>
+                    <div class="stat-title">Aktif QC</div>
+                    <div class="stat-value">{{ $summary['active_qc'] }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card">
+                <div class="stat-icon text-bg-success"><i class="bi bi-check-all"></i></div>
+                <div>
+                    <div class="stat-title">Aktif Commissioning</div>
+                    <div class="stat-value">{{ $summary['active_commissioning'] }}</div>
                 </div>
             </div>
         </div>
@@ -267,17 +276,21 @@
                                             data-description="{{ $record->description }}"
                                             data-plant="{{ $record->plant }}"
                                             data-area="{{ $record->area }}"
-                                            data-status="{{ $record->status }}"
-                                            data-notes="{{ $record->notes }}">
-                                        Edit
-                                    </button>
-                                    <form action="{{ route('admin.master-data.destroy', $record) }}" method="POST" onsubmit="return confirm('Hapus master data ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-                                    </form>
-                                </div>
-                            </td>
+                                             data-status="{{ $record->status }}"
+                                             data-notes="{{ $record->notes }}"
+                                             title="Edit"
+                                             aria-label="Edit {{ $record->func_location }}">
+                                        <i class="bi bi-pencil-square"></i>
+                                     </button>
+                                     <form action="{{ route('admin.master-data.destroy', $record) }}" method="POST" data-delete-master-data-form data-delete-label="{{ $record->func_location }}">
+                                         @csrf
+                                         @method('DELETE')
+                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus" aria-label="Hapus {{ $record->func_location }}">
+                                             <i class="bi bi-trash3"></i>
+                                         </button>
+                                     </form>
+                                 </div>
+                             </td>
                         </tr>
                     @empty
                         <tr>
@@ -315,6 +328,7 @@
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         (() => {
             const editModal = document.getElementById('editMasterDataModal');
@@ -323,6 +337,27 @@
             const bulkActions = document.querySelectorAll('[data-bulk-action]');
             const selectedCount = document.querySelector('[data-bulk-selected-count]');
             const filteredBulkForms = document.querySelectorAll('[data-filtered-bulk-form]');
+            const deleteForms = document.querySelectorAll('[data-delete-master-data-form]');
+
+            const confirmAction = async ({title, text, confirmButtonText = 'Lanjutkan', icon = 'warning'}) => {
+                if (!window.Swal) {
+                    return confirm(text || title);
+                }
+
+                const result = await Swal.fire({
+                    title,
+                    text,
+                    icon,
+                    showCancelButton: true,
+                    confirmButtonText,
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                });
+
+                return result.isConfirmed;
+            };
 
             const syncBulkControls = () => {
                 const checkedCount = rowChecks.filter((checkbox) => checkbox.checked).length;
@@ -352,7 +387,7 @@
             });
 
             filteredBulkForms.forEach((form) => {
-                form.addEventListener('submit', (event) => {
+                form.addEventListener('submit', async (event) => {
                     const action = form.dataset.filteredBulkAction || 'ubah status';
                     const category = form.querySelector('[name="document_category"]')?.value || 'all';
                     const affectsBothCategories = category === 'all';
@@ -361,8 +396,39 @@
                         ? `Kategori masih Semua Dokumen. Aksi ini akan ${action} semua master data QC dan Commissioning yang cocok dengan filter saat ini. Lanjutkan?`
                         : `Filter kategori ${categoryLabel} sedang aktif. Aksi ini akan ${action} semua master data ${categoryLabel} yang cocok dengan filter saat ini, termasuk data di halaman pagination lain. Lanjutkan?`;
 
-                    if (!confirm(message)) {
-                        event.preventDefault();
+                    if (form.dataset.confirmed === '1') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if (await confirmAction({
+                        title: affectsBothCategories ? 'Konfirmasi Semua Dokumen' : `Konfirmasi ${categoryLabel}`,
+                        text: message,
+                        confirmButtonText: action === 'aktifkan' ? 'Ya, aktifkan' : 'Ya, nonaktifkan',
+                    })) {
+                        form.dataset.confirmed = '1';
+                        form.requestSubmit();
+                    }
+                });
+            });
+
+            deleteForms.forEach((form) => {
+                form.addEventListener('submit', async (event) => {
+                    if (form.dataset.confirmed === '1') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const label = form.dataset.deleteLabel || 'master data ini';
+                    if (await confirmAction({
+                        title: 'Hapus Master Data?',
+                        text: `Data ${label} akan dihapus permanen.`,
+                        confirmButtonText: 'Ya, hapus',
+                    })) {
+                        form.dataset.confirmed = '1';
+                        form.requestSubmit();
                     }
                 });
             });

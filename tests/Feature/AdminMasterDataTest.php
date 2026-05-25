@@ -35,6 +35,8 @@ class AdminMasterDataTest extends TestCase
             ->assertSee('Data Equipment Per Dokumen')
             ->assertSee('MOTOR BELT CONVEYOR')
             ->assertSee('QC')
+            ->assertSee('Aktif QC')
+            ->assertSee('Aktif Commissioning')
             ->assertSee('data-filtered-bulk-form', false)
             ->assertSee('QC dan Commissioning');
     }
