@@ -410,7 +410,7 @@ class QcFormSubmissionTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.qc.forms.create', ['template' => $template->id]))
             ->assertOk()
-            ->assertSee('Pilih Name Equipment')
+            ->assertSee('Pilih Section')
             ->assertSee('name="header[area]"', false)
             ->assertSee('data-master-area-select', false)
             ->assertSee('ACTIVE BELT CONVEYOR')

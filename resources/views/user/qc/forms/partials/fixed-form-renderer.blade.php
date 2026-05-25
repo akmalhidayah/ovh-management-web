@@ -43,10 +43,11 @@
     $noteValue = old('note', $draftSubmission?->note ?? '');
     $masterDataRecords = collect($activeQcMasterDataRecords ?? []);
     $selectedMasterDataId = old('header.master_data_record_id', $oldHeader['master_data_record_id'] ?? null);
-    if (! $selectedMasterDataId && (! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
+    if (! $selectedMasterDataId && (! empty($oldHeader['tag_num']) || ! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
         $selectedMasterDataId = optional($masterDataRecords->first(function ($record) use ($oldHeader) {
             return (
-                $record->description === ($oldHeader['name_equipment'] ?? null)
+                $record->section_no === ($oldHeader['tag_num'] ?? null)
+                || $record->description === ($oldHeader['name_equipment'] ?? null)
                 || $record->func_location === ($oldHeader['functional_location'] ?? null)
             ) && (! isset($oldHeader['id_equipment']) || $record->equipment_no === $oldHeader['id_equipment']);
         }))->id;
@@ -67,7 +68,7 @@
         'area' => (string) ($record->area ?? ''),
         'idEquipment' => (string) ($record->equipment_no ?? ''),
         'nameEquipment' => (string) ($record->description ?? ''),
-        'label' => trim(($record->description ?: '-') . ' - ' . ($record->equipment_no ?: '-') . ' (' . ($record->area ?: '-') . ')'),
+        'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
     $organizationSections = collect($activeOrganizationSections ?? []);
     $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
@@ -133,12 +134,12 @@
                     @php
                         $field = $headerFieldMap[$fieldKey];
                         $fieldValue = $oldHeader[$fieldKey] ?? ($fieldKey === 'doc_number' ? ($autoDocNumber ?? '') : ($fieldKey === 'inspector_qc' ? $signerName : ''));
-                        $isAutoFilledByMasterData = in_array($fieldKey, ['plant', 'tahun', 'tag_num', 'functional_location', 'id_equipment'], true);
+                        $isAutoFilledByMasterData = in_array($fieldKey, ['plant', 'tahun', 'functional_location', 'id_equipment', 'name_equipment'], true);
                     @endphp
                     <label class="qc-user-field">
                         <span>{{ $field['label'] }}</span>
-                        @if ($fieldKey === 'name_equipment')
-                            <input type="hidden" name="header[name_equipment]" value="{{ $fieldValue }}" data-header-input="name_equipment">
+                        @if ($fieldKey === 'tag_num')
+                            <input type="hidden" name="header[tag_num]" value="{{ $fieldValue }}" data-header-input="tag_num">
                             <select name="header[master_data_record_id]" class="form-select" data-master-data-select>
                                 <option value="">Pilih Area terlebih dahulu</option>
                             </select>
@@ -448,9 +449,9 @@
                     allowEmptyOption: true,
                     maxOptions: 1000,
                     searchField: ['text'],
-                    placeholder: areaSelect?.value ? 'Cari equipment...' : 'Pilih area terlebih dahulu',
+                    placeholder: areaSelect?.value ? 'Cari section...' : 'Pilih area terlebih dahulu',
                     render: {
-                        no_results: () => '<div class="no-results">Equipment tidak ditemukan</div>',
+                        no_results: () => '<div class="no-results">Section tidak ditemukan</div>',
                     },
                 });
             };
@@ -511,7 +512,7 @@
 
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = area ? 'Pilih Name Equipment' : 'Pilih Area terlebih dahulu';
+                placeholder.textContent = area ? 'Pilih Section' : 'Pilih Area terlebih dahulu';
                 masterDataSelect.appendChild(placeholder);
 
                 masterDataOptions

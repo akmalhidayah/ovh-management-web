@@ -9,10 +9,11 @@
     $oldBody = old('body', $draftBody);
     $masterDataRecords = collect($activeMasterDataRecords ?? []);
     $selectedMasterDataId = old('header.master_data_record_id', $oldHeader['master_data_record_id'] ?? null);
-    if (! $selectedMasterDataId && (! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
+    if (! $selectedMasterDataId && (! empty($oldHeader['tag_num']) || ! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
         $selectedMasterDataId = optional($masterDataRecords->first(function ($record) use ($oldHeader) {
             return (
-                $record->description === ($oldHeader['name_equipment'] ?? null)
+                $record->section_no === ($oldHeader['tag_num'] ?? null)
+                || $record->description === ($oldHeader['name_equipment'] ?? null)
                 || $record->func_location === ($oldHeader['functional_location'] ?? null)
             ) && (! isset($oldHeader['id_equipment']) || $record->equipment_no === $oldHeader['id_equipment']);
         }))->id;
@@ -33,7 +34,7 @@
         'functionalLocation' => (string) ($record->func_location ?? ''),
         'nameEquipment' => (string) ($record->description ?? ''),
         'idEquipment' => (string) ($record->equipment_no ?? ''),
-        'label' => trim(($record->description ?: '-') . ' - ' . ($record->equipment_no ?: '-') . ' (' . ($record->area ?: '-') . ')'),
+        'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
     $checkRows = old('body.equipment_check_rows', ($draftBody['equipment_check_rows'] ?? []) ?: ($schema['equipment_check_rows'] ?? []));
     $motorRows = old('body.motor_test_rows', ($draftBody['motor_test_rows'] ?? []) ?: ($schema['motor_test_rows'] ?? []));
@@ -76,12 +77,12 @@
                 @php
                     $field = $headerFieldMap[$fieldKey];
                     $value = $oldHeader[$fieldKey] ?? ($fieldKey === 'doc_number' ? ($autoDocNumber ?? '') : ($fieldKey === 'inspector_commissioning' ? $signerName : ''));
-                    $autoKeys = ['plant', 'tag_num', 'functional_location', 'id_equipment'];
+                    $autoKeys = ['plant', 'functional_location', 'id_equipment', 'name_equipment'];
                 @endphp
                 <label class="qc-user-field">
                     <span>{{ $field['label'] }}</span>
-                    @if ($fieldKey === 'name_equipment')
-                        <input type="hidden" name="header[name_equipment]" value="{{ $value }}" data-header-input="name_equipment">
+                    @if ($fieldKey === 'tag_num')
+                        <input type="hidden" name="header[tag_num]" value="{{ $value }}" data-header-input="tag_num">
                         <select name="header[master_data_record_id]" class="form-select" data-master-data-select required>
                             <option value="">Pilih Area terlebih dahulu</option>
                         </select>
@@ -392,9 +393,9 @@
             allowEmptyOption: true,
             maxOptions: 1000,
             searchField: ['text'],
-            placeholder: area?.value ? 'Cari equipment...' : 'Pilih area terlebih dahulu',
+            placeholder: area?.value ? 'Cari section...' : 'Pilih area terlebih dahulu',
             render: {
-                no_results: () => '<div class="no-results">Equipment tidak ditemukan</div>',
+                no_results: () => '<div class="no-results">Section tidak ditemukan</div>',
             },
         });
     };
@@ -419,7 +420,7 @@
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = selectedArea ? 'Pilih Name Equipment' : 'Pilih Area terlebih dahulu';
+        placeholder.textContent = selectedArea ? 'Pilih Section' : 'Pilih Area terlebih dahulu';
         master.appendChild(placeholder);
 
         masterOptions

@@ -86,7 +86,7 @@ class CommissioningFormFlowTest extends TestCase
             ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
             ->assertOk()
             ->assertSee('Template Motor Commissioning')
-            ->assertSee('Pilih Name Equipment')
+            ->assertSee('Pilih Section')
             ->assertSee('name="header[area]"', false)
             ->assertSee('data-master-area-select', false)
             ->assertSee('Section No.')
