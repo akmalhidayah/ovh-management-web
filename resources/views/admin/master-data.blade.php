@@ -453,6 +453,7 @@
 
             filteredBulkForms.forEach((form) => {
                 form.addEventListener('submit', async (event) => {
+                    const submitter = event.submitter;
                     const action = form.dataset.filteredBulkAction || 'ubah status';
                     const category = form.querySelector('[name="document_category"]')?.value || 'all';
                     const affectsBothCategories = category === 'all';
@@ -473,6 +474,19 @@
                         confirmButtonText: action === 'aktifkan' ? 'Ya, aktifkan' : 'Ya, nonaktifkan',
                     })) {
                         form.dataset.confirmed = '1';
+                        if (submitter?.name) {
+                            let submitterValue = form.querySelector('[data-confirmed-submit-value]');
+
+                            if (!submitterValue) {
+                                submitterValue = document.createElement('input');
+                                submitterValue.type = 'hidden';
+                                submitterValue.dataset.confirmedSubmitValue = '1';
+                                form.appendChild(submitterValue);
+                            }
+
+                            submitterValue.name = submitter.name;
+                            submitterValue.value = submitter.value;
+                        }
                         form.requestSubmit();
                     }
                 });

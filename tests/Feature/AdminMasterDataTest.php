@@ -213,6 +213,105 @@ class AdminMasterDataTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_bulk_update_all_filtered_commissioning_master_data(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $commissioningRecords = collect(range(1, 3))->map(fn (int $index) => MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => "ST-FILTERED-COM-{$index}",
+            'equipment_no' => "FILTERED-COM-{$index}",
+            'section_no' => "SEC-COM-{$index}",
+            'description' => 'FILTERED COMMISSIONING EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL',
+            'status' => 'active',
+        ]));
+
+        $qcRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-FILTERED-QC-KEEP',
+            'equipment_no' => 'FILTERED-QC-KEEP',
+            'section_no' => 'SEC-QC-KEEP',
+            'description' => 'FILTERED QC EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-filtered-status'), [
+                'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+                'year' => '2026',
+                'plant' => 'TONASA 4',
+                'area' => 'COAL MILL',
+                'current_status' => 'active',
+                'search' => 'FILTERED',
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', '3 master data hasil filter berhasil diubah menjadi Nonaktif.');
+
+        foreach ($commissioningRecords as $record) {
+            $this->assertDatabaseHas('master_data_records', ['id' => $record->id, 'status' => 'inactive']);
+        }
+
+        $this->assertDatabaseHas('master_data_records', ['id' => $qcRecord->id, 'status' => 'active']);
+    }
+
+    public function test_admin_can_bulk_update_all_filtered_master_data_for_all_categories(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $records = collect([
+            MasterDataRecord::CATEGORY_QC,
+            MasterDataRecord::CATEGORY_COMMISSIONING,
+        ])->map(fn (string $category) => MasterDataRecord::create([
+            'document_category' => $category,
+            'year' => '2026',
+            'func_location' => "ST-ALL-{$category}",
+            'equipment_no' => "EQ-ALL-{$category}",
+            'section_no' => "SEC-ALL-{$category}",
+            'description' => 'ALL CATEGORY FILTER EQUIPMENT',
+            'plant' => 'TONASA 5',
+            'area' => 'KILN',
+            'status' => 'active',
+        ]));
+
+        $unmatchedRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-ALL-UNMATCHED',
+            'equipment_no' => 'EQ-ALL-UNMATCHED',
+            'section_no' => 'SEC-ALL-UNMATCHED',
+            'description' => 'UNMATCHED EQUIPMENT',
+            'plant' => 'TONASA 5',
+            'area' => 'PACKER',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-filtered-status'), [
+                'document_category' => 'all',
+                'year' => '2026',
+                'plant' => 'TONASA 5',
+                'area' => 'KILN',
+                'current_status' => 'active',
+                'search' => 'ALL CATEGORY',
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', '2 master data hasil filter berhasil diubah menjadi Nonaktif.');
+
+        foreach ($records as $record) {
+            $this->assertDatabaseHas('master_data_records', ['id' => $record->id, 'status' => 'inactive']);
+        }
+
+        $this->assertDatabaseHas('master_data_records', ['id' => $unmatchedRecord->id, 'status' => 'active']);
+    }
+
     public function test_admin_inspection_status_update_creates_history_snapshot(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
