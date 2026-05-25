@@ -7,6 +7,7 @@ use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
+use App\Models\User;
 use App\Support\AdminInspectionSubmissionPageData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -313,5 +314,70 @@ class AdminInspectionMetricsTest extends TestCase
         $this->assertSame('Surface condition', $row->remarks[0]['item']);
         $this->assertSame('QC General', $row->remarks[2]['section']);
         $this->assertSame('Alignment belum sesuai', $row->remarks[2]['text']);
+    }
+
+    public function test_qc_admin_status_dropdown_can_return_to_default_status(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-RESET-001',
+            'name' => 'QC Reset Template',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'LOC-QC-RESET',
+            'equipment_no' => 'EQ-QC-RESET',
+            'section_no' => 'SEC-QC-RESET',
+            'description' => 'QC Reset Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '020/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'QC Reset Equipment',
+            'general_info' => [
+                'master_data_record_id' => $master->id,
+                'id_equipment' => 'EQ-QC-RESET',
+                'name_equipment' => 'QC Reset Equipment',
+                'functional_location' => 'LOC-QC-RESET',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.qc'))
+            ->assertOk()
+            ->assertSee('data-inspection-status-select', false)
+            ->assertSee('<option value=""', false)
+            ->assertDontSee('<option value="" selected disabled>Pilih Status</option>', false);
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.master-data.inspection-status', $master), [
+                'inspection_status' => null,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'status' => null,
+                'label' => 'Pilih Status',
+            ]);
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $master->id,
+            'inspection_status' => null,
+        ]);
     }
 }

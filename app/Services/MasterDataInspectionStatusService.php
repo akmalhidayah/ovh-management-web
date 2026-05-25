@@ -14,7 +14,7 @@ class MasterDataInspectionStatusService
 
     public function setStatus(
         MasterDataRecord $record,
-        string $status,
+        ?string $status,
         string $source,
         ?User $user = null,
         ?Model $submission = null
@@ -32,7 +32,7 @@ class MasterDataInspectionStatusService
             MasterDataInspectionStatusHistory::create([
                 'master_data_record_id' => $record->id,
                 'previous_status' => $previousStatus,
-                'status' => $status,
+                'status' => $status ?? 'reset',
                 'source' => $source,
                 'submission_type' => $submission ? $submission->getMorphClass() : null,
                 'submission_id' => $submission?->getKey(),

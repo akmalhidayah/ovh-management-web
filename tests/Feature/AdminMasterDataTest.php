@@ -251,4 +251,40 @@ class AdminMasterDataTest extends TestCase
         $this->assertSame($admin->id, $history->changed_by);
         $this->assertSame('EQ-COM-MANUAL', $history->snapshot['master_data']['equipment_no']);
     }
+
+    public function test_admin_can_reset_inspection_status_to_default(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $record = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-RESET',
+            'equipment_no' => 'EQ-COM-RESET',
+            'section_no' => 'SEC-COM-RESET',
+            'description' => 'RESET STATUS EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.master-data.inspection-status', $record), [
+                'inspection_status' => null,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'status' => null,
+                'label' => 'Pilih Status',
+            ]);
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $record->id,
+            'inspection_status' => null,
+        ]);
+
+        $history = MasterDataInspectionStatusHistory::firstOrFail();
+        $this->assertSame('close', $history->previous_status);
+        $this->assertSame('reset', $history->status);
+    }
 }

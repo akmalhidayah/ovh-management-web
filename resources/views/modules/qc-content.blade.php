@@ -195,9 +195,7 @@
                                             data-update-url="{{ $submission->inspection_status_update_url }}"
                                             data-has-digital-form="{{ $submission->form_number ? 'true' : 'false' }}"
                                             aria-label="Status equipment">
-                                        @if (! in_array($submission->work_status ?? null, ['close', 'ongoing'], true))
-                                            <option value="" selected disabled>Pilih Status</option>
-                                        @endif
+                                        <option value="" @selected(! in_array($submission->work_status ?? null, ['close', 'ongoing'], true))>Pilih Status</option>
                                         <option value="close" @selected(($submission->work_status ?? null) === 'close')>Close</option>
                                         <option value="ongoing" @selected(($submission->work_status ?? null) === 'ongoing')>On Going</option>
                                     </select>

@@ -59,6 +59,8 @@ class FormController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateRequest($request);
+        $this->validateMasterDataRecordAvailable($request);
+
         $template = CommissioningFormTemplate::where('status', 'active')->findOrFail($validated['template_id']);
 
         if ($validated['action'] === 'submit') {
@@ -139,7 +141,7 @@ class FormController extends Controller
             'selectedTemplate' => $submission->template,
             'draftSubmission' => $submission,
             'autoDocNumber' => $submission->form_number,
-            'activeMasterDataRecords' => $this->activeMasterDataRecords(),
+            'activeMasterDataRecords' => $this->activeMasterDataRecords($submission),
         ]));
     }
 
@@ -150,6 +152,7 @@ class FormController extends Controller
 
         $validated = $this->validateRequest($request);
         abort_unless((int) $validated['template_id'] === (int) $submission->commissioning_form_template_id, 422);
+        $this->validateMasterDataRecordAvailable($request, $submission);
 
         $template = CommissioningFormTemplate::findOrFail($submission->commissioning_form_template_id);
 
@@ -163,7 +166,7 @@ class FormController extends Controller
 
         try {
             DB::transaction(function () use ($request, $submission, $validated, $template) {
-                $header = $this->headerData($request, $submission->form_number);
+                $header = $this->headerData($request, $submission->form_number, false, $submission);
                 $status = $validated['action'] === 'submit' ? 'pending_approval' : 'draft';
                 $templateSnapshot = $submission->template_snapshot ?: TemplateSnapshot::forCommissioning($template);
 
@@ -447,7 +450,7 @@ class FormController extends Controller
         }
     }
 
-    private function headerData(Request $request, ?string $existingDocNumber = null, bool $forceGeneratedDocNumber = false): array
+    private function headerData(Request $request, ?string $existingDocNumber = null, bool $forceGeneratedDocNumber = false, ?CommissioningFormSubmission $currentSubmission = null): array
     {
         $header = collect(FixedCommissioningTemplate::headerFields())
             ->mapWithKeys(fn ($field) => [$field['key'] => $request->input("header.{$field['key']}")])
@@ -457,7 +460,7 @@ class FormController extends Controller
             ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_commissioning'] = $request->user()?->name;
 
-        if ($record = $this->selectedMasterDataRecord($request)) {
+        if ($record = $this->selectedMasterDataRecord($request, $currentSubmission)) {
             $header['master_data_record_id'] = $record->id;
             $header['tahun'] = $record->year;
             $header['plant'] = $record->plant;
@@ -612,22 +615,103 @@ class FormController extends Controller
         session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
     }
 
-    private function activeMasterDataRecords()
+    private function activeMasterDataRecords(?CommissioningFormSubmission $currentSubmission = null)
     {
+        $used = $this->usedMasterDataKeys($currentSubmission);
+
         return MasterDataRecord::query()
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->where('status', 'active')
             ->orderBy('func_location')
             ->orderBy('equipment_no')
-            ->get();
+            ->get()
+            ->reject(fn (MasterDataRecord $record) => (
+                filled($record->inspection_status) && ! $this->currentSubmissionUsesMasterDataRecord($currentSubmission, $record)
+            ) || $this->masterDataRecordIsUsed($record, $used))
+            ->values();
     }
 
-    private function selectedMasterDataRecord(Request $request): ?MasterDataRecord
+    private function selectedMasterDataRecord(Request $request, ?CommissioningFormSubmission $currentSubmission = null): ?MasterDataRecord
     {
-        return MasterDataRecord::whereKey($request->input('header.master_data_record_id'))
+        $record = MasterDataRecord::whereKey($request->input('header.master_data_record_id'))
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->where('status', 'active')
             ->first();
+
+        if (
+            ! $record
+            || (filled($record->inspection_status) && ! $this->currentSubmissionUsesMasterDataRecord($currentSubmission, $record))
+            || $this->masterDataRecordIsUsed($record, $this->usedMasterDataKeys($currentSubmission))
+        ) {
+            return null;
+        }
+
+        return $record;
+    }
+
+    private function validateMasterDataRecordAvailable(Request $request, ?CommissioningFormSubmission $currentSubmission = null): void
+    {
+        if (! $request->input('header.master_data_record_id')) {
+            return;
+        }
+
+        if ($this->selectedMasterDataRecord($request, $currentSubmission)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'header.master_data_record_id' => 'Equipment commissioning ini sudah dipakai pada form lain atau tidak aktif.',
+        ]);
+    }
+
+    private function usedMasterDataKeys(?CommissioningFormSubmission $currentSubmission = null): array
+    {
+        $used = [
+            'ids' => [],
+            'functional_locations' => [],
+            'equipment_nos' => [],
+        ];
+
+        CommissioningFormSubmission::query()
+            ->when($currentSubmission, fn ($query) => $query->whereKeyNot($currentSubmission->id))
+            ->get(['header_data', 'functional_location', 'equipment_no'])
+            ->each(function (CommissioningFormSubmission $submission) use (&$used) {
+                $header = $submission->header_data ?? [];
+
+                if (filled($header['master_data_record_id'] ?? null)) {
+                    $used['ids'][] = (string) $header['master_data_record_id'];
+                }
+
+                if (filled($submission->functional_location)) {
+                    $used['functional_locations'][] = (string) $submission->functional_location;
+                }
+
+                if (filled($submission->equipment_no)) {
+                    $used['equipment_nos'][] = (string) $submission->equipment_no;
+                }
+            });
+
+        return array_map(fn (array $values) => array_values(array_unique($values)), $used);
+    }
+
+    private function masterDataRecordIsUsed(MasterDataRecord $record, array $used): bool
+    {
+        return in_array((string) $record->id, $used['ids'], true)
+            || in_array((string) $record->func_location, $used['functional_locations'], true)
+            || (filled($record->equipment_no) && in_array((string) $record->equipment_no, $used['equipment_nos'], true));
+    }
+
+    private function currentSubmissionUsesMasterDataRecord(?CommissioningFormSubmission $submission, MasterDataRecord $record): bool
+    {
+        if (! $submission) {
+            return false;
+        }
+
+        $header = $submission->header_data ?? [];
+
+        return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
+            || (filled($submission->functional_location) && (string) $submission->functional_location === (string) $record->func_location)
+            || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
     }
 
     private function closeMasterDataInspectionStatus(CommissioningFormSubmission $submission, Request $request): void

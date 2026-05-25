@@ -245,6 +245,99 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee($submission->form_number);
     }
 
+    public function test_commissioning_master_data_used_by_any_submission_is_hidden_from_new_forms(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $availableMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-LOC-002',
+            'equipment_no' => 'EQ-COM-002',
+            'section_no' => 'SEC-COM-002',
+            'description' => 'AVAILABLE MOTOR',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $draft = CommissioningFormSubmission::firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertDontSee('SEC-COM-001')
+            ->assertDontSee('GEARBOX MOTOR')
+            ->assertSee('SEC-COM-002')
+            ->assertSee('AVAILABLE MOTOR');
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertSessionHasErrors('header.master_data_record_id');
+
+        $this->assertSame(1, CommissioningFormSubmission::count());
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.submissions.edit', $draft))
+            ->assertOk()
+            ->assertSee('SEC-COM-001')
+            ->assertSee('GEARBOX MOTOR')
+            ->assertSee('SEC-COM-002')
+            ->assertSee($availableMaster->description);
+    }
+
+    public function test_commissioning_master_data_closed_manually_is_hidden_from_new_forms(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['inspection_status' => 'close']);
+
+        $availableMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-LOC-003',
+            'equipment_no' => 'EQ-COM-003',
+            'section_no' => 'SEC-COM-003',
+            'description' => 'OPEN MOTOR',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertDontSee('SEC-COM-001')
+            ->assertDontSee('GEARBOX MOTOR')
+            ->assertSee('SEC-COM-003')
+            ->assertSee($availableMaster->description);
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertSessionHasErrors('header.master_data_record_id');
+
+        $this->assertSame(0, CommissioningFormSubmission::count());
+    }
+
+    public function test_commissioning_master_data_ongoing_manually_is_hidden_from_new_forms(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['inspection_status' => 'ongoing']);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertDontSee('SEC-COM-001')
+            ->assertDontSee('GEARBOX MOTOR');
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertSessionHasErrors('header.master_data_record_id');
+    }
+
     public function test_commissioning_submit_requires_all_required_sections(): void
     {
         [$user, $template] = $this->makeCommissioningSetup();

@@ -121,19 +121,21 @@ class MasterDataController extends Controller
     ): JsonResponse
     {
         $validated = $request->validate([
-            'inspection_status' => ['required', Rule::in(array_keys(MasterDataRecord::inspectionStatuses()))],
+            'inspection_status' => ['nullable', Rule::in(array_keys(MasterDataRecord::inspectionStatuses()))],
         ]);
 
         $inspectionStatus->setStatus(
             $masterDataRecord,
-            $validated['inspection_status'],
+            $validated['inspection_status'] ?? null,
             MasterDataInspectionStatusService::SOURCE_MANUAL_ADMIN,
             $request->user()
         );
 
         return response()->json([
             'status' => $masterDataRecord->inspection_status,
-            'label' => MasterDataRecord::inspectionStatuses()[$masterDataRecord->inspection_status],
+            'label' => $masterDataRecord->inspection_status
+                ? MasterDataRecord::inspectionStatuses()[$masterDataRecord->inspection_status]
+                : 'Pilih Status',
         ]);
     }
 
