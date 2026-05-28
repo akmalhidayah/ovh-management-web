@@ -797,6 +797,21 @@ body.inspector-body {
     gap: 0.85rem;
 }
 
+.commissioning-header-grid {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.commissioning-header-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.commissioning-header-row.is-four-column {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .qc-user-field,
 .qc-user-note-box {
     display: grid;
@@ -1430,6 +1445,8 @@ body.inspector-body {
     }
 
     .qc-user-field-grid,
+    .commissioning-header-row,
+    .commissioning-header-row.is-four-column,
     .qc-user-approval-grid,
     .qc-attachment-grid,
     .qc-method-check-grid {

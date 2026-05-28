@@ -505,7 +505,7 @@ class FormController extends Controller
             }
 
             if ($key === 'unit_kerja') {
-                $approvalData[$key]['name'] = trim((string) $unitKerja);
+                $approvalData[$key]['label'] = trim((string) $unitKerja) ?: $column['label'];
             }
         }
 

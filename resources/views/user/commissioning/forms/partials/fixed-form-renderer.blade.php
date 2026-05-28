@@ -344,11 +344,24 @@
             @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
                 @php
                     $approvalName = $approval[$column['key']]['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '');
+                    $isUnitKerjaApprover = $column['key'] === 'unit_kerja';
+                    $approvalLabel = $isUnitKerjaApprover
+                        ? ($oldHeader['unit_kerja'] ?? ($selectedOrganizationSection ?: $column['label']))
+                        : $column['label'];
                 @endphp
                 <div class="qc-user-approval-box is-locked">
-                    <strong>{{ $column['label'] }}</strong>
+                    <strong @if ($isUnitKerjaApprover) data-unit-kerja-approval-label @endif>{{ $approvalLabel }}</strong>
+                    @if ($isUnitKerjaApprover)
+                        <input type="hidden" name="approval[{{ $column['key'] }}][label]" value="{{ $approvalLabel }}" data-unit-kerja-approval-label-input>
+                    @endif
                     <small class="text-muted d-block mb-2">{{ $column['group'] }}</small>
-                    <input type="text" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" class="form-control mb-2" placeholder="Nama">
+                    <input
+                        type="text"
+                        name="approval[{{ $column['key'] }}][name]"
+                        value="{{ $approvalName }}"
+                        class="form-control mb-2"
+                        placeholder="Nama"
+                    >
                     <input type="date" name="approval[{{ $column['key'] }}][date]" value="{{ $approval[$column['key']]['date'] ?? '' }}" class="form-control" disabled>
                     <div class="qc-signature-locked mt-2"><i class="bi bi-lock"></i><span>Tanda tangan terkunci.</span></div>
                 </div>
@@ -411,9 +424,13 @@
 (() => {
     const master = document.querySelector('[data-master-data-select]');
     const area = document.querySelector('[data-master-area-select]');
+    const organizationSection = document.querySelector('[data-organization-section-select]');
+    const unitKerjaApprovalLabel = document.querySelector('[data-unit-kerja-approval-label]');
+    const unitKerjaApprovalLabelInput = document.querySelector('[data-unit-kerja-approval-label-input]');
     const masterOptions = @json($masterDataOptions);
     const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
     let masterTomSelect = null;
+    let organizationTomSelect = null;
 
     const destroyMasterSearch = () => {
         if (masterTomSelect) {
@@ -438,6 +455,46 @@
     };
 
     const setHeader = (key, value) => { const input = document.querySelector(`[data-header-input="${key}"]`); if (input) input.value = value || ''; };
+    const initOrganizationSearch = () => {
+        if (!organizationSection || !window.TomSelect) return;
+
+        organizationTomSelect = new TomSelect(organizationSection, {
+            create: false,
+            allowEmptyOption: true,
+            maxOptions: 1000,
+            searchField: ['text'],
+            placeholder: 'Cari Unit Kerja...',
+            render: {
+                option: function (data, escape) {
+                    const option = data.$option;
+                    const department = option?.dataset.department || '';
+                    const workUnit = option?.dataset.workUnit || '';
+                    const meta = [workUnit, department].filter(Boolean).join(' - ');
+
+                    return `<div>
+                        <div>${escape(data.text)}</div>
+                        ${meta ? `<small class="text-muted">${escape(meta)}</small>` : ''}
+                    </div>`;
+                },
+                no_results: () => '<div class="no-results">Unit Kerja tidak ditemukan</div>',
+            },
+        });
+    };
+
+    const syncOrganizationSection = () => {
+        const option = organizationSection?.selectedOptions?.[0];
+        const section = option?.value || '';
+        setHeader('organization_section_id', option?.dataset.id || '');
+        setHeader('department', option?.dataset.department || '');
+        setHeader('work_unit', option?.dataset.workUnit || '');
+        if (unitKerjaApprovalLabel) {
+            unitKerjaApprovalLabel.textContent = section || 'UNIT KERJA';
+        }
+        if (unitKerjaApprovalLabelInput) {
+            unitKerjaApprovalLabelInput.value = section;
+        }
+    };
+
     document.querySelectorAll('[data-commissioning-form] input[name*="[remarks]"], [data-commissioning-form] input[name*="[remark]"]').forEach((input) => {
         input.required = false;
         input.removeAttribute('required');
@@ -505,8 +562,11 @@
         syncMaster();
     });
     master?.addEventListener('change', syncMaster);
+    organizationSection?.addEventListener('change', syncOrganizationSection);
     filterMasterOptions();
     syncMaster();
+    initOrganizationSearch();
+    syncOrganizationSection();
 
 })();
 </script>

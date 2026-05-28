@@ -521,17 +521,15 @@ class FormController extends Controller
                 $label = FixedQcTemplate::approvalLabelIsEditable($type, $key)
                     ? FixedQcTemplate::approvalEditableValue($type, $key, $approval['label'] ?? '')
                     : $column['label'];
-
-                $name = trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? '')));
                 if (
                     in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
                     && ($column['role'] ?? null) === 'Unit Kerja'
                 ) {
-                    $name = trim((string) $unitKerja);
+                    $label = trim((string) $unitKerja) ?: $label;
                 }
 
                 return [$key => [
-                    'name' => $name,
+                    'name' => trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? ''))),
                     'date' => trim((string) ($approval['date'] ?? '')),
                     'signature' => trim((string) ($approval['signature'] ?? '')),
                     'role' => $column['role'] ?? $column['label'],

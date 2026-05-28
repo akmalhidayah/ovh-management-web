@@ -90,6 +90,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('name="header[area]"', false)
             ->assertSee('data-master-area-select', false)
             ->assertSee('Section No.')
+            ->assertSee('Unit Kerja')
             ->assertSee('GEARBOX MOTOR')
             ->assertSee('EQ-COM-001');
 
@@ -107,6 +108,9 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('SEC-COM-001', $submission->tag_num);
         $this->assertSame('GEARBOX MOTOR', $submission->equipment);
         $this->assertSame('TONASA 4', $submission->header_data['plant']);
+        $this->assertSame('Line 2/3 FM Operation', $submission->header_data['unit_kerja']);
+        $this->assertSame('Line 2/3 FM Operation', $submission->approval_data['unit_kerja']['label']);
+        $this->assertSame('Tampered Unit Kerja', $submission->approval_data['unit_kerja']['name']);
         $this->assertSame($user->name, $submission->header_data['inspector_commissioning']);
         $this->assertStringContainsString('/COM/', $submission->form_number);
         $this->assertSame($template->code, $submission->template_code);
@@ -572,6 +576,7 @@ class CommissioningFormFlowTest extends TestCase
             'header' => [
                 'master_data_record_id' => $master->id,
                 'date_time' => '2026-05-08T10:00',
+                'unit_kerja' => 'Line 2/3 FM Operation',
             ],
             'body' => [
                 'motor_rating' => ['power_kw' => '15', 'current_a' => '10', 'voltage_v' => '380', 'freq_hz' => '50', 'brand' => 'ABB'],
@@ -593,7 +598,7 @@ class CommissioningFormFlowTest extends TestCase
             'approval' => [
                 'commissioning_leader' => ['name' => 'Leader A', 'date' => '2026-05-08'],
                 'coordinator_commissioning_qc' => ['name' => 'Coordinator A', 'date' => '2026-05-08'],
-                'unit_kerja' => ['name' => 'Unit Kerja A', 'date' => '2026-05-08'],
+                'unit_kerja' => ['name' => 'Tampered Unit Kerja', 'date' => '2026-05-08'],
                 'overhaul_management' => ['name' => 'Overhaul A', 'date' => '2026-05-08'],
             ],
         ];

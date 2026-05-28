@@ -888,11 +888,12 @@
                     </tr>
                 </table>
             @else
+                @php($unitKerjaApprovalLabel = $approval('Unit Kerja')['label'] ?? 'UNIT KERJA')
                 <table class="approval-table">
                     <tr>
                         <th rowspan="2" style="width: 15%;" class="inspector-title">TTD<br>QC Inspektor</th>
                         <th colspan="2">Checked by / Diperiksa Oleh :</th>
-                        <th rowspan="2" style="width: 18%;">Approved by / Disetujui oleh :<br>UNIT KERJA</th>
+                        <th rowspan="2" style="width: 18%;">Approved by / Disetujui oleh :<br>{{ strtoupper($unitKerjaApprovalLabel) }}</th>
                         <th rowspan="2" style="width: 21%;">Known by / Diketahui Oleh :<br>OVERHAUL MANAGEMENT</th>
                     </tr>
                     <tr>

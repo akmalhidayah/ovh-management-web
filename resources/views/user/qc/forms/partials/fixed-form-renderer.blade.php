@@ -288,11 +288,10 @@
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
                     $isUnitKerjaApprover = in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
                         && ($column['role'] ?? null) === 'Unit Kerja';
-                    if ($isUnitKerjaApprover) {
-                        $approvalName = $oldHeader['unit_kerja'] ?? ($selectedOrganizationSection ?: $approvalName);
-                    }
                     $approvalGroup = $column['group'];
-                    $approvalLabel = $column['label'];
+                    $approvalLabel = $isUnitKerjaApprover
+                        ? ($oldHeader['unit_kerja'] ?? ($selectedOrganizationSection ?: $column['label']))
+                        : $column['label'];
                     $groupEditable = FixedQcTemplate::approvalGroupIsEditable($type, $column['key']);
                     $labelEditable = FixedQcTemplate::approvalLabelIsEditable($type, $column['key']);
                     $editablePlaceholder = FixedQcTemplate::approvalEditablePlaceholder($type, $column['key']);
@@ -317,7 +316,10 @@
                                    placeholder="{{ $editablePlaceholder }}">
                         @else
                             <small class="text-muted d-block">{{ $approvalGroup }}</small>
-                            <strong>{{ $approvalLabel }}</strong>
+                            <strong @if ($isUnitKerjaApprover) data-unit-kerja-approval-label @endif>{{ $approvalLabel }}</strong>
+                            @if ($isUnitKerjaApprover)
+                                <input type="hidden" name="approval[{{ $column['key'] }}][label]" value="{{ $approvalLabel }}" data-unit-kerja-approval-label-input>
+                            @endif
                         @endif
                     </div>
                     <input
@@ -326,7 +328,6 @@
                         name="approval[{{ $column['key'] }}][name]"
                         value="{{ $approvalName }}"
                         placeholder="Nama penanda tangan"
-                        @if ($isUnitKerjaApprover) readonly data-unit-kerja-approval-name @endif
                     >
                     @if ($isInspector)
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control>
@@ -449,7 +450,8 @@
             const masterDataSelect = document.querySelector('[data-master-data-select]');
             const areaSelect = document.querySelector('[data-master-area-select]');
             const organizationSectionSelect = document.querySelector('[data-organization-section-select]');
-            const unitKerjaApprovalNameInput = document.querySelector('[data-unit-kerja-approval-name]');
+            const unitKerjaApprovalLabel = document.querySelector('[data-unit-kerja-approval-label]');
+            const unitKerjaApprovalLabelInput = document.querySelector('[data-unit-kerja-approval-label-input]');
             const masterDataOptions = @json($masterDataOptions);
             const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
             let masterDataTomSelect = null;
@@ -514,8 +516,11 @@
                 setHeaderValue('organization_section_id', option?.dataset.id || '');
                 setHeaderValue('department', option?.dataset.department || '');
                 setHeaderValue('work_unit', option?.dataset.workUnit || '');
-                if (unitKerjaApprovalNameInput) {
-                    unitKerjaApprovalNameInput.value = section;
+                if (unitKerjaApprovalLabel) {
+                    unitKerjaApprovalLabel.textContent = section || 'Unit Kerja';
+                }
+                if (unitKerjaApprovalLabelInput) {
+                    unitKerjaApprovalLabelInput.value = section;
                 }
             };
 

@@ -264,6 +264,12 @@ class FixedQcTemplate
 
                 if ($preserveEditableBlank && $labelEditable && $hasApproval) {
                     $column['label'] = self::approvalEditableValue($type, $key, $approval['label'] ?? '');
+                } elseif (
+                    in_array($type, [self::TYPE_GENERAL, self::TYPE_WELDING], true)
+                    && ($column['role'] ?? null) === 'Unit Kerja'
+                    && trim((string) ($approval['label'] ?? '')) !== ''
+                ) {
+                    $column['label'] = trim((string) $approval['label']);
                 } else {
                     $column['label'] = self::approvalDisplayText(
                         $labelEditable ? ($approval['label'] ?? null) : null,
