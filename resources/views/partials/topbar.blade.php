@@ -37,11 +37,13 @@
                 @forelse ($notificationItems as $item)
                     <a class="topbar-notification-item" href="{{ $item['url'] }}" target="_blank">
                         <span class="topbar-notification-type">{{ $item['type'] }}</span>
-                        <strong>{{ $item['title'] }}</strong>
-                        @if ($item['meta'])
-                            <small>{{ $item['meta'] }}</small>
-                        @endif
-                        <time>{{ $item['submitted_at']?->format('d M Y H:i') }}</time>
+                        <span class="topbar-notification-body">
+                            <strong>{{ $item['title'] }}</strong>
+                            @if ($item['meta'])
+                                <small>{{ $item['meta'] }}</small>
+                            @endif
+                            <time>{{ $item['submitted_at']?->format('d M Y H:i') }}</time>
+                        </span>
                     </a>
                 @empty
                     <div class="topbar-notification-empty">Belum ada submission baru.</div>

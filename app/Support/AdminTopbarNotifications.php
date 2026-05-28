@@ -4,7 +4,7 @@ namespace App\Support;
 
 use App\Models\CommissioningFormSubmission;
 use App\Models\QcFormSubmission;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class AdminTopbarNotifications
 {
@@ -54,8 +54,8 @@ class AdminTopbarNotifications
     {
         return [
             'type' => 'QC',
-            'title' => $submission->form_number ?: 'Form QC',
-            'meta' => collect([$submission->equipment, $submission->area])->filter()->implode(' / '),
+            'title' => Str::limit($submission->form_number ?: 'Form QC', 42),
+            'meta' => Str::limit(collect([$submission->equipment, $submission->area])->filter()->implode(' / '), 58),
             'submitted_at' => $submission->submitted_at,
             'url' => route('admin.qc.submissions.pdf', $submission),
         ];
@@ -67,8 +67,8 @@ class AdminTopbarNotifications
 
         return [
             'type' => 'Commissioning',
-            'title' => $submission->form_number ?: 'Form Commissioning',
-            'meta' => collect([$submission->equipment, $header['area'] ?? $submission->area])->filter()->implode(' / '),
+            'title' => Str::limit($submission->form_number ?: 'Form Commissioning', 42),
+            'meta' => Str::limit(collect([$submission->equipment, $header['area'] ?? $submission->area])->filter()->implode(' / '), 58),
             'submitted_at' => $submission->submitted_at,
             'url' => route('admin.commissioning.submissions.pdf', $submission),
         ];
