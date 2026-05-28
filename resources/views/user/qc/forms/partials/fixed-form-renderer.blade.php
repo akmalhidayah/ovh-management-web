@@ -117,10 +117,6 @@
                     <p>{{ $selectedTemplate->description }}</p>
                 @endif
             </div>
-            <div class="qc-form-code">
-                <strong>{{ $selectedTemplate->code ?: 'Tanpa kode' }}</strong>
-                <span>Versi {{ $selectedTemplate->version }}</span>
-            </div>
         </div>
     </section>
 

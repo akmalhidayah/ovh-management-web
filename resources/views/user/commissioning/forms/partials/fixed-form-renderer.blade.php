@@ -65,7 +65,6 @@
                 <h2>{{ $selectedTemplate->name }}</h2>
                 @if ($selectedTemplate->description)<p>{{ $selectedTemplate->description }}</p>@endif
             </div>
-            <div class="qc-form-code"><strong>{{ $selectedTemplate->code ?: 'Tanpa kode' }}</strong><span>Versi {{ $selectedTemplate->version }}</span></div>
         </div>
     </section>
 

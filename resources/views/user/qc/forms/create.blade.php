@@ -65,12 +65,6 @@
                     @endforeach
                 </select>
             </div>
-            <div class="qc-template-picker-summary">
-                <div class="qc-template-selected-meta">
-                    <span>{{ $selectedTemplate?->code ?: 'Template belum tersedia' }}</span>
-                    <strong>{{ $selectedTemplate?->category ?: 'QC' }}</strong>
-                </div>
-            </div>
         </div>
     </section>
 

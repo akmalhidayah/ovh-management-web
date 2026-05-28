@@ -26,10 +26,6 @@
                 <h2>{{ $selectedTemplate->name }}</h2>
                 <p>{{ $selectedTemplate->description ?: 'Form QC dibuat berdasarkan template block-based yang sudah dipublish admin.' }}</p>
             </div>
-            <div class="qc-form-code">
-                <strong>{{ $selectedTemplate->code ?: 'Tanpa kode' }}</strong>
-                <span>Versi {{ $selectedTemplate->version }}</span>
-            </div>
         </div>
     </section>
 
