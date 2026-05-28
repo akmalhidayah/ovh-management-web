@@ -148,6 +148,46 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Normal', $submission->body_data['general_rows'][0]['actual']);
     }
 
+    public function test_fixed_qc_general_uses_header_unit_kerja_for_unit_kerja_approver(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['unit_kerja'] = 'Line 2/3 FM Operation';
+        $payload['approval']['approved_by_unit_kerja'] = [
+            'name' => 'Tampered Name',
+            'role' => 'Unit Kerja',
+        ];
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('Line 2/3 FM Operation', $submission->general_info['unit_kerja']);
+        $this->assertSame('Line 2/3 FM Operation', $submission->approval_data['approved_by_unit_kerja']['name']);
+    }
+
+    public function test_fixed_qc_welding_uses_header_unit_kerja_for_unit_kerja_approver(): void
+    {
+        [$user, $template] = $this->makeFixedWeldingTemplate();
+        $payload = $this->fixedWeldingPayload($template);
+        $payload['header']['unit_kerja'] = 'Cement Production Coach';
+        $payload['approval']['approved_by_unit_kerja'] = [
+            'name' => 'Tampered Name',
+            'role' => 'Unit Kerja',
+        ];
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('Cement Production Coach', $submission->general_info['unit_kerja']);
+        $this->assertSame('Cement Production Coach', $submission->approval_data['approved_by_unit_kerja']['name']);
+    }
+
     public function test_qc_castable_submit_creates_three_step_approval_flow(): void
     {
         [$user, $template] = $this->makeFixedCastableTemplate();

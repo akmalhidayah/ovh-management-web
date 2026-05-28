@@ -129,7 +129,7 @@ class FormController extends Controller
                 ]);
 
                 $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
-                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData);
+                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData, $generalInfo['unit_kerja'] ?? null);
                 $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
 
                 $submission->forceFill([
@@ -235,7 +235,7 @@ class FormController extends Controller
                 $dateTime = $generalInfo['date_time'] ?? null;
 
                 $approvalData = $this->approvalDataWithSignatureFiles($request, $request->input('approval', []), $submission);
-                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData);
+                $approvalData = $this->normalizedFixedApprovalData($template, $approvalData, $generalInfo['unit_kerja'] ?? null);
                 $bodyData = $isFixedTemplate ? $this->bodyDataWithSignatureFiles($request, $bodyData ?? [], $submission) : $bodyData;
 
                 $submission->update([
@@ -501,7 +501,7 @@ class FormController extends Controller
         return $approvalData;
     }
 
-    private function normalizedFixedApprovalData(QcFormTemplate $template, array $approvalData): array
+    private function normalizedFixedApprovalData(QcFormTemplate $template, array $approvalData, ?string $unitKerja = null): array
     {
         if (! $template->template_type) {
             return $approvalData;
@@ -512,7 +512,7 @@ class FormController extends Controller
         $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($type);
 
         return collect(FixedQcTemplate::approvalColumnsWithDefaults($type, $approvalDefaults))
-            ->mapWithKeys(function (array $column) use ($type, $approvalData, $approvalDefaults) {
+            ->mapWithKeys(function (array $column) use ($type, $approvalData, $approvalDefaults, $unitKerja) {
                 $key = $column['key'];
                 $approval = is_array($approvalData[$key] ?? null) ? $approvalData[$key] : [];
                 $group = FixedQcTemplate::approvalGroupIsEditable($type, $key)
@@ -522,8 +522,16 @@ class FormController extends Controller
                     ? FixedQcTemplate::approvalEditableValue($type, $key, $approval['label'] ?? '')
                     : $column['label'];
 
+                $name = trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? '')));
+                if (
+                    in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
+                    && ($column['role'] ?? null) === 'Unit Kerja'
+                ) {
+                    $name = trim((string) $unitKerja);
+                }
+
                 return [$key => [
-                    'name' => trim((string) ($approval['name'] ?? ($approvalDefaults[$key]['name'] ?? ''))),
+                    'name' => $name,
                     'date' => trim((string) ($approval['date'] ?? '')),
                     'signature' => trim((string) ($approval['signature'] ?? '')),
                     'role' => $column['role'] ?? $column['label'],

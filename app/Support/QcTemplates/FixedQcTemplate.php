@@ -593,7 +593,7 @@ class FixedQcTemplate
                     'keterangan' => trim((string) Arr::get($row, 'keterangan', '')),
                 ];
             })
-            ->filter(fn ($row) => collect($row)->except('no')->filter()->isNotEmpty())
+            ->filter(fn ($row) => trim((string) ($row['no'] ?? '')) !== '' || collect($row)->except('no')->filter()->isNotEmpty())
             ->values()
             ->all();
     }

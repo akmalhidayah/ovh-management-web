@@ -18,6 +18,7 @@ class FixedCommissioningTemplate
             ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
             ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
             ['key' => 'inspector_commissioning', 'label' => 'User Commissioning', 'type' => 'text'],
+            ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
         ];
     }
 

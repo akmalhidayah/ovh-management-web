@@ -194,6 +194,35 @@ class AdminTemplateFormQcTest extends TestCase
         $this->assertSame('Visual welding', $template->body_schema['result_rows'][0]['deskripsi']);
     }
 
+    public function test_admin_can_save_blank_welder_rows_for_qc_welding_template(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'QCR-WELDING-BLANK-001',
+            'name' => 'Template QC Welding Blank Welder',
+            'category' => 'Welding',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_WELDING,
+            'welding_welder_rows' => [
+                ['no' => 1, 'nama_welder' => '', 'posisi_pengelasan' => '', 'diameter_electrode' => '', 'electrode_filter' => '', 'amper' => '', 'keterangan' => ''],
+                ['no' => 2, 'nama_welder' => '', 'posisi_pengelasan' => '', 'diameter_electrode' => '', 'electrode_filter' => '', 'amper' => '', 'keterangan' => ''],
+            ],
+            'welding_result_rows' => [
+                ['no' => 1, 'deskripsi' => 'Visual welding', 'keterangan' => ''],
+            ],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-WELDING-BLANK-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertCount(2, $template->body_schema['welder_rows']);
+        $this->assertSame('1', $template->body_schema['welder_rows'][0]['no']);
+        $this->assertSame('', $template->body_schema['welder_rows'][0]['nama_welder']);
+        $this->assertSame(2, $template->blocks()->where('type', 'welding_welder_table')->firstOrFail()->tableRows()->count());
+    }
+
     public function test_admin_can_customize_brics_approval_titles(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

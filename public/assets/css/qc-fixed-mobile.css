@@ -49,11 +49,15 @@
 
     .qc-mobile-card-wrap td::before {
         content: attr(data-label);
+        min-width: 0;
         color: #667085;
         font-size: 0.72rem;
         font-weight: 800;
         line-height: 1.25;
         text-transform: uppercase;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .qc-mobile-card-wrap td[data-label="No"],

@@ -286,6 +286,11 @@
                     $isInspector = ($column['role'] ?? null) === 'QC Inspektor';
                     $defaultApprovalName = $approvalDefaults[$column['key']]['name'] ?? '';
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
+                    $isUnitKerjaApprover = in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
+                        && ($column['role'] ?? null) === 'Unit Kerja';
+                    if ($isUnitKerjaApprover) {
+                        $approvalName = $oldHeader['unit_kerja'] ?? ($selectedOrganizationSection ?: $approvalName);
+                    }
                     $approvalGroup = $column['group'];
                     $approvalLabel = $column['label'];
                     $groupEditable = FixedQcTemplate::approvalGroupIsEditable($type, $column['key']);
@@ -315,7 +320,14 @@
                             <strong>{{ $approvalLabel }}</strong>
                         @endif
                     </div>
-                    <input type="text" class="form-control mb-2" name="approval[{{ $column['key'] }}][name]" value="{{ $approvalName }}" placeholder="Nama penanda tangan">
+                    <input
+                        type="text"
+                        class="form-control mb-2"
+                        name="approval[{{ $column['key'] }}][name]"
+                        value="{{ $approvalName }}"
+                        placeholder="Nama penanda tangan"
+                        @if ($isUnitKerjaApprover) readonly data-unit-kerja-approval-name @endif
+                    >
                     @if ($isInspector)
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? $today }}" data-inspector-approval-control>
                     @else
@@ -437,6 +449,7 @@
             const masterDataSelect = document.querySelector('[data-master-data-select]');
             const areaSelect = document.querySelector('[data-master-area-select]');
             const organizationSectionSelect = document.querySelector('[data-organization-section-select]');
+            const unitKerjaApprovalNameInput = document.querySelector('[data-unit-kerja-approval-name]');
             const masterDataOptions = @json($masterDataOptions);
             const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
             let masterDataTomSelect = null;
@@ -497,9 +510,13 @@
 
             const syncOrganizationSection = () => {
                 const option = organizationSectionSelect?.selectedOptions?.[0];
+                const section = option?.value || '';
                 setHeaderValue('organization_section_id', option?.dataset.id || '');
                 setHeaderValue('department', option?.dataset.department || '');
                 setHeaderValue('work_unit', option?.dataset.workUnit || '');
+                if (unitKerjaApprovalNameInput) {
+                    unitKerjaApprovalNameInput.value = section;
+                }
             };
 
             const clearMasterDataHeader = () => {

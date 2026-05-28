@@ -8,10 +8,12 @@ use App\Models\CommissioningFormSubmissionAttachment;
 use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
+use App\Models\OrganizationSection;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Support\Commissioning\FixedCommissioningTemplate;
+use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -63,6 +65,7 @@ class FormController extends Controller
             'selectedTemplate' => $selectedTemplate,
             'autoDocNumber' => $this->previewDocumentNumber(),
             'activeMasterDataRecords' => $activeMasterDataRecords,
+            'activeOrganizationSections' => $this->activeOrganizationSections(),
         ]));
     }
 
@@ -107,7 +110,7 @@ class FormController extends Controller
                     'header_data' => $header,
                     'body_data' => $body,
                     'note' => $request->input('note'),
-                    'approval_data' => $request->input('approval', []),
+                    'approval_data' => $this->normalizedApprovalData($request->input('approval', []), $header['unit_kerja'] ?? null),
                 ]);
 
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
@@ -152,6 +155,7 @@ class FormController extends Controller
             'draftSubmission' => $submission,
             'autoDocNumber' => $submission->form_number,
             'activeMasterDataRecords' => $this->activeMasterDataRecords($submission),
+            'activeOrganizationSections' => $this->activeOrganizationSections(),
         ]));
     }
 
@@ -197,7 +201,7 @@ class FormController extends Controller
                     'header_data' => $header,
                     'body_data' => $this->bodyData($request),
                     'note' => $request->input('note'),
-                    'approval_data' => $request->input('approval', []),
+                    'approval_data' => $this->normalizedApprovalData($request->input('approval', []), $header['unit_kerja'] ?? null),
                 ]);
 
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
@@ -471,6 +475,9 @@ class FormController extends Controller
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_commissioning'] = $request->user()?->name;
+        $header['department'] = $request->input('header.department');
+        $header['work_unit'] = $request->input('header.work_unit');
+        $header['organization_section_id'] = $request->input('header.organization_section_id');
 
         if ($record = $this->selectedMasterDataRecord($request, $currentSubmission)) {
             $header['master_data_record_id'] = $record->id;
@@ -484,6 +491,25 @@ class FormController extends Controller
         }
 
         return $header;
+    }
+
+    private function normalizedApprovalData(mixed $approval, ?string $unitKerja = null): array
+    {
+        $approvalData = is_array($approval) ? $approval : [];
+
+        foreach (FixedCommissioningTemplate::approvalColumns() as $column) {
+            $key = $column['key'];
+
+            if (! is_array($approvalData[$key] ?? null)) {
+                $approvalData[$key] = [];
+            }
+
+            if ($key === 'unit_kerja') {
+                $approvalData[$key]['name'] = trim((string) $unitKerja);
+            }
+        }
+
+        return $approvalData;
     }
 
     private function isRemarksField(mixed $key): bool
@@ -640,6 +666,24 @@ class FormController extends Controller
             ->reject(fn (MasterDataRecord $record) => (
                 filled($record->inspection_status) && ! $this->currentSubmissionUsesMasterDataRecord($currentSubmission, $record)
             ) || $this->masterDataRecordIsUsed($record, $used))
+            ->values();
+    }
+
+    private function activeOrganizationSections()
+    {
+        $sections = OrganizationSection::query()
+            ->active()
+            ->orderBy('department')
+            ->orderBy('unit_kerja')
+            ->orderBy('section')
+            ->get();
+
+        if ($sections->isNotEmpty()) {
+            return $sections;
+        }
+
+        return collect(OrganizationSections::rows())
+            ->map(fn (array $row) => (object) $row)
             ->values();
     }
 

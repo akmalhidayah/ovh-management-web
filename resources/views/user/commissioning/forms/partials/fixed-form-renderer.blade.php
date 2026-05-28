@@ -36,6 +36,26 @@
         'idEquipment' => (string) ($record->equipment_no ?? ''),
         'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
+    $organizationSections = collect($activeOrganizationSections ?? []);
+    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
+    $organizationSectionOptions = $organizationSections
+        ->map(fn ($section, $index) => [
+            'id' => (string) ($section->id ?? $index),
+            'department' => (string) ($section->department ?? ''),
+            'unitKerja' => (string) ($section->unit_kerja ?? ''),
+            'section' => (string) ($section->section ?? ''),
+        ])
+        ->filter(fn ($section) => $section['section'] !== '')
+        ->sortBy(fn ($section) => implode('|', [$section['department'], $section['unitKerja'], $section['section']]))
+        ->values();
+    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(fn ($section) => $section['section'] === $selectedOrganizationSection)) {
+        $organizationSectionOptions->push([
+            'id' => (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
+            'department' => (string) old('header.department', $oldHeader['department'] ?? ''),
+            'unitKerja' => (string) old('header.work_unit', $oldHeader['work_unit'] ?? ''),
+            'section' => (string) $selectedOrganizationSection,
+        ]);
+    }
     $checkRows = old('body.equipment_check_rows', ($draftBody['equipment_check_rows'] ?? []) ?: ($schema['equipment_check_rows'] ?? []));
     $motorRows = old('body.motor_test_rows', ($draftBody['motor_test_rows'] ?? []) ?: ($schema['motor_test_rows'] ?? []));
     $gearboxRows = old('body.gearbox_test_rows', ($draftBody['gearbox_test_rows'] ?? []) ?: ($schema['gearbox_test_rows'] ?? []));
@@ -52,7 +72,7 @@
     $headerRows = [
         ['doc_number', 'plant', 'tag_num'],
         ['functional_location', 'area', 'name_equipment'],
-        ['id_equipment', 'date_time', 'inspector_commissioning'],
+        ['id_equipment', 'date_time', 'inspector_commissioning', 'unit_kerja'],
     ];
     $headerFieldMap = collect(FixedCommissioningTemplate::headerFields())->keyBy('key');
 @endphp
@@ -70,8 +90,9 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Informasi Umum</h3></div>
-        <div class="qc-user-field-grid">
+        <div class="commissioning-header-grid">
             @foreach ($headerRows as $row)
+                <div class="commissioning-header-row {{ count($row) === 4 ? 'is-four-column' : '' }}">
                 @foreach ($row as $fieldKey)
                 @php
                     $field = $headerFieldMap[$fieldKey];
@@ -94,11 +115,28 @@
                                placeholder="Pilih area di bagian atas"
                                readonly
                                required>
+                    @elseif ($fieldKey === 'unit_kerja')
+                        <input type="hidden" name="header[department]" value="{{ old('header.department', $oldHeader['department'] ?? '') }}" data-header-input="department">
+                        <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
+                        <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
+                        <select name="header[unit_kerja]" class="form-select" data-organization-section-select required>
+                            <option value="">Pilih Unit Kerja</option>
+                            @foreach ($organizationSectionOptions as $sectionOption)
+                                <option value="{{ $sectionOption['section'] }}"
+                                        data-id="{{ $sectionOption['id'] }}"
+                                        data-department="{{ $sectionOption['department'] }}"
+                                        data-work-unit="{{ $sectionOption['unitKerja'] }}"
+                                        @selected((string) $selectedOrganizationSection === (string) $sectionOption['section'])>
+                                    {{ $sectionOption['section'] }}
+                                </option>
+                            @endforeach
+                        </select>
                     @else
                         <input type="{{ $field['type'] }}" name="header[{{ $fieldKey }}]" value="{{ $value }}" class="form-control" data-header-input="{{ $fieldKey }}" @if ($fieldKey === 'doc_number' || $fieldKey === 'inspector_commissioning' || in_array($fieldKey, $autoKeys, true)) readonly @else required @endif>
                     @endif
                 </label>
                 @endforeach
+                </div>
             @endforeach
         </div>
     </section>
