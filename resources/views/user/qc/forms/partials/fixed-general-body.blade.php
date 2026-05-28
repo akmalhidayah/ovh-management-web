@@ -13,8 +13,14 @@
             <tbody>
                 @forelse ($generalRows as $index => $row)
                     <tr>
-                        <td data-label="Item Pengecekan"><input type="text" name="body[general_rows][{{ $index }}][item_pengecekan]" value="{{ $row['item_pengecekan'] ?? '' }}" class="form-control form-control-sm"></td>
-                        <td data-label="Standar"><input type="text" name="body[general_rows][{{ $index }}][standar]" value="{{ $row['standar'] ?? '' }}" class="form-control form-control-sm"></td>
+                        <td data-label="Item Pengecekan">
+                            <input type="hidden" name="body[general_rows][{{ $index }}][item_pengecekan]" value="{{ $row['item_pengecekan'] ?? '' }}">
+                            <div class="qc-readonly-template-text">{{ $row['item_pengecekan'] ?? '' }}</div>
+                        </td>
+                        <td data-label="Standar">
+                            <input type="hidden" name="body[general_rows][{{ $index }}][standar]" value="{{ $row['standar'] ?? '' }}">
+                            <div class="qc-readonly-template-text">{{ $row['standar'] ?? '' }}</div>
+                        </td>
                         <td data-label="Actual"><input type="text" name="body[general_rows][{{ $index }}][actual]" value="{{ $row['actual'] ?? $row['actual_default'] ?? '' }}" class="form-control form-control-sm"></td>
                         <td data-label="Status">
                             <div class="qc-user-status-inline">

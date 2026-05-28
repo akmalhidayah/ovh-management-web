@@ -232,16 +232,28 @@
                     $temporaryAttachmentMetas = collect($temporaryAttachmentTokens)
                         ->map(fn ($token) => ['token' => $token] + (session("qc_temporary_attachments.{$token}") ?? []))
                         ->filter(fn ($attachment) => isset($attachment['original_name']));
+                    $isRequiredAttachment = in_array($attachmentKey, ['foto_before', 'foto_after'], true);
+                    $hasExistingAttachment = ($draftSubmission ?? null)
+                        ? $draftSubmission->attachments->where('field_key', $attachmentKey)->isNotEmpty()
+                        : false;
                 @endphp
                 <div class="qc-upload-box" data-upload-box data-upload-type="image">
                     <div class="qc-upload-box-head">
                         <div>
-                            <strong>{{ $attachmentLabel }}</strong>
-                            <span>Hanya JPG atau PNG. Bisa memilih beberapa file gambar.</span>
+                            <strong>{{ $attachmentLabel }} @if ($isRequiredAttachment)<span class="text-danger">*</span>@endif</strong>
+                            <span>Hanya JPG atau PNG. Bisa memilih beberapa file gambar. {{ $isRequiredAttachment ? 'Wajib diisi saat submit.' : 'Opsional.' }}</span>
                         </div>
                         <i class="bi bi-images"></i>
                     </div>
-                    <input type="file" class="form-control" name="attachments[{{ $attachmentKey }}][]" data-upload-input accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
+                    <input
+                        type="file"
+                        class="form-control"
+                        name="attachments[{{ $attachmentKey }}][]"
+                        data-upload-input
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                        multiple
+                        @if ($isRequiredAttachment && ! $hasExistingAttachment && $temporaryAttachmentMetas->isEmpty()) required @endif
+                    >
                     <div class="qc-upload-message" data-upload-message></div>
                     <div class="qc-upload-preview" data-upload-preview></div>
                     @if ($temporaryAttachmentMetas->isNotEmpty())

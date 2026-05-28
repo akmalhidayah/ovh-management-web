@@ -113,6 +113,41 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(0, QcFormSubmission::count());
     }
 
+    public function test_user_cannot_submit_fixed_qc_without_required_before_after_photos(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        unset($payload['attachments']['foto_before']);
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors([
+                'attachments.foto_before' => 'Foto Before wajib diupload. Dokumen Pendukung boleh dikosongkan.',
+            ]);
+
+        $this->assertSame(0, QcFormSubmission::count());
+    }
+
+    public function test_fixed_qc_general_ignores_tampered_template_item_and_standard(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['body']['general_rows'][0]['item_pengecekan'] = 'Injected Item';
+        $payload['body']['general_rows'][0]['standar'] = 'Injected Standard';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('Cek bearing', $submission->body_data['general_rows'][0]['item_pengecekan']);
+        $this->assertSame('Normal', $submission->body_data['general_rows'][0]['standar']);
+        $this->assertSame('Normal', $submission->body_data['general_rows'][0]['actual']);
+    }
+
     public function test_qc_castable_submit_creates_three_step_approval_flow(): void
     {
         [$user, $template] = $this->makeFixedCastableTemplate();
@@ -747,6 +782,7 @@ class QcFormSubmissionTest extends TestCase
         $validPayload = $this->fixedGeneralPayload($template);
         $validPayload['attachments'] = [
             'foto_before' => [UploadedFile::fake()->image('before.jpg')],
+            'foto_after' => [UploadedFile::fake()->image('after.jpg')],
         ];
 
         $this->actingAs($user)
@@ -803,6 +839,7 @@ class QcFormSubmissionTest extends TestCase
         $payload = $this->fixedGeneralPayload($template);
         $payload['attachments'] = [
             'foto_before' => [UploadedFile::fake()->image('before.jpg')],
+            'foto_after' => [UploadedFile::fake()->image('after.jpg')],
         ];
 
         $this->actingAs($user)
@@ -1073,7 +1110,7 @@ class QcFormSubmissionTest extends TestCase
                     'signed_at' => now()->toISOString(),
                 ],
             ],
-        ];
+        ] + $this->requiredQcAttachments();
     }
 
     private function fixedWeldingPayload(QcFormTemplate $template): array
@@ -1116,7 +1153,7 @@ class QcFormSubmissionTest extends TestCase
                     'signed_at' => now()->toISOString(),
                 ],
             ],
-        ];
+        ] + $this->requiredQcAttachments();
     }
 
     private function fixedBricsPayload(QcFormTemplate $template): array
@@ -1181,7 +1218,7 @@ class QcFormSubmissionTest extends TestCase
                     'role' => 'Unit Area',
                 ],
             ],
-        ];
+        ] + $this->requiredQcAttachments();
     }
 
     private function fixedCastablePayload(QcFormTemplate $template): array
@@ -1315,7 +1352,7 @@ class QcFormSubmissionTest extends TestCase
                     'role' => '*3 known',
                 ],
             ],
-        ];
+        ] + $this->requiredQcAttachments();
     }
 
     private function payload(QcFormTemplate $template, $block, $row, string $action): array
@@ -1366,6 +1403,16 @@ class QcFormSubmissionTest extends TestCase
     private function validSignatureData(): string
     {
         return 'data:image/png;base64,'.base64_encode($this->validSignatureBinary());
+    }
+
+    private function requiredQcAttachments(): array
+    {
+        return [
+            'attachments' => [
+                'foto_before' => [UploadedFile::fake()->image('before.jpg', 20, 20)],
+                'foto_after' => [UploadedFile::fake()->image('after.jpg', 20, 20)],
+            ],
+        ];
     }
 
     private function validSignatureBinary(): string

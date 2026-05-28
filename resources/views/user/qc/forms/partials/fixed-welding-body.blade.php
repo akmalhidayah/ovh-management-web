@@ -125,7 +125,10 @@
                 @forelse ($resultRows as $index => $row)
                     <tr data-user-result-row>
                         <td data-label="No"><input type="text" name="body[result_rows][{{ $index }}][no]" value="{{ $row['no'] ?? $loop->iteration }}" class="form-control form-control-sm text-center" readonly></td>
-                        <td data-label="Deskripsi"><input type="text" name="body[result_rows][{{ $index }}][deskripsi]" value="{{ $row['deskripsi'] ?? '' }}" class="form-control form-control-sm" readonly></td>
+                        <td data-label="Deskripsi">
+                            <input type="hidden" name="body[result_rows][{{ $index }}][deskripsi]" value="{{ $row['deskripsi'] ?? '' }}">
+                            <div class="qc-readonly-template-text">{{ $row['deskripsi'] ?? '' }}</div>
+                        </td>
                         @foreach (['Baik', 'Perlu Perbaikan', 'Tidak Layak'] as $status)
                             <td class="text-center" data-label="{{ $status }}"><input type="radio" name="body[result_rows][{{ $index }}][status]" value="{{ $status }}" @checked(($row['status'] ?? null) === $status) @if ($status === 'Baik') data-qc-ok-status @else data-qc-not-ok-status @endif></td>
                         @endforeach

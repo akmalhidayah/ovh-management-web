@@ -75,6 +75,16 @@
         min-width: 0;
         min-height: 42px;
         font-size: 0.9rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .qc-mobile-card-wrap .qc-readonly-template-text {
+        min-width: 0;
+        min-height: 42px;
+        font-size: 0.9rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .qc-mobile-card-wrap .qc-user-status-inline {

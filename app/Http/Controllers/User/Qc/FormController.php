@@ -216,7 +216,7 @@ class FormController extends Controller
 
         if ($template->template_type && $validated['action'] === 'submit') {
             try {
-                $this->validateFixedSubmission($request, $template);
+                $this->validateFixedSubmission($request, $template, $submission);
             } catch (ValidationException $exception) {
                 return $this->backWithTemporaryAttachments($request, $exception);
             }
@@ -728,21 +728,28 @@ class FormController extends Controller
 
         return [
             'final_check' => (bool) ($body['final_check'] ?? false),
-            'general_rows' => collect($body['general_rows'] ?? [])
-                ->map(fn ($row) => [
-                    'item_pengecekan' => trim((string) ($row['item_pengecekan'] ?? '')),
-                    'standar' => trim((string) ($row['standar'] ?? '')),
-                    'actual' => trim((string) ($row['actual'] ?? '')),
-                    'status' => $row['status'] ?? null,
-                    'catatan' => trim((string) ($row['catatan'] ?? '')),
-                ])
-                ->filter(fn ($row) => collect($row)->filter()->isNotEmpty())
-                ->values()
-                ->all(),
+            'general_rows' => array_key_exists('general_rows', $body)
+                ? collect(FixedQcTemplate::schemaForTemplate($template)['rows'] ?? [])
+                    ->values()
+                    ->map(function ($templateRow, $index) use ($body) {
+                        $row = collect($body['general_rows'] ?? [])->values()->get($index, []);
+
+                        return [
+                            'item_pengecekan' => trim((string) ($templateRow['item_pengecekan'] ?? '')),
+                            'standar' => trim((string) ($templateRow['standar'] ?? '')),
+                            'actual' => trim((string) ($row['actual'] ?? '')),
+                            'status' => $row['status'] ?? null,
+                            'catatan' => trim((string) ($row['catatan'] ?? '')),
+                        ];
+                    })
+                    ->filter(fn ($row) => collect($row)->filter()->isNotEmpty())
+                    ->values()
+                    ->all()
+                : [],
         ];
     }
 
-    private function validateFixedSubmission(Request $request, QcFormTemplate $template): void
+    private function validateFixedSubmission(Request $request, QcFormTemplate $template, ?QcFormSubmission $submission = null): void
     {
         $errors = [];
         $headerData = $this->fixedHeaderData($request, null, false, $template);
@@ -768,6 +775,12 @@ class FormController extends Controller
 
         if ($inspectorApprovalKey && ! $this->hasApprovalSignature($request, $inspectorApprovalKey)) {
             $errors["approval.{$inspectorApprovalKey}.signature"] = 'Tanda tangan QC Inspektor wajib diisi.';
+        }
+
+        foreach ($this->requiredFixedAttachmentKeys() as $attachmentKey => $attachmentLabel) {
+            if (! $this->hasSubmissionAttachment($request, $attachmentKey, $submission)) {
+                $errors["attachments.{$attachmentKey}"] = "{$attachmentLabel} wajib diupload. Dokumen Pendukung boleh dikosongkan.";
+            }
         }
 
         if (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_WELDING) {
@@ -856,6 +869,42 @@ class FormController extends Controller
         }
 
         return filled($request->input("approval.{$key}.signature"));
+    }
+
+    private function requiredFixedAttachmentKeys(): array
+    {
+        return [
+            'foto_before' => 'Foto Before',
+            'foto_after' => 'Foto After',
+        ];
+    }
+
+    private function hasSubmissionAttachment(Request $request, string $fieldKey, ?QcFormSubmission $submission = null): bool
+    {
+        $files = $request->file("attachments.{$fieldKey}", []);
+
+        foreach ((array) $files as $file) {
+            if ($file instanceof UploadedFile) {
+                return true;
+            }
+        }
+
+        foreach ((array) $request->input("temporary_attachments.{$fieldKey}", []) as $token) {
+            if ($this->temporaryAttachmentExists($token, $fieldKey)) {
+                return true;
+            }
+        }
+
+        return (bool) $submission?->attachments()->where('field_key', $fieldKey)->exists();
+    }
+
+    private function temporaryAttachmentExists(mixed $token, string $fieldKey): bool
+    {
+        $attachment = session(self::TEMP_ATTACHMENT_SESSION_KEY.'.'.$token);
+
+        return is_array($attachment)
+            && ($attachment['field_key'] ?? null) === $fieldKey
+            && Storage::disk('local')->exists($attachment['file_path'] ?? '');
     }
 
     private function storeFixedRows(QcFormSubmission $submission, QcFormTemplate $template, array $bodyData): void
