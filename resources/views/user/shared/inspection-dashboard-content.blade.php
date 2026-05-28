@@ -117,7 +117,9 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="commissioning-status-action">
-                                        <span class="commissioning-work-badge is-{{ $row['status_accent'] }}">{{ $row['status_label'] }}</span>
+                                        @if (empty($row['create_url']))
+                                            <span class="commissioning-work-badge is-{{ $row['status_accent'] }}">{{ $row['status_label'] }}</span>
+                                        @endif
                                         @if (! empty($row['form_number']))
                                             <small class="d-block text-muted mt-1">{{ $row['form_number'] }}</small>
                                         @endif
@@ -207,6 +209,76 @@
 
 @push('styles')
 <style>
+    .inspection-workspace .inspection-kpi-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .62rem;
+    }
+
+    .inspection-workspace .inspection-kpi-card {
+        --inspection-kpi-accent: #0d6efd;
+        min-height: 66px;
+        gap: .58rem;
+        padding: .55rem .68rem;
+        border: 1px solid #e2e8f0;
+        border-left: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 .4rem 1rem rgba(15, 23, 42, .045);
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-primary {
+        --inspection-kpi-accent: #0d6efd;
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-info {
+        --inspection-kpi-accent: #0dcaf0;
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-success {
+        --inspection-kpi-accent: #198754;
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-warning {
+        --inspection-kpi-accent: #f59e0b;
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-danger {
+        --inspection-kpi-accent: #dc3545;
+    }
+
+    .inspection-workspace .inspection-kpi-card.accent-secondary {
+        --inspection-kpi-accent: #475467;
+    }
+
+    .inspection-workspace .inspection-kpi-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        border-radius: 8px;
+        color: #ffffff;
+        background: var(--inspection-kpi-accent);
+        font-size: .9rem;
+        box-shadow: none;
+    }
+
+    .inspection-workspace .inspection-kpi-card p {
+        max-width: 9rem;
+        color: #64748b;
+        font-size: .68rem;
+        font-weight: 650;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .inspection-workspace .inspection-kpi-card strong {
+        margin-top: .08rem;
+        color: #0f172a;
+        font-size: 1.12rem;
+        font-weight: 850;
+        line-height: 1.05;
+    }
+
     .commissioning-equipment-panel {
         overflow: hidden;
     }
@@ -309,13 +381,23 @@
     .inspection-kpi-meta {
         color: #667085;
         display: block;
-        font-size: .72rem;
+        font-size: .6rem;
         font-weight: 700;
-        line-height: 1.35;
-        margin-top: .3rem;
+        line-height: 1.2;
+        margin-top: .18rem;
+    }
+
+    @media (max-width: 1199.98px) {
+        .inspection-workspace .inspection-kpi-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 767.98px) {
+        .inspection-workspace .inspection-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .commissioning-equipment-filters {
             grid-template-columns: 1fr;
         }
@@ -323,6 +405,12 @@
         .commissioning-equipment-table th,
         .commissioning-equipment-table td {
             white-space: nowrap;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .inspection-workspace .inspection-kpi-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
