@@ -1321,7 +1321,7 @@ class FormController extends Controller
             ->orderBy('section')
             ->get();
 
-        if ($sections->isNotEmpty()) {
+        if ($sections->isNotEmpty() || OrganizationSection::query()->exists()) {
             return $sections;
         }
 

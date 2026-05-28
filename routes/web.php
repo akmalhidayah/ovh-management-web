@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\CommissioningSubmissionController as AdminCommissioningSubmissionController;
+use App\Http\Controllers\Admin\OrganizationSectionController;
 use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
@@ -131,6 +132,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::patch('/master-data/{masterDataRecord}/inspection-status', [MasterDataController::class, 'updateInspectionStatus'])->name('master-data.inspection-status');
     Route::put('/master-data/{masterDataRecord}', [MasterDataController::class, 'update'])->name('master-data.update');
     Route::delete('/master-data/{masterDataRecord}', [MasterDataController::class, 'destroy'])->name('master-data.destroy');
+    Route::resource('organization-sections', OrganizationSectionController::class)->except('show');
     Route::get('/user-panel', [UserPanelController::class, 'index'])->name('user-panel');
     Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
     Route::put('/user-panel/{user}', [UserPanelController::class, 'update'])->name('user-panel.update');
