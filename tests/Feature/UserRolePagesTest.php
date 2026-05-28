@@ -202,7 +202,9 @@ class UserRolePagesTest extends TestCase
             ->assertSee('Real Conveyor CV-02')
             ->assertSee('Available QC Equipment')
             ->assertSee('On Going')
-            ->assertSee('Complete')
+            ->assertSee('Close')
+            ->assertSee('Equipment QC')
+            ->assertSee('Close 1 | On Going 1 | Belum QC 1')
             ->assertSee('Belum QC')
             ->assertSee('Buat QC')
             ->assertDontSee('Buat Manual')
@@ -286,11 +288,61 @@ class UserRolePagesTest extends TestCase
             ->assertSee('Daftar Equipment Commissioning')
             ->assertSee('Real ID Fan IF-10')
             ->assertSee('Real Motor M-210')
-            ->assertSee('Perlu Revisi')
-            ->assertSee('Complete')
+            ->assertDontSee('Perlu Revisi')
+            ->assertSee('Equipment Commissioning')
+            ->assertSee('Close')
+            ->assertSee('Close 2 | On Going 0 | Belum Commissioning 0')
             ->assertDontSee('Buat Manual')
             ->assertDontSee('Other User Cooler')
             ->assertDontSee('Commissioning - ID Fan IF-02');
+    }
+
+    public function test_equipment_dashboard_uses_server_side_filter_and_pagination(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+
+        for ($index = 1; $index <= 12; $index++) {
+            MasterDataRecord::create([
+                'document_category' => MasterDataRecord::CATEGORY_QC,
+                'year' => '2026',
+                'func_location' => sprintf('ST-QC-PAG-%03d', $index),
+                'equipment_no' => sprintf('EQ-QC-PAG-%03d', $index),
+                'section_no' => sprintf('SEC-QC-PAG-%03d', $index),
+                'description' => sprintf('PAGINATED QC EQUIPMENT %03d', $index),
+                'plant' => 'Tonasa 4',
+                'area' => 'Raw Mill',
+                'status' => 'active',
+            ]);
+        }
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-OTHER-AREA',
+            'equipment_no' => 'EQ-QC-OTHER-AREA',
+            'section_no' => 'SEC-QC-OTHER-AREA',
+            'description' => 'OTHER AREA QC EQUIPMENT',
+            'plant' => 'Tonasa 5',
+            'area' => 'Crusher',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.dashboard'))
+            ->assertOk()
+            ->assertSee('PAGINATED QC EQUIPMENT 001')
+            ->assertDontSee('PAGINATED QC EQUIPMENT 011')
+            ->assertSee('equipment_page=2', false)
+            ->assertDontSee('Readonly');
+
+        $this->actingAs($user)
+            ->get(route('user.qc.dashboard', [
+                'equipment_area' => 'Crusher',
+                'equipment_status' => 'not_started',
+            ]))
+            ->assertOk()
+            ->assertSee('OTHER AREA QC EQUIPMENT')
+            ->assertDontSee('PAGINATED QC EQUIPMENT 001');
     }
 
     public function test_legacy_inspector_routes_redirect_to_qc_pages(): void

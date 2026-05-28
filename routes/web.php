@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\MasterDataController;
+use App\Http\Controllers\Admin\CommissioningSubmissionController as AdminCommissioningSubmissionController;
 use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
@@ -85,11 +86,13 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
     Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf');
     Route::post('/commissioning/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('commissioning.submissions.approval-link');
+    Route::delete('/commissioning/submissions/{submission}/delete', [AdminCommissioningSubmissionController::class, 'destroy'])->name('commissioning.submissions.destroy');
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
     Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
         Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
         Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf');
         Route::post('/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('approval-link');
+        Route::delete('/{submission}/delete', [AdminQcSubmissionController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('template-form-qc')->name('template-form-qc.')->group(function () {
         Route::get('/', [TemplateFormQcController::class, 'index'])->name('index');

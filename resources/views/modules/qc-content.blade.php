@@ -251,6 +251,20 @@
                                 @else
                                     <span class="text-muted small">-</span>
                                 @endif
+
+                                @if ($submission->model)
+                                    <form method="POST"
+                                          action="{{ $submission->type === 'qc' ? route('admin.qc.submissions.destroy', $submission->model) : route('admin.commissioning.submissions.destroy', $submission->model) }}"
+                                          class="d-inline"
+                                          data-admin-delete-submission-form
+                                          data-delete-label="{{ $submission->form_number ?: $submission->equipment }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger admin-inspection-icon-btn" title="Hapus Permanen" aria-label="Hapus Permanen">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -523,6 +537,39 @@
         </script>
     @endpush
 @endif
+
+@push('scripts')
+    <script>
+        document.querySelectorAll('[data-admin-delete-submission-form]').forEach(function (form) {
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                const label = form.dataset.deleteLabel || 'submission ini';
+                let confirmed = false;
+
+                if (window.Swal) {
+                    const result = await window.Swal.fire({
+                        title: 'Hapus submission?',
+                        text: `Submission ${label} akan dihapus permanen beserta attachment dan data approval terkait.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, hapus permanen',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#dc3545',
+                    });
+
+                    confirmed = result.isConfirmed;
+                } else {
+                    confirmed = window.confirm(`Hapus permanen submission ${label}?`);
+                }
+
+                if (confirmed) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
+@endpush
 
 @push('styles')
     <style>

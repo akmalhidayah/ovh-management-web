@@ -793,6 +793,54 @@ class QcFormSubmissionTest extends TestCase
         Storage::disk('local')->assertMissing($attachmentPath);
     }
 
+    public function test_admin_can_permanently_delete_qc_submission_with_related_files(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['attachments'] = [
+            'foto_before' => [UploadedFile::fake()->image('before.jpg')],
+        ];
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::with(['attachments', 'approvalFlow.steps'])->firstOrFail();
+        $attachmentPath = $submission->attachments->firstOrFail()->file_path;
+        $approvalFlowId = $submission->approvalFlow->id;
+        $approvalEventIds = $submission->approvalFlow->events()->pluck('id')->all();
+        $approvalStepIds = $submission->approvalFlow->steps->pluck('id')->all();
+        $signaturePath = $submission->approvalFlow->steps
+            ->pluck('signature_path')
+            ->filter()
+            ->first();
+
+        Storage::disk('local')->assertExists($attachmentPath);
+        $this->assertNotNull($signaturePath);
+        Storage::disk('public')->assertExists($signaturePath);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.qc.submissions.destroy', $submission))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Submission QC berhasil dihapus permanen.');
+
+        $this->assertDatabaseMissing('qc_form_submissions', ['id' => $submission->id]);
+        $this->assertDatabaseMissing('qc_form_submission_attachments', ['file_path' => $attachmentPath]);
+        $this->assertDatabaseMissing('approval_flows', ['id' => $approvalFlowId]);
+        foreach ($approvalEventIds as $eventId) {
+            $this->assertDatabaseMissing('approval_events', ['id' => $eventId]);
+        }
+        foreach ($approvalStepIds as $stepId) {
+            $this->assertDatabaseMissing('approval_steps', ['id' => $stepId]);
+        }
+        Storage::disk('local')->assertMissing($attachmentPath);
+        Storage::disk('public')->assertMissing($signaturePath);
+    }
+
     public function test_user_can_submit_fixed_welding_qc_and_open_pdf(): void
     {
         [$user, $template] = $this->makeFixedWeldingTemplate();

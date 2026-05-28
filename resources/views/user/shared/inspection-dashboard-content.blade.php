@@ -3,13 +3,10 @@
     $draftAction = $hero['actions'][1] ?? $primaryAction;
     $historyAction = $hero['actions'][2] ?? $primaryAction;
     $roleLabel = $roleUi['role_label'] ?? strtoupper($roleUi['role'] ?? 'QC');
-    $equipmentPlants = collect($equipmentRows ?? [])->pluck('plant')->filter(fn ($value) => $value !== '-')->unique()->sort()->values();
-    $equipmentAreas = collect($equipmentRows ?? [])->pluck('area')->filter(fn ($value) => $value !== '-')->unique()->sort()->values();
-    $equipmentStatuses = collect($equipmentRows ?? [])
-        ->map(fn ($row) => ['value' => $row['status'], 'label' => $row['status_label']])
-        ->unique('value')
-        ->sortBy('label')
-        ->values();
+    $equipmentFilters = $equipmentFilters ?? [];
+    $equipmentPlants = collect($equipmentFilters['plants'] ?? []);
+    $equipmentAreas = collect($equipmentFilters['areas'] ?? []);
+    $equipmentStatuses = collect($equipmentFilters['statuses'] ?? []);
 @endphp
 
 <div class="inspection-workspace">
@@ -37,10 +34,17 @@
                 <div>
                     <p>{{ $stat['label'] }}</p>
                     <strong>{{ $stat['value'] }}</strong>
+                    @if (! empty($stat['meta']))
+                        <small class="inspection-kpi-meta">{{ $stat['meta'] }}</small>
+                    @endif
                 </div>
             </article>
         @endforeach
     </section>
+
+    @if (session('warning'))
+        <div class="alert alert-warning mb-0">{{ session('warning') }}</div>
+    @endif
 
     @if (($equipmentRows ?? null) !== null)
         <section class="inspection-panel commissioning-equipment-panel">
@@ -51,35 +55,40 @@
                 </div>
             </div>
 
-            <div class="commissioning-equipment-filters" data-equipment-filters>
+            <form method="GET" action="{{ url()->current() }}" class="commissioning-equipment-filters">
                 <label>
                     <span>Plant</span>
-                    <select class="form-select form-select-sm" data-equipment-filter="plant">
+                    <select name="equipment_plant" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Semua Plant</option>
                         @foreach ($equipmentPlants as $plant)
-                            <option value="{{ $plant }}">{{ $plant }}</option>
+                            <option value="{{ $plant }}" @selected(($equipmentFilters['plant'] ?? '') === $plant)>{{ $plant }}</option>
                         @endforeach
                     </select>
                 </label>
                 <label>
                     <span>Area</span>
-                    <select class="form-select form-select-sm" data-equipment-filter="area">
+                    <select name="equipment_area" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Semua Area</option>
                         @foreach ($equipmentAreas as $area)
-                            <option value="{{ $area }}">{{ $area }}</option>
+                            <option value="{{ $area }}" @selected(($equipmentFilters['area'] ?? '') === $area)>{{ $area }}</option>
                         @endforeach
                     </select>
                 </label>
                 <label>
                     <span>Status</span>
-                    <select class="form-select form-select-sm" data-equipment-filter="status">
+                    <select name="equipment_status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Semua Status</option>
                         @foreach ($equipmentStatuses as $status)
-                            <option value="{{ $status['value'] }}">{{ $status['label'] }}</option>
+                            <option value="{{ $status['value'] }}" @selected(($equipmentFilters['status'] ?? '') === $status['value'])>{{ $status['label'] }}</option>
                         @endforeach
                     </select>
                 </label>
-            </div>
+                @foreach (request()->except(['equipment_plant', 'equipment_area', 'equipment_status', 'equipment_page']) as $name => $value)
+                    @if (is_scalar($value))
+                        <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                    @endif
+                @endforeach
+            </form>
 
             <div class="table-responsive">
                 <table class="table align-middle commissioning-equipment-table">
@@ -88,13 +97,12 @@
                             <th>Section</th>
                             <th>Equipment</th>
                             <th>Lokasi</th>
-                            <th>Status</th>
-                            <th class="text-end">Aksi</th>
+                            <th class="text-end">Status & Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($equipmentRows as $row)
-                            <tr data-equipment-row data-plant="{{ $row['plant'] }}" data-area="{{ $row['area'] }}" data-status="{{ $row['status'] }}">
+                            <tr>
                                 <td>
                                     <strong>{{ $row['section_no'] }}</strong>
                                     <small>{{ $row['functional_location'] }}</small>
@@ -107,36 +115,34 @@
                                     <strong>{{ $row['plant'] }}</strong>
                                     <small>{{ $row['area'] }}</small>
                                 </td>
-                                <td>
-                                    <span class="commissioning-work-badge is-{{ $row['status_accent'] }}">{{ $row['status_label'] }}</span>
-                                    @if (! empty($row['form_number']))
-                                        <small class="d-block text-muted mt-1">{{ $row['form_number'] }}</small>
-                                    @endif
-                                </td>
                                 <td class="text-end">
+                                    <div class="commissioning-status-action">
+                                        <span class="commissioning-work-badge is-{{ $row['status_accent'] }}">{{ $row['status_label'] }}</span>
+                                        @if (! empty($row['form_number']))
+                                            <small class="d-block text-muted mt-1">{{ $row['form_number'] }}</small>
+                                        @endif
+                                    </div>
                                     @if ($row['create_url'])
-                                        <a href="{{ $row['create_url'] }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ $row['create_url'] }}" class="btn btn-sm btn-primary mt-2">
                                             <i class="bi bi-plus-circle"></i>
                                             <span>Buat {{ $roleLabel }}</span>
                                         </a>
-                                    @else
-                                        <span class="text-muted small">Readonly</span>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-5">Belum ada equipment {{ $roleLabel }} aktif dari master data.</td>
+                                <td colspan="4" class="text-center text-muted py-5">Belum ada equipment {{ $roleLabel }} yang cocok dengan filter.</td>
                             </tr>
                         @endforelse
-                        @if (! empty($equipmentRows))
-                            <tr data-equipment-empty-filter hidden>
-                                <td colspan="5" class="text-center text-muted py-5">Tidak ada equipment yang cocok dengan filter.</td>
-                            </tr>
-                        @endif
                     </tbody>
                 </table>
             </div>
+            @if ($equipmentRows->hasPages())
+                <div class="commissioning-equipment-pagination">
+                    {{ $equipmentRows->onEachSide(1)->links() }}
+                </div>
+            @endif
         </section>
     @else
     <div class="inspection-bottom-grid">
@@ -279,6 +285,36 @@
         color: #475467;
     }
 
+    .commissioning-status-action {
+        min-width: 150px;
+    }
+
+    .commissioning-equipment-pagination {
+        border-top: 1px solid #eef2f7;
+        padding: 1rem 0 0;
+    }
+
+    .commissioning-equipment-pagination nav {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+        justify-content: space-between;
+    }
+
+    .commissioning-equipment-pagination .pagination {
+        margin-bottom: 0;
+    }
+
+    .inspection-kpi-meta {
+        color: #667085;
+        display: block;
+        font-size: .72rem;
+        font-weight: 700;
+        line-height: 1.35;
+        margin-top: .3rem;
+    }
+
     @media (max-width: 767.98px) {
         .commissioning-equipment-filters {
             grid-template-columns: 1fr;
@@ -290,40 +326,4 @@
         }
     }
 </style>
-@endpush
-
-@push('scripts')
-<script>
-    (() => {
-        document.querySelectorAll('[data-equipment-filters]').forEach((filterGroup) => {
-            const panel = filterGroup.closest('.commissioning-equipment-panel');
-            const rows = Array.from(panel?.querySelectorAll('[data-equipment-row]') || []);
-            const emptyRow = panel?.querySelector('[data-equipment-empty-filter]');
-            const controls = Array.from(filterGroup.querySelectorAll('[data-equipment-filter]'));
-
-            const applyFilters = () => {
-                const filters = Object.fromEntries(controls.map((control) => [control.dataset.equipmentFilter, control.value]));
-                let visibleCount = 0;
-
-                rows.forEach((row) => {
-                    const visible = (!filters.plant || row.dataset.plant === filters.plant)
-                        && (!filters.area || row.dataset.area === filters.area)
-                        && (!filters.status || row.dataset.status === filters.status);
-
-                    row.hidden = !visible;
-                    if (visible) {
-                        visibleCount += 1;
-                    }
-                });
-
-                if (emptyRow) {
-                    emptyRow.hidden = visibleCount > 0;
-                }
-            };
-
-            controls.forEach((control) => control.addEventListener('change', applyFilters));
-            applyFilters();
-        });
-    })();
-</script>
 @endpush

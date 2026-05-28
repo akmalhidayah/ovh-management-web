@@ -38,7 +38,7 @@ class FormController extends Controller
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
     private const TEMP_ATTACHMENT_SESSION_KEY = 'commissioning_temporary_attachments';
 
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
         $templates = CommissioningFormTemplate::where('status', 'active')->orderBy('name')->get();
         $selectedTemplate = null;
@@ -49,11 +49,20 @@ class FormController extends Controller
                 ->first() ?: $templates->first();
         }
 
+        $activeMasterDataRecords = $this->activeMasterDataRecords();
+        $requestedMasterDataId = $request->query('master_data_record_id');
+
+        if ($requestedMasterDataId && ! $activeMasterDataRecords->contains('id', (int) $requestedMasterDataId)) {
+            return redirect()
+                ->route('user.commissioning.dashboard')
+                ->with('warning', 'Equipment tersebut sudah dipakai, di-close, atau tidak aktif. Silakan pilih equipment lain dari daftar terbaru.');
+        }
+
         return view('user.commissioning.forms.create', array_merge(UserRoleUiData::commissioningForm(), [
             'templates' => $templates,
             'selectedTemplate' => $selectedTemplate,
             'autoDocNumber' => $this->previewDocumentNumber(),
-            'activeMasterDataRecords' => $this->activeMasterDataRecords(),
+            'activeMasterDataRecords' => $activeMasterDataRecords,
         ]));
     }
 

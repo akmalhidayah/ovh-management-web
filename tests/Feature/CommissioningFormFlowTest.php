@@ -213,9 +213,11 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('Semua Area')
             ->assertSee('Semua Status')
             ->assertSee('GEARBOX MOTOR')
-            ->assertSee('Complete')
+            ->assertSee('Close')
             ->assertSee('AVAILABLE COMMISSIONING MOTOR')
             ->assertSee('Belum Commissioning')
+            ->assertSee('Equipment Commissioning')
+            ->assertSee('Close 1 | On Going 0 | Belum Commissioning 1')
             ->assertSee('Buat Commissioning')
             ->assertDontSee('Buat Manual')
             ->assertDontSee('INACTIVE COMMISSIONING')
@@ -234,6 +236,21 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('const selectedMasterDataId = "'.$availableMaster->id.'";', false)
             ->assertSee('AVAILABLE COMMISSIONING MOTOR')
             ->assertSee('SEC-COM-AVAILABLE');
+    }
+
+    public function test_stale_commissioning_dashboard_create_link_redirects_when_equipment_is_no_longer_available(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['inspection_status' => 'close']);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', [
+                'template' => $template->id,
+                'master_data_record_id' => $master->id,
+                'area' => $master->area,
+            ]))
+            ->assertRedirect(route('user.commissioning.dashboard'))
+            ->assertSessionHas('warning', 'Equipment tersebut sudah dipakai, di-close, atau tidak aktif. Silakan pilih equipment lain dari daftar terbaru.');
     }
 
     public function test_public_approval_approve_advances_commissioning_flow(): void
@@ -463,6 +480,44 @@ class CommissioningFormFlowTest extends TestCase
             ->assertOk()
             ->assertSee('SEC-COM-001')
             ->assertSee('GEARBOX MOTOR');
+    }
+
+    public function test_admin_can_permanently_delete_commissioning_submission_with_related_files(): void
+    {
+        Storage::fake('local');
+
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with(['attachments', 'approvalFlow.steps'])->firstOrFail();
+        $attachmentPath = $submission->attachments->firstOrFail()->file_path;
+        $approvalFlowId = $submission->approvalFlow->id;
+        $approvalEventIds = $submission->approvalFlow->events()->pluck('id')->all();
+        $approvalStepIds = $submission->approvalFlow->steps->pluck('id')->all();
+
+        $this->assertSame('close', $master->refresh()->inspection_status);
+        Storage::disk('local')->assertExists($attachmentPath);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.commissioning.submissions.destroy', $submission))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Submission Commissioning berhasil dihapus permanen.');
+
+        $this->assertDatabaseMissing('commissioning_form_submissions', ['id' => $submission->id]);
+        $this->assertDatabaseMissing('commissioning_form_submission_attachments', ['file_path' => $attachmentPath]);
+        $this->assertDatabaseMissing('approval_flows', ['id' => $approvalFlowId]);
+        foreach ($approvalEventIds as $eventId) {
+            $this->assertDatabaseMissing('approval_events', ['id' => $eventId]);
+        }
+        foreach ($approvalStepIds as $stepId) {
+            $this->assertDatabaseMissing('approval_steps', ['id' => $stepId]);
+        }
+        $this->assertNull($master->refresh()->inspection_status);
+        Storage::disk('local')->assertMissing($attachmentPath);
     }
 
     private function makeCommissioningSetup(): array

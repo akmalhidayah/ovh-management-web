@@ -6,6 +6,7 @@ use App\Models\CommissioningFormSubmission;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserRoleUiData
 {
@@ -558,6 +559,13 @@ class UserRoleUiData
     private static function inspectionDashboard(string $role, array $config): array
     {
         $realData = self::realInspectionDashboardData($role);
+        $equipmentData = in_array($role, ['qc', 'commissioning'], true) ? self::inspectionDashboardEquipmentData($role) : null;
+        $equipmentRows = $equipmentData['rows'] ?? null;
+        $stats = $realData['stats'] ?? $config['stats'];
+
+        if ($equipmentRows !== null) {
+            $stats = self::statsWithEquipmentSummary($stats, $equipmentData['summary'], $role);
+        }
 
         return [
             'roleUi' => self::layout($role),
@@ -567,13 +575,44 @@ class UserRoleUiData
                 'note' => $config['hero_note'],
                 'actions' => $config['actions'],
             ],
-            'stats' => $realData['stats'] ?? $config['stats'],
+            'stats' => $stats,
             'draftsTitle' => $config['drafts_title'],
             'historyTitle' => $config['history_title'],
             'drafts' => $realData['drafts'] ?? $config['drafts'],
             'history' => $realData['history'] ?? $config['history'],
-            'equipmentRows' => in_array($role, ['qc', 'commissioning'], true) ? self::inspectionDashboardEquipmentRows($role) : null,
+            'equipmentRows' => $equipmentRows,
+            'equipmentFilters' => $equipmentData['filters'] ?? null,
         ];
+    }
+
+    private static function statsWithEquipmentSummary(array $stats, array $summary, string $role): array
+    {
+        $notStartedLabel = $role === 'qc' ? 'Belum QC' : 'Belum Commissioning';
+        $equipmentLabel = $role === 'qc' ? 'Equipment QC' : 'Equipment Commissioning';
+
+        $equipmentStat = [
+            'label' => $equipmentLabel,
+            'value' => (string) ($summary['total'] ?? 0),
+            'icon' => $role === 'qc' ? 'bi-shield-check' : 'bi-tools',
+            'accent' => 'info',
+            'meta' => sprintf(
+                'Close %d | On Going %d | %s %d',
+                (int) ($summary['close'] ?? 0),
+                (int) ($summary['ongoing'] ?? 0),
+                $notStartedLabel,
+                (int) ($summary['not_started'] ?? 0)
+            ),
+        ];
+
+        if (isset($stats[1])) {
+            $stats[1] = $equipmentStat;
+
+            return $stats;
+        }
+
+        $stats[] = $equipmentStat;
+
+        return $stats;
     }
 
     private static function realInspectionDashboardData(string $role): ?array
@@ -648,11 +687,18 @@ class UserRoleUiData
         ];
     }
 
-    private static function inspectionDashboardEquipmentRows(string $role): array
+    private static function inspectionDashboardEquipmentData(string $role): array
     {
         $model = $role === 'qc' ? QcFormSubmission::class : CommissioningFormSubmission::class;
         $category = $role === 'qc' ? MasterDataRecord::CATEGORY_QC : MasterDataRecord::CATEGORY_COMMISSIONING;
         $createRoute = $role === 'qc' ? 'user.qc.forms.create' : 'user.commissioning.forms.create';
+        $request = request();
+        $filters = [
+            'plant' => trim((string) $request->query('equipment_plant', '')),
+            'area' => trim((string) $request->query('equipment_area', '')),
+            'status' => trim((string) $request->query('equipment_status', '')),
+        ];
+        $perPage = 10;
 
         $submissions = $model::query()
             ->with('user')
@@ -660,9 +706,30 @@ class UserRoleUiData
             ->latest()
             ->get();
 
-        return MasterDataRecord::query()
+        $baseRecordsQuery = MasterDataRecord::query()
             ->where('document_category', $category)
-            ->where('status', 'active')
+            ->where('status', 'active');
+
+        $plantOptions = (clone $baseRecordsQuery)
+            ->whereNotNull('plant')
+            ->distinct()
+            ->orderBy('plant')
+            ->pluck('plant')
+            ->filter()
+            ->values()
+            ->all();
+        $areaOptions = (clone $baseRecordsQuery)
+            ->whereNotNull('area')
+            ->distinct()
+            ->orderBy('area')
+            ->pluck('area')
+            ->filter()
+            ->values()
+            ->all();
+
+        $records = (clone $baseRecordsQuery)
+            ->when($filters['plant'] !== '', fn ($query) => $query->where('plant', $filters['plant']))
+            ->when($filters['area'] !== '', fn ($query) => $query->where('area', $filters['area']))
             ->orderBy('area')
             ->orderBy('section_no')
             ->orderBy('equipment_no')
@@ -692,9 +759,41 @@ class UserRoleUiData
                         : null,
                 ];
             })
+            ->filter(fn (array $row) => $filters['status'] === '' || $row['status'] === $filters['status'])
             ->sortBy(fn (array $row): string => self::inspectionDashboardWorkStatusRank($row['status']).'|'.$row['area'].'|'.$row['section_no'])
-            ->values()
-            ->all();
+            ->values();
+
+        $summary = $records->countBy('status')->all();
+        $summary['total'] = $records->count();
+        $page = LengthAwarePaginator::resolveCurrentPage('equipment_page');
+        $rows = new LengthAwarePaginator(
+            $records->forPage($page, $perPage)->values(),
+            $records->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'pageName' => 'equipment_page',
+                'query' => $request->query(),
+            ]
+        );
+
+        return [
+            'rows' => $rows,
+            'summary' => $summary,
+            'filters' => [
+                'plant' => $filters['plant'],
+                'area' => $filters['area'],
+                'status' => $filters['status'],
+                'plants' => $plantOptions,
+                'areas' => $areaOptions,
+                'statuses' => [
+                    ['value' => 'close', 'label' => 'Close'],
+                    ['value' => 'ongoing', 'label' => 'On Going'],
+                    ['value' => 'not_started', 'label' => $role === 'qc' ? 'Belum QC' : 'Belum Commissioning'],
+                ],
+            ],
+        ];
     }
 
     private static function inspectionSubmissionMatchesMasterRecord(Model $submission, MasterDataRecord $record): bool
@@ -730,7 +829,7 @@ class UserRoleUiData
     private static function inspectionDashboardWorkStatusLabel(string $status, string $role): string
     {
         return [
-            'close' => 'Complete',
+            'close' => 'Close',
             'ongoing' => 'On Going',
             'not_started' => $role === 'qc' ? 'Belum QC' : 'Belum Commissioning',
         ][$status] ?? str($status)->replace('_', ' ')->headline()->toString();
