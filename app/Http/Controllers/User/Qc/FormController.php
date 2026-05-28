@@ -394,6 +394,8 @@ class FormController extends Controller
 
         try {
             app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission deleted by owner');
+            $this->deleteAttachmentFiles($submission->attachments);
+            $submission->attachments()->delete();
             $submission->delete();
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_DESTROY, $exception, ['submission_id' => $submissionId]);
@@ -1304,6 +1306,18 @@ class FormController extends Controller
         }
 
         return null;
+    }
+
+    private function deleteAttachmentFiles(iterable $attachments): void
+    {
+        foreach ($attachments as $attachment) {
+            if (! $attachment instanceof QcFormSubmissionAttachment || blank($attachment->file_path)) {
+                continue;
+            }
+
+            Storage::disk('local')->delete($attachment->file_path);
+            Storage::disk('public')->delete($attachment->file_path);
+        }
     }
 
     private function logStatus(string $event, array $context = []): void

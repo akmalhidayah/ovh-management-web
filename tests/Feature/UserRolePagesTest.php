@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
+use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\User;
@@ -176,6 +177,28 @@ class UserRolePagesTest extends TestCase
             'version' => '1.0',
             'status' => 'active',
         ]);
+        $revisionMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-DASH-001',
+            'equipment_no' => 'EQ-COM-DASH-001',
+            'section_no' => 'SEC-COM-DASH-001',
+            'description' => 'Real ID Fan IF-10',
+            'plant' => 'Tonasa 4',
+            'area' => 'Kiln',
+            'status' => 'active',
+        ]);
+        $approvedMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-DASH-002',
+            'equipment_no' => 'EQ-COM-DASH-002',
+            'section_no' => 'SEC-COM-DASH-002',
+            'description' => 'Real Motor M-210',
+            'plant' => 'Tonasa 5',
+            'area' => 'Packing Plant',
+            'status' => 'active',
+        ]);
 
         CommissioningFormSubmission::create([
             'commissioning_form_template_id' => $template->id,
@@ -184,7 +207,7 @@ class UserRolePagesTest extends TestCase
             'status' => 'revision_required',
             'equipment' => 'Real ID Fan IF-10',
             'area' => 'Kiln',
-            'header_data' => ['plant' => 'Tonasa 4'],
+            'header_data' => ['plant' => 'Tonasa 4', 'master_data_record_id' => $revisionMaster->id],
             'updated_at' => Carbon::parse('2026-05-20 09:00'),
         ]);
 
@@ -197,7 +220,7 @@ class UserRolePagesTest extends TestCase
             'equipment' => 'Real Motor M-210',
             'area' => 'Packing Plant',
             'template_name' => 'Commissioning Motor Real',
-            'header_data' => ['plant' => 'Tonasa 5'],
+            'header_data' => ['plant' => 'Tonasa 5', 'master_data_record_id' => $approvedMaster->id],
         ]);
 
         CommissioningFormSubmission::create([
@@ -212,9 +235,11 @@ class UserRolePagesTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.commissioning.dashboard'))
             ->assertOk()
+            ->assertSee('Daftar Equipment Commissioning')
             ->assertSee('Real ID Fan IF-10')
             ->assertSee('Real Motor M-210')
             ->assertSee('Perlu Revisi')
+            ->assertSee('Close')
             ->assertDontSee('Other User Cooler')
             ->assertDontSee('Commissioning - ID Fan IF-02');
     }

@@ -182,6 +182,56 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame(1, $steps[0]->links->whereNull('used_at')->whereNull('revoked_at')->count());
     }
 
+    public function test_commissioning_dashboard_lists_global_master_equipment_with_create_action(): void
+    {
+        Storage::fake('local');
+        [$owner, $template, $closedMaster] = $this->makeCommissioningSetup();
+
+        $availableMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-AVAILABLE',
+            'equipment_no' => 'EQ-COM-AVAILABLE',
+            'section_no' => 'SEC-COM-AVAILABLE',
+            'description' => 'AVAILABLE COMMISSIONING MOTOR',
+            'plant' => 'TONASA 5',
+            'area' => 'KILN',
+            'status' => 'active',
+        ]);
+
+        $dashboardUser = User::factory()->create(['usertype' => 'user', 'role' => 'commissioning']);
+
+        $this->actingAs($owner)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $closedMaster, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $this->actingAs($dashboardUser)
+            ->get(route('user.commissioning.dashboard'))
+            ->assertOk()
+            ->assertSee('Daftar Equipment Commissioning')
+            ->assertSee('GEARBOX MOTOR')
+            ->assertSee('Close')
+            ->assertSee('AVAILABLE COMMISSIONING MOTOR')
+            ->assertSee('Belum Commissioning')
+            ->assertSee('Buat Commissioning')
+            ->assertDontSee('INACTIVE COMMISSIONING')
+            ->assertDontSee('Draft Commissioning Saya')
+            ->assertSee(e(route('user.commissioning.forms.create', [
+                'master_data_record_id' => $availableMaster->id,
+                'area' => $availableMaster->area,
+            ])), false);
+
+        $this->actingAs($dashboardUser)
+            ->get(route('user.commissioning.forms.create', [
+                'master_data_record_id' => $availableMaster->id,
+                'area' => $availableMaster->area,
+            ]))
+            ->assertOk()
+            ->assertSee('const selectedMasterDataId = "'.$availableMaster->id.'";', false)
+            ->assertSee('AVAILABLE COMMISSIONING MOTOR')
+            ->assertSee('SEC-COM-AVAILABLE');
+    }
+
     public function test_public_approval_approve_advances_commissioning_flow(): void
     {
         Storage::fake('public');
@@ -376,6 +426,39 @@ class CommissioningFormFlowTest extends TestCase
             ->post(route('user.commissioning.forms.store'), $payload)
             ->assertRedirect(route('user.commissioning.forms.create', ['template' => $template->id]))
             ->assertSessionHasErrors('attachments.dokumentasi.0');
+    }
+
+    public function test_deleting_commissioning_submission_resets_master_status_and_removes_attachment_files(): void
+    {
+        Storage::fake('local');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with('attachments')->firstOrFail();
+        $attachmentPath = $submission->attachments->firstOrFail()->file_path;
+
+        $master->refresh();
+        $this->assertSame('close', $master->inspection_status);
+        Storage::disk('local')->assertExists($attachmentPath);
+
+        $this->actingAs($user)
+            ->delete(route('user.commissioning.submissions.destroy', $submission))
+            ->assertRedirect(route('user.commissioning.history.index'))
+            ->assertSessionHas('success', 'Form Commissioning berhasil dihapus.');
+
+        $this->assertDatabaseMissing('commissioning_form_submissions', ['id' => $submission->id]);
+        $this->assertDatabaseMissing('commissioning_form_submission_attachments', ['file_path' => $attachmentPath]);
+        $this->assertNull($master->refresh()->inspection_status);
+        Storage::disk('local')->assertMissing($attachmentPath);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('SEC-COM-001')
+            ->assertSee('GEARBOX MOTOR');
     }
 
     private function makeCommissioningSetup(): array

@@ -754,6 +754,34 @@ class QcFormSubmissionTest extends TestCase
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
+    public function test_deleting_qc_submission_removes_attachment_files(): void
+    {
+        Storage::fake('local');
+        [$user, $template, $block, $row] = $this->makeActiveTemplate();
+        $payload = $this->payload($template, $block, $row, 'submit');
+        $payload['attachments'] = [
+            'foto_before' => [UploadedFile::fake()->image('before.jpg')],
+        ];
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::with('attachments')->firstOrFail();
+        $attachmentPath = $submission->attachments->firstOrFail()->file_path;
+
+        Storage::disk('local')->assertExists($attachmentPath);
+
+        $this->actingAs($user)
+            ->delete(route('user.qc.submissions.destroy', $submission))
+            ->assertRedirect(route('user.qc.history.index'))
+            ->assertSessionHas('success', 'Form QC berhasil dihapus.');
+
+        $this->assertSoftDeleted('qc_form_submissions', ['id' => $submission->id]);
+        $this->assertDatabaseMissing('qc_form_submission_attachments', ['file_path' => $attachmentPath]);
+        Storage::disk('local')->assertMissing($attachmentPath);
+    }
+
     public function test_user_can_submit_fixed_welding_qc_and_open_pdf(): void
     {
         [$user, $template] = $this->makeFixedWeldingTemplate();

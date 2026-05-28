@@ -10,7 +10,7 @@
     @php
         $commissioningMasterDataRecords = collect($activeMasterDataRecords ?? []);
         $draftHeader = ($draftSubmission ?? null)?->header_data ?? [];
-        $selectedMasterDataId = old('header.master_data_record_id', $draftHeader['master_data_record_id'] ?? null);
+        $selectedMasterDataId = old('header.master_data_record_id', request('master_data_record_id', $draftHeader['master_data_record_id'] ?? null));
         $selectedMasterDataRecord = $selectedMasterDataId ? $commissioningMasterDataRecords->firstWhere('id', (int) $selectedMasterDataId) : null;
         $areaOptions = $commissioningMasterDataRecords->pluck('area')->filter()->unique()->sort()->values();
         $selectedArea = old('header.area', request('area', $draftHeader['area'] ?? ($selectedMasterDataRecord?->area ?? '')));
@@ -88,9 +88,13 @@
 document.getElementById('template-select')?.addEventListener('change', function () {
     const url = new URL(@json(route('user.commissioning.forms.create')), window.location.origin);
     const selectedArea = document.getElementById('master-area-select')?.value;
+    const selectedMasterData = document.querySelector('[data-master-data-select]')?.value;
     url.searchParams.set('template', this.value);
     if (selectedArea) {
         url.searchParams.set('area', selectedArea);
+    }
+    if (selectedMasterData) {
+        url.searchParams.set('master_data_record_id', selectedMasterData);
     }
     window.location.href = url.toString();
 });

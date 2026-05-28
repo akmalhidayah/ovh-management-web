@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\CommissioningFormSubmission;
+use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use Illuminate\Database\Eloquent\Model;
 
@@ -571,6 +572,7 @@ class UserRoleUiData
             'historyTitle' => $config['history_title'],
             'drafts' => $realData['drafts'] ?? $config['drafts'],
             'history' => $realData['history'] ?? $config['history'],
+            'equipmentRows' => $role === 'commissioning' ? self::commissioningDashboardEquipmentRows() : null,
         ];
     }
 
@@ -644,6 +646,100 @@ class UserRoleUiData
             'area' => self::submissionArea($submission),
             'status' => self::inspectionStatusLabel((string) $submission->getAttribute('status')),
         ];
+    }
+
+    private static function commissioningDashboardEquipmentRows(): array
+    {
+        $submissions = CommissioningFormSubmission::query()
+            ->with('user')
+            ->latest('submitted_at')
+            ->latest()
+            ->get();
+
+        return MasterDataRecord::query()
+            ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
+            ->where('status', 'active')
+            ->orderBy('area')
+            ->orderBy('section_no')
+            ->orderBy('equipment_no')
+            ->get()
+            ->map(function (MasterDataRecord $record) use ($submissions): array {
+                $submission = $submissions->first(fn (CommissioningFormSubmission $submission) => self::commissioningSubmissionMatchesMasterRecord($submission, $record));
+                $workStatus = self::commissioningDashboardWorkStatus($record, $submission);
+
+                return [
+                    'section_no' => $record->section_no ?: '-',
+                    'equipment' => $record->description ?: '-',
+                    'equipment_no' => $record->equipment_no ?: '-',
+                    'functional_location' => $record->func_location ?: '-',
+                    'plant' => $record->plant ?: '-',
+                    'area' => $record->area ?: '-',
+                    'status' => $workStatus,
+                    'status_label' => self::commissioningDashboardWorkStatusLabel($workStatus),
+                    'status_accent' => self::commissioningDashboardWorkStatusAccent($workStatus),
+                    'form_number' => $submission?->form_number,
+                    'submitted_by' => $submission?->user?->name,
+                    'submitted_at' => $submission ? self::dashboardDateTime($submission->submitted_at ?: $submission->updated_at) : null,
+                    'create_url' => $workStatus === 'not_started'
+                        ? route('user.commissioning.forms.create', [
+                            'master_data_record_id' => $record->id,
+                            'area' => $record->area,
+                        ])
+                        : null,
+                ];
+            })
+            ->sortBy(fn (array $row): string => self::commissioningDashboardWorkStatusRank($row['status']).'|'.$row['area'].'|'.$row['section_no'])
+            ->values()
+            ->all();
+    }
+
+    private static function commissioningSubmissionMatchesMasterRecord(CommissioningFormSubmission $submission, MasterDataRecord $record): bool
+    {
+        $header = $submission->header_data ?? [];
+
+        return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
+            || (filled($submission->functional_location) && (string) $submission->functional_location === (string) $record->func_location)
+            || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
+    }
+
+    private static function commissioningDashboardWorkStatus(MasterDataRecord $record, ?CommissioningFormSubmission $submission): string
+    {
+        if (in_array($record->inspection_status, ['close', 'ongoing'], true)) {
+            return $record->inspection_status;
+        }
+
+        if (! $submission) {
+            return 'not_started';
+        }
+
+        return $submission->status === 'draft' ? 'ongoing' : 'close';
+    }
+
+    private static function commissioningDashboardWorkStatusLabel(string $status): string
+    {
+        return [
+            'close' => 'Close',
+            'ongoing' => 'On Going',
+            'not_started' => 'Belum Commissioning',
+        ][$status] ?? str($status)->replace('_', ' ')->headline()->toString();
+    }
+
+    private static function commissioningDashboardWorkStatusAccent(string $status): string
+    {
+        return [
+            'close' => 'success',
+            'ongoing' => 'warning',
+            'not_started' => 'secondary',
+        ][$status] ?? 'secondary';
+    }
+
+    private static function commissioningDashboardWorkStatusRank(string $status): int
+    {
+        return [
+            'close' => 0,
+            'ongoing' => 1,
+            'not_started' => 2,
+        ][$status] ?? 3;
     }
 
     private static function submissionTemplateName(Model $submission, string $fallback): string
