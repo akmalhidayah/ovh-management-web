@@ -290,17 +290,21 @@
 
     .commissioning-equipment-table tbody {
         display: grid;
-        gap: .62rem;
-        padding-top: .72rem;
+        gap: .5rem;
+        padding-top: .65rem;
     }
 
     .commissioning-equipment-table tbody tr {
         position: relative;
-        padding: .72rem;
-        border: 1px solid #e6edf5;
-        border-radius: .72rem;
-        background: #ffffff;
-        box-shadow: 0 .35rem .9rem rgba(15, 23, 42, .045);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: .46rem .62rem;
+        padding: .62rem .66rem .66rem .78rem;
+        border: 1px solid #e3eaf3;
+        border-left: 3px solid #8a1b2d;
+        border-radius: .58rem;
+        background: linear-gradient(135deg, #ffffff 0%, #ffffff 64%, #f8fafc 100%);
+        box-shadow: 0 .25rem .75rem rgba(15, 23, 42, .04);
     }
 
     .commissioning-equipment-table tbody tr td {
@@ -310,18 +314,41 @@
     }
 
     .commissioning-equipment-table tbody tr td + td {
-        margin-top: .46rem;
+        margin-top: 0;
     }
 
     .commissioning-equipment-table td::before {
         content: attr(data-label);
         display: block;
-        margin-bottom: .12rem;
-        color: #94a3b8;
-        font-size: .55rem;
+        margin-bottom: .08rem;
+        color: #64748b;
+        font-size: .5rem;
         font-weight: 800;
         letter-spacing: .04em;
         text-transform: uppercase;
+    }
+
+    .commissioning-equipment-table td[data-label="Section"] {
+        order: 1;
+    }
+
+    .commissioning-equipment-table td[data-label="Equipment"] {
+        order: 2;
+    }
+
+    .commissioning-equipment-table td[data-label="Lokasi"] {
+        order: 3;
+        grid-column: span 2;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: .1rem .5rem;
+        padding: .38rem .5rem;
+        border-radius: .45rem;
+        background: #f8fafc;
+    }
+
+    .commissioning-equipment-table td[data-label="Lokasi"]::before {
+        grid-column: span 2;
     }
 
     .commissioning-equipment-table td[data-label="Status & Aksi"] {
@@ -329,9 +356,11 @@
         align-items: center;
         justify-content: space-between;
         gap: .65rem;
-        margin-top: .7rem;
-        padding-top: .62rem;
-        border-top: 1px solid #eef2f7;
+        order: 4;
+        grid-column: span 2;
+        margin-top: .1rem;
+        padding-top: .5rem;
+        border-top: 1px solid #e8eef5;
         text-align: left !important;
     }
 
@@ -340,13 +369,13 @@
     }
 
     .commissioning-equipment-table strong {
-        font-size: .78rem;
+        font-size: .7rem;
         line-height: 1.2;
         overflow-wrap: anywhere;
     }
 
     .commissioning-equipment-table small {
-        font-size: .64rem;
+        font-size: .56rem;
         line-height: 1.25;
         overflow-wrap: anywhere;
     }
@@ -356,16 +385,16 @@
     }
 
     .commissioning-work-badge {
-        font-size: .62rem;
-        padding: .25rem .52rem;
+        font-size: .56rem;
+        padding: .22rem .46rem;
     }
 
     .commissioning-equipment-table .btn {
-        min-width: 7.6rem;
+        min-width: 6.2rem;
         margin-top: 0 !important;
-        padding: .46rem .7rem;
-        border-radius: .65rem;
-        font-size: .7rem;
+        padding: .38rem .58rem;
+        border-radius: .52rem;
+        font-size: .62rem;
         font-weight: 800;
     }
 
@@ -392,6 +421,15 @@
 @media (max-width: 380px) {
     .inspection-workspace .inspection-kpi-grid {
         grid-template-columns: 1fr;
+    }
+
+    .commissioning-equipment-table tbody tr {
+        grid-template-columns: 1fr;
+    }
+
+    .commissioning-equipment-table td[data-label="Lokasi"],
+    .commissioning-equipment-table td[data-label="Status & Aksi"] {
+        grid-column: auto;
     }
 
     .commissioning-equipment-table td[data-label="Status & Aksi"] {
