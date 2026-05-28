@@ -1,6 +1,9 @@
 @php
     $currentUser = auth()->user();
     $profilePhotoUrl = $currentUser?->profilePhotoUrl();
+    $userNotifications = \App\Support\UserTopbarNotifications::make($roleUi['role'] ?? '');
+    $notificationCount = (int) ($userNotifications['count'] ?? 0);
+    $notificationItems = collect($userNotifications['items'] ?? []);
 @endphp
 
 <header class="inspector-topbar">
@@ -37,10 +40,33 @@
                     <input type="search" class="form-control" placeholder="Cari...">
                 </div>
 
-                <button class="btn inspector-icon-btn position-relative" type="button" aria-label="Notifikasi">
-                    <i class="bi bi-bell"></i>
-                    <span class="inspector-notification-dot"></span>
-                </button>
+                <div class="dropdown">
+                    <button class="btn inspector-icon-btn position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                        <i class="bi bi-bell"></i>
+                        @if ($notificationCount > 0)
+                            <span class="user-notification-badge">{{ $notificationCount > 99 ? '99+' : $notificationCount }}</span>
+                        @endif
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end user-notification-menu">
+                        <div class="user-notification-head">
+                            <strong>Notifikasi</strong>
+                            <span>{{ $notificationCount }} equipment aktif</span>
+                        </div>
+                        @forelse ($notificationItems as $item)
+                            <a class="user-notification-item" href="{{ $item['url'] }}">
+                                <span class="user-notification-type">{{ $item['type'] }}</span>
+                                <span class="user-notification-body">
+                                    <strong>{{ $item['title'] }}</strong>
+                                    @if ($item['meta'])
+                                        <small>{{ $item['meta'] }}</small>
+                                    @endif
+                                </span>
+                            </a>
+                        @empty
+                            <div class="user-notification-empty">Belum ada equipment aktif baru.</div>
+                        @endforelse
+                    </div>
+                </div>
 
                 <div class="dropdown">
                     <button class="btn inspector-user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
