@@ -572,7 +572,7 @@ class UserRoleUiData
             'historyTitle' => $config['history_title'],
             'drafts' => $realData['drafts'] ?? $config['drafts'],
             'history' => $realData['history'] ?? $config['history'],
-            'equipmentRows' => $role === 'commissioning' ? self::commissioningDashboardEquipmentRows() : null,
+            'equipmentRows' => in_array($role, ['qc', 'commissioning'], true) ? self::inspectionDashboardEquipmentRows($role) : null,
         ];
     }
 
@@ -648,24 +648,28 @@ class UserRoleUiData
         ];
     }
 
-    private static function commissioningDashboardEquipmentRows(): array
+    private static function inspectionDashboardEquipmentRows(string $role): array
     {
-        $submissions = CommissioningFormSubmission::query()
+        $model = $role === 'qc' ? QcFormSubmission::class : CommissioningFormSubmission::class;
+        $category = $role === 'qc' ? MasterDataRecord::CATEGORY_QC : MasterDataRecord::CATEGORY_COMMISSIONING;
+        $createRoute = $role === 'qc' ? 'user.qc.forms.create' : 'user.commissioning.forms.create';
+
+        $submissions = $model::query()
             ->with('user')
             ->latest('submitted_at')
             ->latest()
             ->get();
 
         return MasterDataRecord::query()
-            ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
+            ->where('document_category', $category)
             ->where('status', 'active')
             ->orderBy('area')
             ->orderBy('section_no')
             ->orderBy('equipment_no')
             ->get()
-            ->map(function (MasterDataRecord $record) use ($submissions): array {
-                $submission = $submissions->first(fn (CommissioningFormSubmission $submission) => self::commissioningSubmissionMatchesMasterRecord($submission, $record));
-                $workStatus = self::commissioningDashboardWorkStatus($record, $submission);
+            ->map(function (MasterDataRecord $record) use ($submissions, $createRoute, $role): array {
+                $submission = $submissions->first(fn (Model $submission) => self::inspectionSubmissionMatchesMasterRecord($submission, $record));
+                $workStatus = self::inspectionDashboardWorkStatus($record, $submission);
 
                 return [
                     'section_no' => $record->section_no ?: '-',
@@ -675,34 +679,42 @@ class UserRoleUiData
                     'plant' => $record->plant ?: '-',
                     'area' => $record->area ?: '-',
                     'status' => $workStatus,
-                    'status_label' => self::commissioningDashboardWorkStatusLabel($workStatus),
-                    'status_accent' => self::commissioningDashboardWorkStatusAccent($workStatus),
+                    'status_label' => self::inspectionDashboardWorkStatusLabel($workStatus, $role),
+                    'status_accent' => self::inspectionDashboardWorkStatusAccent($workStatus),
                     'form_number' => $submission?->form_number,
                     'submitted_by' => $submission?->user?->name,
                     'submitted_at' => $submission ? self::dashboardDateTime($submission->submitted_at ?: $submission->updated_at) : null,
                     'create_url' => $workStatus === 'not_started'
-                        ? route('user.commissioning.forms.create', [
+                        ? route($createRoute, [
                             'master_data_record_id' => $record->id,
                             'area' => $record->area,
                         ])
                         : null,
                 ];
             })
-            ->sortBy(fn (array $row): string => self::commissioningDashboardWorkStatusRank($row['status']).'|'.$row['area'].'|'.$row['section_no'])
+            ->sortBy(fn (array $row): string => self::inspectionDashboardWorkStatusRank($row['status']).'|'.$row['area'].'|'.$row['section_no'])
             ->values()
             ->all();
     }
 
-    private static function commissioningSubmissionMatchesMasterRecord(CommissioningFormSubmission $submission, MasterDataRecord $record): bool
+    private static function inspectionSubmissionMatchesMasterRecord(Model $submission, MasterDataRecord $record): bool
     {
-        $header = $submission->header_data ?? [];
+        $header = $submission instanceof QcFormSubmission
+            ? ($submission->general_info ?? [])
+            : ($submission->header_data ?? []);
+        $functionalLocation = $submission instanceof QcFormSubmission
+            ? ($header['functional_location'] ?? null)
+            : $submission->functional_location;
+        $equipmentNo = $submission instanceof QcFormSubmission
+            ? ($header['id_equipment'] ?? null)
+            : $submission->equipment_no;
 
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
-            || (filled($submission->functional_location) && (string) $submission->functional_location === (string) $record->func_location)
-            || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
+            || (filled($functionalLocation) && (string) $functionalLocation === (string) $record->func_location)
+            || (filled($equipmentNo) && filled($record->equipment_no) && (string) $equipmentNo === (string) $record->equipment_no);
     }
 
-    private static function commissioningDashboardWorkStatus(MasterDataRecord $record, ?CommissioningFormSubmission $submission): string
+    private static function inspectionDashboardWorkStatus(MasterDataRecord $record, ?Model $submission): string
     {
         if (in_array($record->inspection_status, ['close', 'ongoing'], true)) {
             return $record->inspection_status;
@@ -715,16 +727,16 @@ class UserRoleUiData
         return $submission->status === 'draft' ? 'ongoing' : 'close';
     }
 
-    private static function commissioningDashboardWorkStatusLabel(string $status): string
+    private static function inspectionDashboardWorkStatusLabel(string $status, string $role): string
     {
         return [
-            'close' => 'Close',
+            'close' => 'Complete',
             'ongoing' => 'On Going',
-            'not_started' => 'Belum Commissioning',
+            'not_started' => $role === 'qc' ? 'Belum QC' : 'Belum Commissioning',
         ][$status] ?? str($status)->replace('_', ' ')->headline()->toString();
     }
 
-    private static function commissioningDashboardWorkStatusAccent(string $status): string
+    private static function inspectionDashboardWorkStatusAccent(string $status): string
     {
         return [
             'close' => 'success',
@@ -733,7 +745,7 @@ class UserRoleUiData
         ][$status] ?? 'secondary';
     }
 
-    private static function commissioningDashboardWorkStatusRank(string $status): int
+    private static function inspectionDashboardWorkStatusRank(string $status): int
     {
         return [
             'close' => 0,

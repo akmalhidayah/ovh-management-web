@@ -42,7 +42,7 @@
     $generalRows = old('body.general_rows', ($draftBody['general_rows'] ?? []) ?: ($schema['rows'] ?? []));
     $noteValue = old('note', $draftSubmission?->note ?? '');
     $masterDataRecords = collect($activeQcMasterDataRecords ?? []);
-    $selectedMasterDataId = old('header.master_data_record_id', $oldHeader['master_data_record_id'] ?? null);
+    $selectedMasterDataId = old('header.master_data_record_id', request('master_data_record_id', $oldHeader['master_data_record_id'] ?? null));
     if (! $selectedMasterDataId && (! empty($oldHeader['tag_num']) || ! empty($oldHeader['name_equipment']) || ! empty($oldHeader['functional_location']))) {
         $selectedMasterDataId = optional($masterDataRecords->first(function ($record) use ($oldHeader) {
             return (

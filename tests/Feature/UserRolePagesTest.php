@@ -122,6 +122,39 @@ class UserRolePagesTest extends TestCase
             'status' => 'active',
             'layout_mode' => 'block_based',
         ]);
+        $draftMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-DASH-001',
+            'equipment_no' => 'EQ-QC-DASH-001',
+            'section_no' => 'SEC-QC-DASH-001',
+            'description' => 'Real Pump P-101',
+            'plant' => 'Tonasa 4',
+            'area' => 'Raw Mill',
+            'status' => 'active',
+        ]);
+        $pendingMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-DASH-002',
+            'equipment_no' => 'EQ-QC-DASH-002',
+            'section_no' => 'SEC-QC-DASH-002',
+            'description' => 'Real Conveyor CV-02',
+            'plant' => 'Tonasa 5',
+            'area' => 'Coal Mill',
+            'status' => 'active',
+        ]);
+        $availableMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-DASH-003',
+            'equipment_no' => 'EQ-QC-DASH-003',
+            'section_no' => 'SEC-QC-DASH-003',
+            'description' => 'Available QC Equipment',
+            'plant' => 'Tonasa 6',
+            'area' => 'Crusher',
+            'status' => 'active',
+        ]);
 
         QcFormSubmission::create([
             'qc_form_template_id' => $template->id,
@@ -131,6 +164,7 @@ class UserRolePagesTest extends TestCase
             'equipment' => 'Real Pump P-101',
             'plant' => 'Tonasa 4',
             'area' => 'Raw Mill',
+            'general_info' => ['master_data_record_id' => $draftMaster->id],
             'updated_at' => Carbon::parse('2026-05-20 09:00'),
         ]);
 
@@ -144,6 +178,7 @@ class UserRolePagesTest extends TestCase
             'plant' => 'Tonasa 5',
             'area' => 'Coal Mill',
             'template_name' => 'QC Conveyor Real',
+            'general_info' => ['master_data_record_id' => $pendingMaster->id],
         ]);
 
         QcFormSubmission::create([
@@ -159,9 +194,22 @@ class UserRolePagesTest extends TestCase
         $this->actingAs($user)
             ->get(route('user.qc.dashboard'))
             ->assertOk()
+            ->assertSee('Daftar Equipment QC')
+            ->assertSee('Semua Plant')
+            ->assertSee('Semua Area')
+            ->assertSee('Semua Status')
             ->assertSee('Real Pump P-101')
             ->assertSee('Real Conveyor CV-02')
-            ->assertSee('Menunggu Approval')
+            ->assertSee('Available QC Equipment')
+            ->assertSee('On Going')
+            ->assertSee('Complete')
+            ->assertSee('Belum QC')
+            ->assertSee('Buat QC')
+            ->assertDontSee('Buat Manual')
+            ->assertSee(e(route('user.qc.forms.create', [
+                'master_data_record_id' => $availableMaster->id,
+                'area' => $availableMaster->area,
+            ])), false)
             ->assertDontSee('Other User Crusher')
             ->assertDontSee('QC - Gearbox GB-301');
     }
@@ -239,7 +287,8 @@ class UserRolePagesTest extends TestCase
             ->assertSee('Real ID Fan IF-10')
             ->assertSee('Real Motor M-210')
             ->assertSee('Perlu Revisi')
-            ->assertSee('Close')
+            ->assertSee('Complete')
+            ->assertDontSee('Buat Manual')
             ->assertDontSee('Other User Cooler')
             ->assertDontSee('Commissioning - ID Fan IF-02');
     }

@@ -418,6 +418,17 @@ class QcFormSubmissionTest extends TestCase
             ->assertDontSee('ST-INACTIVE-QC')
             ->assertDontSee('ST-COMMISSIONING');
 
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', [
+                'template' => $template->id,
+                'master_data_record_id' => $activeRecord->id,
+                'area' => $activeRecord->area,
+            ]))
+            ->assertOk()
+            ->assertSee('const selectedMasterDataId = "'.$activeRecord->id.'";', false)
+            ->assertSee('ACTIVE BELT CONVEYOR')
+            ->assertSee('SEC-ACTIVE-001');
+
         $payload = $this->fixedGeneralPayload($template);
         $payload['header']['master_data_record_id'] = $activeRecord->id;
         $payload['header']['plant'] = 'PLANT-WRONG';

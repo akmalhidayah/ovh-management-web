@@ -3,6 +3,13 @@
     $draftAction = $hero['actions'][1] ?? $primaryAction;
     $historyAction = $hero['actions'][2] ?? $primaryAction;
     $roleLabel = $roleUi['role_label'] ?? strtoupper($roleUi['role'] ?? 'QC');
+    $equipmentPlants = collect($equipmentRows ?? [])->pluck('plant')->filter(fn ($value) => $value !== '-')->unique()->sort()->values();
+    $equipmentAreas = collect($equipmentRows ?? [])->pluck('area')->filter(fn ($value) => $value !== '-')->unique()->sort()->values();
+    $equipmentStatuses = collect($equipmentRows ?? [])
+        ->map(fn ($row) => ['value' => $row['status'], 'label' => $row['status_label']])
+        ->unique('value')
+        ->sortBy('label')
+        ->values();
 @endphp
 
 <div class="inspection-workspace">
@@ -40,14 +47,38 @@
             <div class="inspection-panel-head">
                 <div>
                     <span class="inspection-overline">Equipment</span>
-                    <h2>Daftar Equipment Commissioning</h2>
+                    <h2>Daftar Equipment {{ $roleLabel }}</h2>
                 </div>
-                @if ($primaryAction)
-                    <a href="{{ route($primaryAction['route']) }}" class="btn btn-sm btn-light">
-                        <i class="bi bi-plus-circle"></i>
-                        <span>Buat Manual</span>
-                    </a>
-                @endif
+            </div>
+
+            <div class="commissioning-equipment-filters" data-equipment-filters>
+                <label>
+                    <span>Plant</span>
+                    <select class="form-select form-select-sm" data-equipment-filter="plant">
+                        <option value="">Semua Plant</option>
+                        @foreach ($equipmentPlants as $plant)
+                            <option value="{{ $plant }}">{{ $plant }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span>Area</span>
+                    <select class="form-select form-select-sm" data-equipment-filter="area">
+                        <option value="">Semua Area</option>
+                        @foreach ($equipmentAreas as $area)
+                            <option value="{{ $area }}">{{ $area }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span>Status</span>
+                    <select class="form-select form-select-sm" data-equipment-filter="status">
+                        <option value="">Semua Status</option>
+                        @foreach ($equipmentStatuses as $status)
+                            <option value="{{ $status['value'] }}">{{ $status['label'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
             </div>
 
             <div class="table-responsive">
@@ -63,7 +94,7 @@
                     </thead>
                     <tbody>
                         @forelse ($equipmentRows as $row)
-                            <tr>
+                            <tr data-equipment-row data-plant="{{ $row['plant'] }}" data-area="{{ $row['area'] }}" data-status="{{ $row['status'] }}">
                                 <td>
                                     <strong>{{ $row['section_no'] }}</strong>
                                     <small>{{ $row['functional_location'] }}</small>
@@ -86,7 +117,7 @@
                                     @if ($row['create_url'])
                                         <a href="{{ $row['create_url'] }}" class="btn btn-sm btn-primary">
                                             <i class="bi bi-plus-circle"></i>
-                                            <span>Buat Commissioning</span>
+                                            <span>Buat {{ $roleLabel }}</span>
                                         </a>
                                     @else
                                         <span class="text-muted small">Readonly</span>
@@ -95,9 +126,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-5">Belum ada equipment commissioning aktif dari master data.</td>
+                                <td colspan="5" class="text-center text-muted py-5">Belum ada equipment {{ $roleLabel }} aktif dari master data.</td>
                             </tr>
                         @endforelse
+                        @if (! empty($equipmentRows))
+                            <tr data-equipment-empty-filter hidden>
+                                <td colspan="5" class="text-center text-muted py-5">Tidak ada equipment yang cocok dengan filter.</td>
+                            </tr>
+                        @endif
                     </tbody>
                 </table>
             </div>
@@ -173,6 +209,24 @@
         margin-bottom: 0;
     }
 
+    .commissioning-equipment-filters {
+        align-items: end;
+        border-top: 1px solid #eef2f7;
+        display: grid;
+        gap: .85rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 1rem -1.25rem 0;
+        padding: 1rem 1.25rem;
+    }
+
+    .commissioning-equipment-filters label {
+        color: #475467;
+        display: grid;
+        font-size: .78rem;
+        font-weight: 700;
+        gap: .35rem;
+    }
+
     .commissioning-equipment-table th {
         border-top: 0;
         color: #475467;
@@ -226,10 +280,50 @@
     }
 
     @media (max-width: 767.98px) {
+        .commissioning-equipment-filters {
+            grid-template-columns: 1fr;
+        }
+
         .commissioning-equipment-table th,
         .commissioning-equipment-table td {
             white-space: nowrap;
         }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    (() => {
+        document.querySelectorAll('[data-equipment-filters]').forEach((filterGroup) => {
+            const panel = filterGroup.closest('.commissioning-equipment-panel');
+            const rows = Array.from(panel?.querySelectorAll('[data-equipment-row]') || []);
+            const emptyRow = panel?.querySelector('[data-equipment-empty-filter]');
+            const controls = Array.from(filterGroup.querySelectorAll('[data-equipment-filter]'));
+
+            const applyFilters = () => {
+                const filters = Object.fromEntries(controls.map((control) => [control.dataset.equipmentFilter, control.value]));
+                let visibleCount = 0;
+
+                rows.forEach((row) => {
+                    const visible = (!filters.plant || row.dataset.plant === filters.plant)
+                        && (!filters.area || row.dataset.area === filters.area)
+                        && (!filters.status || row.dataset.status === filters.status);
+
+                    row.hidden = !visible;
+                    if (visible) {
+                        visibleCount += 1;
+                    }
+                });
+
+                if (emptyRow) {
+                    emptyRow.hidden = visibleCount > 0;
+                }
+            };
+
+            controls.forEach((control) => control.addEventListener('change', applyFilters));
+            applyFilters();
+        });
+    })();
+</script>
 @endpush
