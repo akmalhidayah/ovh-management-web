@@ -888,7 +888,10 @@
                     </tr>
                 </table>
             @else
-                @php($unitKerjaApprovalLabel = $approval('Unit Kerja')['label'] ?? 'UNIT KERJA')
+                @php
+                    $unitKerjaApproval = $approval('Unit Kerja');
+                    $unitKerjaApprovalLabel = $unitKerjaApproval['label'] ?? 'UNIT KERJA';
+                @endphp
                 <table class="approval-table">
                     <tr>
                         <th rowspan="2" style="width: 15%;" class="inspector-title">TTD<br>QC Inspektor</th>
