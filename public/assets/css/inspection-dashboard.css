@@ -300,10 +300,9 @@
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: .46rem .62rem;
         padding: .62rem .66rem .66rem .78rem;
-        border: 1px solid #e3eaf3;
-        border-left: 3px solid #8a1b2d;
+        border: 1px solid rgba(138, 27, 45, .22);
         border-radius: .58rem;
-        background: linear-gradient(135deg, #ffffff 0%, #ffffff 64%, #f8fafc 100%);
+        background: #ffffff;
         box-shadow: 0 .25rem .75rem rgba(15, 23, 42, .04);
     }
 
