@@ -19,20 +19,20 @@ class AdminOrganizationSectionTest extends TestCase
             ->get(route('admin.organization-sections.index'))
             ->assertOk()
             ->assertSee('Unit Kerja')
-            ->assertSee('Tambah Unit Kerja');
+            ->assertSee('Tambah Unit Kerja')
+            ->assertDontSee('Kelola daftar departemen, unit kerja, dan seksi yang muncul di form QC dan Commissioning.');
 
         $payload = [
             'department' => 'Production',
             'unit_kerja' => 'Cement Production',
             'section' => 'Line 2/3 FM Operation',
-            'status' => 'active',
         ];
 
         $this->actingAs($admin)
             ->post(route('admin.organization-sections.store'), $payload)
             ->assertRedirect(route('admin.organization-sections.index'));
 
-        $this->assertDatabaseHas('organization_sections', $payload);
+        $this->assertDatabaseHas('organization_sections', $payload + ['status' => 'active']);
 
         $section = OrganizationSection::firstOrFail();
 
@@ -41,14 +41,13 @@ class AdminOrganizationSectionTest extends TestCase
                 'department' => 'Production',
                 'unit_kerja' => 'Cement Production',
                 'section' => 'Plan Eval & Product Dist',
-                'status' => 'inactive',
             ])
             ->assertRedirect(route('admin.organization-sections.index'));
 
         $this->assertDatabaseHas('organization_sections', [
             'id' => $section->id,
             'section' => 'Plan Eval & Product Dist',
-            'status' => 'inactive',
+            'status' => 'active',
         ]);
 
         $this->actingAs($admin)

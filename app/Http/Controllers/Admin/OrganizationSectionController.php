@@ -17,16 +17,9 @@ class OrganizationSectionController extends Controller
             ->orderBy('department')
             ->orderBy('unit_kerja')
             ->orderBy('section')
-            ->paginate(30);
+            ->get();
 
         return view('admin.organization-sections.index', compact('sections'));
-    }
-
-    public function create(): View
-    {
-        return view('admin.organization-sections.create', [
-            'section' => new OrganizationSection(['status' => 'active']),
-        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -36,13 +29,6 @@ class OrganizationSectionController extends Controller
         return redirect()
             ->route('admin.organization-sections.index')
             ->with('success', 'Unit kerja berhasil ditambahkan.');
-    }
-
-    public function edit(OrganizationSection $organizationSection): View
-    {
-        return view('admin.organization-sections.edit', [
-            'section' => $organizationSection,
-        ]);
     }
 
     public function update(Request $request, OrganizationSection $organizationSection): RedirectResponse
@@ -65,7 +51,7 @@ class OrganizationSectionController extends Controller
 
     private function validatedData(Request $request, ?OrganizationSection $section = null): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'department' => ['required', 'string', 'max:255'],
             'unit_kerja' => ['required', 'string', 'max:255'],
             'section' => [
@@ -78,7 +64,10 @@ class OrganizationSectionController extends Controller
                         ->where('unit_kerja', $request->input('unit_kerja')))
                     ->ignore($section?->id),
             ],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
+
+        $validated['status'] = $section?->status ?? 'active';
+
+        return $validated;
     }
 }
