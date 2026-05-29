@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommissioningFormSubmission;
+use App\Models\QcFormSubmission;
 use App\Models\User;
+use App\Services\InspectionSubmissionDeletionService;
 use App\Support\PublicRegistrationAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -145,7 +148,11 @@ class UserPanelController extends Controller
         return back()->with('success', "Data {$user->name} berhasil diperbarui.");
     }
 
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(
+        Request $request,
+        User $user,
+        InspectionSubmissionDeletionService $deletionService
+    ): RedirectResponse
     {
         if ($request->user()?->is($user)) {
             $this->logStatus('admin_user_self_delete_blocked', [
@@ -159,6 +166,7 @@ class UserPanelController extends Controller
         $name = $user->name;
 
         try {
+            $this->deleteUserDraftSubmissions($user, $deletionService);
             $user->delete();
         } catch (Throwable $exception) {
             $this->logError(self::ERROR_UPDATE, $exception, [
@@ -175,6 +183,21 @@ class UserPanelController extends Controller
         ]);
 
         return back()->with('success', "Akun {$name} berhasil dihapus.");
+    }
+
+    private function deleteUserDraftSubmissions(User $user, InspectionSubmissionDeletionService $deletionService): void
+    {
+        QcFormSubmission::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'draft')
+            ->get()
+            ->each(fn (QcFormSubmission $submission) => $deletionService->deleteQcPermanently($submission));
+
+        CommissioningFormSubmission::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'draft')
+            ->get()
+            ->each(fn (CommissioningFormSubmission $submission) => $deletionService->deleteCommissioningPermanently($submission, auth()->user()));
     }
 
     private function validateUser(Request $request, ?User $user = null): array

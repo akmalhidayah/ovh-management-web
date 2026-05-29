@@ -650,8 +650,16 @@ class UserRoleUiData
 
         $submissions = $model::query()
             ->with('user')
+            ->where(function ($query): void {
+                $query->where('status', '!=', 'draft')
+                    ->orWhereNotNull('user_id');
+            })
             ->latest('submitted_at')
             ->latest()
+            ->get();
+        $orphanDrafts = $model::query()
+            ->whereNull('user_id')
+            ->where('status', 'draft')
             ->get();
 
         $baseRecordsQuery = MasterDataRecord::query()
@@ -682,9 +690,10 @@ class UserRoleUiData
             ->orderBy('section_no')
             ->orderBy('equipment_no')
             ->get()
-            ->map(function (MasterDataRecord $record) use ($submissions, $createRoute, $role): array {
+            ->map(function (MasterDataRecord $record) use ($submissions, $orphanDrafts, $createRoute, $role): array {
                 $submission = $submissions->first(fn (Model $submission) => self::inspectionSubmissionMatchesMasterRecord($submission, $record));
-                $workStatus = self::inspectionDashboardWorkStatus($record, $submission);
+                $hasOrphanDraft = $orphanDrafts->contains(fn (Model $submission) => self::inspectionSubmissionMatchesMasterRecord($submission, $record));
+                $workStatus = self::inspectionDashboardWorkStatus($record, $submission, $hasOrphanDraft);
 
                 return [
                     'section_no' => $record->section_no ?: '-',
@@ -761,9 +770,17 @@ class UserRoleUiData
             || (filled($equipmentNo) && filled($record->equipment_no) && (string) $equipmentNo === (string) $record->equipment_no);
     }
 
-    private static function inspectionDashboardWorkStatus(MasterDataRecord $record, ?Model $submission): string
+    private static function inspectionDashboardWorkStatus(
+        MasterDataRecord $record,
+        ?Model $submission,
+        bool $hasOrphanDraft = false
+    ): string
     {
-        if (in_array($record->inspection_status, ['close', 'ongoing'], true)) {
+        if ($record->inspection_status === 'close') {
+            return 'close';
+        }
+
+        if ($record->inspection_status === 'ongoing' && ! $hasOrphanDraft) {
             return $record->inspection_status;
         }
 

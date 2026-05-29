@@ -19,5 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (Illuminate\Http\Exceptions\PostTooLargeException $exception, Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Ukuran upload terlalu besar. Kurangi ukuran atau jumlah foto, lalu coba lagi.',
+                ], 413);
+            }
+
+            return response()->view('errors.413', [], 413);
+        });
     })->create();

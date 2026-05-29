@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommissioningFormSubmission;
+use App\Models\CommissioningFormTemplate;
+use App\Models\QcFormSubmission;
+use App\Models\QcFormTemplate;
 use App\Models\User;
 use App\Support\PublicRegistrationAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,6 +123,46 @@ class AdminUserPanelTest extends TestCase
         $this->assertDatabaseMissing('users', [
             'id' => $user->id,
         ]);
+    }
+
+    public function test_admin_delete_user_cleans_their_draft_submissions(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+        $qcTemplate = QcFormTemplate::create([
+            'code' => 'QC-DELETE-USER',
+            'name' => 'Template Delete User QC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $commissioningTemplate = CommissioningFormTemplate::create([
+            'code' => 'COM-DELETE-USER',
+            'name' => 'Template Delete User Commissioning',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $qcDraft = QcFormSubmission::create([
+            'qc_form_template_id' => $qcTemplate->id,
+            'user_id' => $user->id,
+            'form_number' => '088/QC/05-2026',
+            'status' => 'draft',
+        ]);
+        $commissioningDraft = CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $commissioningTemplate->id,
+            'user_id' => $user->id,
+            'form_number' => '088/COM/05-2026',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.user-panel.destroy', $user))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('qc_form_submissions', ['id' => $qcDraft->id]);
+        $this->assertDatabaseMissing('commissioning_form_submissions', ['id' => $commissioningDraft->id]);
     }
 
     public function test_admin_cannot_delete_own_account(): void

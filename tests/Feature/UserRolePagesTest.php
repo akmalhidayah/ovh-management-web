@@ -216,6 +216,52 @@ class UserRolePagesTest extends TestCase
             ->assertDontSee('QC - Gearbox GB-301');
     }
 
+    public function test_qc_dashboard_ignores_orphan_draft_from_deleted_user(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-ORPHAN-001',
+            'name' => 'Template Orphan QC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-ORPHAN-001',
+            'equipment_no' => 'EQ-QC-ORPHAN-001',
+            'section_no' => 'SEC-QC-ORPHAN-001',
+            'description' => 'Orphan Draft Equipment',
+            'plant' => 'Tonasa 4',
+            'area' => 'Crusher',
+            'status' => 'active',
+            'inspection_status' => 'ongoing',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => null,
+            'form_number' => '099/QC/05-2026',
+            'status' => 'draft',
+            'equipment' => 'Orphan Draft Equipment',
+            'plant' => 'Tonasa 4',
+            'area' => 'Crusher',
+            'general_info' => ['master_data_record_id' => $master->id],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.dashboard'))
+            ->assertOk()
+            ->assertSee('Orphan Draft Equipment')
+            ->assertSee('Belum QC')
+            ->assertSee('Close 0 | On Going 0 | Belum QC 1')
+            ->assertSee(e(route('user.qc.forms.create', [
+                'master_data_record_id' => $master->id,
+                'area' => $master->area,
+            ])), false);
+    }
+
     public function test_commissioning_dashboard_uses_real_submission_data_for_current_user(): void
     {
         $user = User::factory()->create(['usertype' => 'user', 'role' => 'commissioning']);

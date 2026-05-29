@@ -351,6 +351,88 @@
         })();
 
         (() => {
+            const MAX_IMAGE_BYTES = 1.4 * 1024 * 1024;
+            const MAX_TOTAL_UPLOAD_BYTES = 6 * 1024 * 1024;
+            const MAX_IMAGE_DIMENSION = 1800;
+
+            const showUploadWarning = (message) => {
+                if (window.Swal) {
+                    window.Swal.fire({
+                        title: 'Upload terlalu besar',
+                        text: message,
+                        icon: 'warning',
+                        confirmButtonText: 'Mengerti',
+                        confirmButtonColor: '#2563eb',
+                    });
+                    return;
+                }
+
+                window.alert(message);
+            };
+
+            const fileExtension = (name) => {
+                const parts = String(name || '').split('.');
+                return parts.length > 1 ? parts.pop() : '';
+            };
+
+            const compressedFileName = (name) => {
+                const extension = fileExtension(name);
+                const base = extension ? name.slice(0, -(extension.length + 1)) : name;
+
+                return `${base || 'foto'}-compressed.jpg`;
+            };
+
+            const loadImage = (file) => new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const image = new Image();
+
+                image.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(image);
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Gambar tidak bisa dibaca.'));
+                };
+                image.src = url;
+            });
+
+            const canvasBlob = (canvas, quality) => new Promise((resolve) => {
+                canvas.toBlob(resolve, 'image/jpeg', quality);
+            });
+
+            const compressImageFile = async (file) => {
+                if (!file.type.startsWith('image/') || file.size <= MAX_IMAGE_BYTES) {
+                    return file;
+                }
+
+                const image = await loadImage(file);
+                const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(Math.round(image.width * scale), 1);
+                canvas.height = Math.max(Math.round(image.height * scale), 1);
+
+                const context = canvas.getContext('2d');
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+                let quality = 0.78;
+                let blob = await canvasBlob(canvas, quality);
+
+                while (blob && blob.size > MAX_IMAGE_BYTES && quality > 0.48) {
+                    quality -= 0.1;
+                    blob = await canvasBlob(canvas, quality);
+                }
+
+                if (!blob || blob.size >= file.size) {
+                    return file;
+                }
+
+                return new File([blob], compressedFileName(file.name), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+            };
+
             document.querySelectorAll('[data-upload-box]').forEach((box) => {
                 const input = box.querySelector('[data-upload-input]');
                 const preview = box.querySelector('[data-upload-preview]');
@@ -404,19 +486,65 @@
                     });
                 };
 
-                input?.addEventListener('change', () => {
+                input?.addEventListener('change', async () => {
                     const files = Array.from(input.files || []);
-                    const nextFiles = input.multiple ? selectedFiles.concat(files) : files.slice(0, 1);
+                    input.dataset.uploadProcessing = '1';
+                    message.textContent = files.some((file) => file.type.startsWith('image/') && file.size > MAX_IMAGE_BYTES)
+                        ? 'Mengompres foto agar ukuran upload aman...'
+                        : '';
+
+                    const compressedFiles = [];
+
+                    for (const file of files) {
+                        try {
+                            compressedFiles.push(await compressImageFile(file));
+                        } catch (error) {
+                            compressedFiles.push(file);
+                        }
+                    }
+
+                    input.dataset.uploadProcessing = '0';
+
+                    const reducedCount = compressedFiles.filter((file, index) => file.size < files[index].size).length;
+                    let statusMessage = '';
+                    if (reducedCount > 0) {
+                        statusMessage = `${reducedCount} foto dikompres otomatis sebelum upload.`;
+                    }
+
+                    const nextFiles = input.multiple ? selectedFiles.concat(compressedFiles) : compressedFiles.slice(0, 1);
 
                     if (maxFiles && nextFiles.length > maxFiles) {
                         selectedFiles = nextFiles.slice(0, maxFiles);
-                        message.textContent = `Maksimal ${maxFiles} file. Sebagian file tidak ditambahkan.`;
+                        statusMessage = `Maksimal ${maxFiles} file. Sebagian file tidak ditambahkan.`;
                     } else {
                         selectedFiles = nextFiles;
                     }
 
                     syncInputFiles();
                     renderPreview();
+                    message.textContent = statusMessage;
+                });
+            });
+
+            document.querySelectorAll('form[data-confirm-submit]').forEach((form) => {
+                form.addEventListener('submit', (event) => {
+                    const processingInput = form.querySelector('[data-upload-input][data-upload-processing="1"]');
+
+                    if (processingInput) {
+                        event.preventDefault();
+                        showUploadWarning('Foto masih diproses. Tunggu beberapa detik lalu submit ulang.');
+                        return;
+                    }
+
+                    const totalUploadBytes = Array.from(form.querySelectorAll('input[type="file"]'))
+                        .flatMap((input) => Array.from(input.files || []))
+                        .reduce((total, file) => total + file.size, 0);
+
+                    if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
+                        event.preventDefault();
+                        showUploadWarning('Total ukuran foto masih terlalu besar. Kurangi jumlah foto pendukung atau pilih foto yang lebih kecil.');
+                        return;
+                    }
                 });
             });
         })();
