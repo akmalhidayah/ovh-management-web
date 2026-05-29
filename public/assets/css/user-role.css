@@ -1480,6 +1480,11 @@ body.inspector-body {
     font-weight: 700;
 }
 
+.qc-upload-actions .dropdown-item {
+    cursor: pointer;
+    font-weight: 700;
+}
+
 .qc-upload-message:not(:empty) {
     padding: 0.45rem 0.55rem;
     border-radius: 8px;

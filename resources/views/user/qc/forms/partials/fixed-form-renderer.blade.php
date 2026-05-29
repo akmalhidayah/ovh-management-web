@@ -268,13 +268,24 @@
                     @endif
                     <div class="qc-upload-actions">
                         @if ($isRequiredAttachment)
-                            <label class="btn btn-sm btn-primary" for="{{ $cameraInputId }}">
-                                <i class="bi bi-camera me-1"></i>Ambil Foto
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-camera me-1"></i>Upload Foto
+                                </button>
+                                <div class="dropdown-menu">
+                                    <label class="dropdown-item" for="{{ $cameraInputId }}">
+                                        <i class="bi bi-camera me-2"></i>Ambil Foto
+                                    </label>
+                                    <label class="dropdown-item" for="{{ $uploadInputId }}">
+                                        <i class="bi bi-images me-2"></i>Pilih dari Galeri/File
+                                    </label>
+                                </div>
+                            </div>
+                        @else
+                            <label class="btn btn-sm btn-outline-primary" for="{{ $uploadInputId }}">
+                                <i class="bi bi-upload me-1"></i>Pilih File
                             </label>
                         @endif
-                        <label class="btn btn-sm btn-outline-primary" for="{{ $uploadInputId }}">
-                            <i class="bi bi-upload me-1"></i>Pilih File
-                        </label>
                     </div>
                     <div class="qc-upload-message" data-upload-message></div>
                     <div class="qc-upload-preview" data-upload-preview></div>
