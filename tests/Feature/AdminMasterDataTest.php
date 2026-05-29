@@ -41,6 +41,43 @@ class AdminMasterDataTest extends TestCase
             ->assertSee('QC dan Commissioning');
     }
 
+    public function test_master_data_page_shows_active_records_first(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-A-INACTIVE',
+            'equipment_no' => 'EQ-A-INACTIVE',
+            'section_no' => 'SEC-A-INACTIVE',
+            'description' => 'FIRST SORTED BUT INACTIVE',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL',
+            'status' => 'inactive',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-Z-ACTIVE',
+            'equipment_no' => 'EQ-Z-ACTIVE',
+            'section_no' => 'SEC-Z-ACTIVE',
+            'description' => 'LAST SORTED BUT ACTIVE',
+            'plant' => 'TONASA 5',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.master-data'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'LAST SORTED BUT ACTIVE',
+                'FIRST SORTED BUT INACTIVE',
+            ]);
+    }
+
     public function test_admin_can_create_filter_update_and_delete_master_data(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

@@ -18,6 +18,7 @@ class MasterDataController extends Controller
         $filters = $this->filtersFromRequest($request);
 
         $records = $this->filteredRecordsQuery($filters)
+            ->orderByRaw("case when status = 'active' then 0 else 1 end")
             ->orderBy('document_category')
             ->orderBy('plant')
             ->orderBy('area')

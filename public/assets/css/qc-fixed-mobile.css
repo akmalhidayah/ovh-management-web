@@ -60,9 +60,12 @@
         word-break: break-word;
     }
 
-    .qc-mobile-card-wrap td[data-label="No"],
+    .qc-mobile-card-wrap td[data-label="No"] {
+        display: none;
+    }
+
     .qc-mobile-card-wrap td[data-label="Aksi"] {
-        grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+        grid-template-columns: minmax(88px, 0.34fr) minmax(0, 1fr);
     }
 
     .qc-mobile-card-wrap td[data-label="Aksi"] .btn {

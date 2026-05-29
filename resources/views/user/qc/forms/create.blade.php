@@ -3,7 +3,7 @@
 @section('title', 'Buat Form QC')
 
 @push('styles')
-    <link href="{{ asset('assets/css/qc-fixed-mobile.css') }}?v=20260522-3" rel="stylesheet">
+    <link href="{{ asset('assets/css/qc-fixed-mobile.css') }}?v={{ file_exists(public_path('assets/css/qc-fixed-mobile.css')) ? filemtime(public_path('assets/css/qc-fixed-mobile.css')) : time() }}" rel="stylesheet">
 @endpush
 
 @section('content')
