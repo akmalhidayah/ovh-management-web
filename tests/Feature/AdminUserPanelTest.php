@@ -235,7 +235,7 @@ class AdminUserPanelTest extends TestCase
         $this->assertFalse(PublicRegistrationAccess::enabled());
         auth()->logout();
         $this->get('/register')->assertNotFound();
-        $this->get('/')->assertOk()->assertDontSee(route('register'), false);
+        $this->get('/')->assertRedirect(route('login'));
 
         $this->actingAs($admin)
             ->patch(route('admin.user-panel.registration-access'), [

@@ -18,6 +18,14 @@ class RegisterTest extends TestCase
             ->assertSee('Commissioning');
     }
 
+    public function test_login_page_shows_register_link_when_public_register_enabled(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('Belum punya akun?')
+            ->assertSee(route('register'), false);
+    }
+
     public function test_public_register_creates_operational_user(): void
     {
         $this->post('/register', [

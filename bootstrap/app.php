@@ -19,6 +19,25 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (Illuminate\Session\TokenMismatchException $exception, Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Sesi halaman sudah kedaluwarsa. Muat ulang halaman, lalu coba lagi.',
+                ], 419);
+            }
+
+            if ($request->is('login')) {
+                return redirect()
+                    ->route('login')
+                    ->withErrors(['email' => 'Sesi login sudah kedaluwarsa. Silakan login ulang.']);
+            }
+
+            return redirect()
+                ->back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->withErrors(['session' => 'Sesi halaman sudah kedaluwarsa. Muat ulang halaman, lalu coba lagi.']);
+        });
+
         $exceptions->render(function (Illuminate\Http\Exceptions\PostTooLargeException $exception, Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([

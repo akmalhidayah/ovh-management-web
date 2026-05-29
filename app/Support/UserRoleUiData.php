@@ -24,7 +24,6 @@ class UserRoleUiData
                     ['label' => 'Form QC', 'route' => 'user.qc.forms.create', 'icon' => 'bi-ui-checks-grid'],
                     ['label' => 'Draft QC', 'route' => 'user.qc.drafts.index', 'icon' => 'bi-journal-richtext'],
                     ['label' => 'Riwayat QC', 'route' => 'user.qc.history.index', 'icon' => 'bi-clock-history'],
-                    ['label' => 'Profil', 'route' => 'user.qc.profile', 'icon' => 'bi-person-circle'],
                 ],
             ],
             'commissioning' => [
@@ -38,7 +37,6 @@ class UserRoleUiData
                     ['label' => 'Form', 'route' => 'user.commissioning.forms.create', 'icon' => 'bi-ui-checks-grid'],
                     ['label' => 'Draft', 'route' => 'user.commissioning.drafts.index', 'icon' => 'bi-journal-richtext'],
                     ['label' => 'Riwayat', 'route' => 'user.commissioning.history.index', 'icon' => 'bi-clock-history'],
-                    ['label' => 'Profil', 'route' => 'user.commissioning.profile', 'icon' => 'bi-person-circle'],
                 ],
             ],
             'pgo' => [
@@ -53,7 +51,6 @@ class UserRoleUiData
                     ['label' => 'Monitoring', 'route' => 'user.pgo.monitoring.index', 'icon' => 'bi-activity'],
                     ['label' => 'Dokumen', 'route' => 'user.pgo.documents.index', 'icon' => 'bi-folder2-open'],
                     ['label' => 'Riwayat', 'route' => 'user.pgo.history.index', 'icon' => 'bi-clock-history'],
-                    ['label' => 'Profil', 'route' => 'user.pgo.profile', 'icon' => 'bi-person-circle'],
                 ],
             ],
             'approval' => [
@@ -68,7 +65,6 @@ class UserRoleUiData
                     ['label' => 'Review Form', 'route' => 'user.approval.review.index', 'icon' => 'bi-search'],
                     ['label' => 'Riwayat Approval', 'route' => 'user.approval.history.index', 'icon' => 'bi-clock-history'],
                     ['label' => 'Dokumen', 'route' => 'user.approval.documents.index', 'icon' => 'bi-folder2-open'],
-                    ['label' => 'Profil', 'route' => 'user.approval.profile', 'icon' => 'bi-person-circle'],
                 ],
             ],
             default => [

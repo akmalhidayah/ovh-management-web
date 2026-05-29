@@ -51,6 +51,13 @@
                     <i class="bi bi-box-arrow-in-right me-2"></i>Login
                 </button>
             </form>
+
+            @if (Route::has('register') && \App\Support\PublicRegistrationAccess::enabled())
+                <div class="text-center mt-3">
+                    <span class="text-muted">Belum punya akun?</span>
+                    <a href="{{ route('register') }}" class="fw-semibold text-decoration-none">Daftar</a>
+                </div>
+            @endif
         </section>
     </main>
 </body>
