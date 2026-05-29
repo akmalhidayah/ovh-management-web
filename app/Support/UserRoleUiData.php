@@ -277,38 +277,12 @@ class UserRoleUiData
 
     public static function qcProfile(): array
     {
-        return self::profilePage('qc', [
-            'name' => 'User QC',
-            'email' => 'qc@ovh.test',
-            'usertype' => 'User',
-            'role' => 'QC',
-            'plants' => ['Cement Plant 1', 'Cement Plant 2'],
-            'areas' => ['Raw Mill', 'Kiln', 'Utilities'],
-            'position' => 'QC Inspector',
-        ], [
-            ['label' => 'Total Form Terkirim', 'value' => '28', 'icon' => 'bi-send-check', 'accent' => 'success'],
-            ['label' => 'Draft', 'value' => '5', 'icon' => 'bi-journal-richtext', 'accent' => 'warning'],
-            ['label' => 'Perlu Revisi', 'value' => '3', 'icon' => 'bi-arrow-repeat', 'accent' => 'danger'],
-            ['label' => 'Dokumen Uploaded', 'value' => '14', 'icon' => 'bi-file-earmark-arrow-up', 'accent' => 'info'],
-        ]);
+        return self::profilePage('qc');
     }
 
     public static function commissioningProfile(): array
     {
-        return self::profilePage('commissioning', [
-            'name' => 'User Commissioning',
-            'email' => 'commissioning@ovh.test',
-            'usertype' => 'User',
-            'role' => 'Commissioning',
-            'plants' => ['Cement Plant 1', 'Cement Plant 2'],
-            'areas' => ['Utilities', 'Packing Plant', 'Raw Mill'],
-            'position' => 'Commissioning Inspector',
-        ], [
-            ['label' => 'Total Form Terkirim', 'value' => '22', 'icon' => 'bi-send-check', 'accent' => 'success'],
-            ['label' => 'Draft', 'value' => '4', 'icon' => 'bi-journal-richtext', 'accent' => 'warning'],
-            ['label' => 'Perlu Revisi', 'value' => '2', 'icon' => 'bi-arrow-repeat', 'accent' => 'danger'],
-            ['label' => 'Dokumen Uploaded', 'value' => '11', 'icon' => 'bi-file-earmark-arrow-up', 'accent' => 'info'],
-        ]);
+        return self::profilePage('commissioning');
     }
 
     public static function pgoDashboard(): array
@@ -416,20 +390,7 @@ class UserRoleUiData
 
     public static function pgoProfile(): array
     {
-        return self::profilePage('pgo', [
-            'name' => 'User PGO',
-            'email' => 'pgo@ovh.test',
-            'usertype' => 'User',
-            'role' => 'PGO',
-            'plants' => ['Cement Plant 1', 'Cement Plant 2'],
-            'areas' => ['Raw Mill', 'Kiln Area', 'Utilities'],
-            'position' => 'PGO Coordinator',
-        ], [
-            ['label' => 'Tugas Selesai', 'value' => '12', 'icon' => 'bi-check2-circle', 'accent' => 'success'],
-            ['label' => 'Aktif', 'value' => '7', 'icon' => 'bi-kanban', 'accent' => 'primary'],
-            ['label' => 'Butuh Tindak Lanjut', 'value' => '3', 'icon' => 'bi-hourglass-split', 'accent' => 'warning'],
-            ['label' => 'Dokumen Masuk', 'value' => '8', 'icon' => 'bi-folder-check', 'accent' => 'info'],
-        ]);
+        return self::profilePage('pgo');
     }
 
     public static function approvalDashboard(): array
@@ -540,20 +501,7 @@ class UserRoleUiData
 
     public static function approvalProfile(): array
     {
-        return self::profilePage('approval', [
-            'name' => 'User Approval',
-            'email' => 'approval@ovh.test',
-            'usertype' => 'User',
-            'role' => 'Approval',
-            'plants' => ['Cement Plant 1', 'Cement Plant 2'],
-            'areas' => ['Raw Mill', 'Kiln Area', 'Utilities', 'Packing Plant'],
-            'position' => 'Approval Officer',
-        ], [
-            ['label' => 'Menunggu Approval', 'value' => '9', 'icon' => 'bi-hourglass-split', 'accent' => 'warning'],
-            ['label' => 'Disetujui', 'value' => '18', 'icon' => 'bi-check2-circle', 'accent' => 'success'],
-            ['label' => 'Perlu Revisi', 'value' => '4', 'icon' => 'bi-arrow-repeat', 'accent' => 'danger'],
-            ['label' => 'Ditolak', 'value' => '1', 'icon' => 'bi-x-circle', 'accent' => 'secondary'],
-        ]);
+        return self::profilePage('approval');
     }
 
     private static function inspectionDashboard(string $role, array $config): array
@@ -1101,27 +1049,114 @@ class UserRoleUiData
         ];
     }
 
-    private static function profilePage(string $role, array $profile, array $stats): array
+    private static function profilePage(string $role): array
     {
         $user = auth()->user();
-
-        if ($user) {
-            $profile['name'] = $user->name;
-            $profile['email'] = $user->email;
-            $profile['phone'] = $user->phone;
-            $profile['photo_url'] = $user->profilePhotoUrl();
-        }
+        $profile = self::profileData($role);
 
         return [
             'roleUi' => self::layout($role),
             'profile' => $profile,
-            'stats' => $stats,
+            'stats' => self::profileStats($role, $user?->getKey()),
             'security' => [
-                'last_change' => '12 Mei 2025',
-                'last_login' => '22 Mei 2025 07:48',
-                'devices' => 'Laptop Lapangan - Chrome / Windows',
+                'last_change' => $user?->updated_at?->format('d M Y') ?? '-',
+                'last_login' => '-',
+                'devices' => '-',
             ],
         ];
+    }
+
+    private static function profileData(string $role): array
+    {
+        $user = auth()->user();
+        $category = match ($role) {
+            'qc' => MasterDataRecord::CATEGORY_QC,
+            'commissioning' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            default => null,
+        };
+
+        return [
+            'name' => $user?->name ?? '-',
+            'email' => $user?->email ?? '-',
+            'phone' => $user?->phone,
+            'photo_url' => $user?->profilePhotoUrl(),
+            'usertype' => self::profileUsertypeLabel($user?->usertype),
+            'role' => self::layout($role)['role_label'],
+            'plants' => self::profileMasterDataOptions('plant', $category),
+            'areas' => self::profileMasterDataOptions('area', $category),
+            'position' => self::profilePositionLabel($role),
+        ];
+    }
+
+    private static function profileStats(string $role, mixed $userId): array
+    {
+        if (! in_array($role, ['qc', 'commissioning'], true)) {
+            return self::profileStatsPayload(0, 0, 0, 0);
+        }
+
+        $model = $role === 'qc'
+            ? QcFormSubmission::class
+            : CommissioningFormSubmission::class;
+
+        if (! $userId) {
+            return self::profileStatsPayload(0, 0, 0, 0);
+        }
+
+        $baseQuery = $model::query()->where('user_id', $userId);
+        $attachmentCount = (clone $baseQuery)
+            ->withCount('attachments')
+            ->get()
+            ->sum('attachments_count');
+
+        return self::profileStatsPayload(
+            (clone $baseQuery)->whereNotNull('submitted_at')->where('status', '<>', 'draft')->count(),
+            (clone $baseQuery)->where('status', 'draft')->count(),
+            (clone $baseQuery)->whereIn('status', ['revision', 'revision_required'])->count(),
+            $attachmentCount,
+        );
+    }
+
+    private static function profileStatsPayload(int $submitted, int $drafts, int $revisions, int $attachments): array
+    {
+        return [
+            ['label' => 'Total Form Terkirim', 'value' => (string) $submitted, 'icon' => 'bi-send-check', 'accent' => 'success'],
+            ['label' => 'Draft', 'value' => (string) $drafts, 'icon' => 'bi-journal-richtext', 'accent' => 'warning'],
+            ['label' => 'Perlu Revisi', 'value' => (string) $revisions, 'icon' => 'bi-arrow-repeat', 'accent' => 'danger'],
+            ['label' => 'Dokumen Uploaded', 'value' => (string) $attachments, 'icon' => 'bi-file-earmark-arrow-up', 'accent' => 'info'],
+        ];
+    }
+
+    private static function profileMasterDataOptions(string $column, ?string $category = null): array
+    {
+        return MasterDataRecord::query()
+            ->when($category, fn ($query) => $query->where('document_category', $category))
+            ->where('status', 'active')
+            ->whereNotNull($column)
+            ->where($column, '<>', '')
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column)
+            ->all();
+    }
+
+    private static function profileUsertypeLabel(?string $usertype): string
+    {
+        return match ($usertype) {
+            'admin' => 'Admin',
+            'user' => 'User',
+            default => '-',
+        };
+    }
+
+    private static function profilePositionLabel(string $role): string
+    {
+        return match ($role) {
+            'qc' => 'QC Inspector',
+            'commissioning' => 'Commissioning Inspector',
+            'pgo' => 'PGO',
+            'approval' => 'Approval',
+            default => '-',
+        };
     }
 
     private static function templateCatalog(): array

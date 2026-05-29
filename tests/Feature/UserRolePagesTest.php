@@ -297,6 +297,106 @@ class UserRolePagesTest extends TestCase
             ->assertDontSee('Commissioning - ID Fan IF-02');
     }
 
+    public function test_qc_profile_uses_real_user_master_data_and_submission_stats(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Real QC User',
+            'email' => 'real-qc@example.test',
+            'phone' => '081234567890',
+            'usertype' => 'user',
+            'role' => 'qc',
+        ]);
+        $otherUser = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-PROFILE-001',
+            'name' => 'Template Profile QC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-PROFILE-001',
+            'equipment_no' => 'EQ-QC-PROFILE-001',
+            'section_no' => 'SEC-QC-PROFILE-001',
+            'description' => 'Profile QC Equipment',
+            'plant' => 'TONASA REAL',
+            'area' => 'REAL AREA',
+            'status' => 'active',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-PROFILE-001',
+            'equipment_no' => 'EQ-COM-PROFILE-001',
+            'section_no' => 'SEC-COM-PROFILE-001',
+            'description' => 'Commissioning Profile Equipment',
+            'plant' => 'COMMISSIONING ONLY PLANT',
+            'area' => 'COMMISSIONING ONLY AREA',
+            'status' => 'active',
+        ]);
+
+        $submitted = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '011/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => Carbon::parse('2026-05-29 09:00'),
+            'equipment' => 'Profile QC Equipment',
+            'plant' => 'TONASA REAL',
+            'area' => 'REAL AREA',
+        ]);
+        $submitted->attachments()->create([
+            'field_key' => 'foto_before',
+            'label' => 'Foto Before',
+            'file_path' => 'qc-submissions/test.jpg',
+            'original_name' => 'test.jpg',
+            'mime_type' => 'image/jpeg',
+            'size' => 100,
+            'type' => 'image',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '012/QC/05-2026',
+            'status' => 'draft',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '013/QC/05-2026',
+            'status' => 'revision_required',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $otherUser->id,
+            'form_number' => '014/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => Carbon::parse('2026-05-29 10:00'),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.profile'))
+            ->assertOk()
+            ->assertSee('Real QC User')
+            ->assertSee('real-qc@example.test')
+            ->assertSee('081234567890')
+            ->assertSee('TONASA REAL')
+            ->assertSee('REAL AREA')
+            ->assertSee('Total Form Terkirim')
+            ->assertSee('Dokumen Uploaded')
+            ->assertDontSee('Cement Plant 1')
+            ->assertDontSee('Raw Mill, Kiln, Utilities')
+            ->assertDontSee('COMMISSIONING ONLY PLANT');
+    }
+
     public function test_equipment_dashboard_uses_server_side_filter_and_pagination(): void
     {
         $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);

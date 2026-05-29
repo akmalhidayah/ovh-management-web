@@ -67,8 +67,8 @@
                 <div><dt>Nomor HP</dt><dd>{{ $profile['phone'] ?: '-' }}</dd></div>
                 <div><dt>Usertype</dt><dd>{{ $profile['usertype'] }}</dd></div>
                 <div><dt>Role</dt><dd>{{ $profile['role'] }}</dd></div>
-                <div><dt>Plant Terkait</dt><dd>{{ implode(', ', $profile['plants']) }}</dd></div>
-                <div><dt>Area Terkait</dt><dd>{{ implode(', ', $profile['areas']) }}</dd></div>
+                <div><dt>Plant Terkait</dt><dd>{{ filled($profile['plants'] ?? []) ? implode(', ', $profile['plants']) : '-' }}</dd></div>
+                <div><dt>Area Terkait</dt><dd>{{ filled($profile['areas'] ?? []) ? implode(', ', $profile['areas']) : '-' }}</dd></div>
                 <div><dt>Jabatan</dt><dd>{{ $profile['position'] }}</dd></div>
             </dl>
         </x-user.action-card>
