@@ -664,7 +664,8 @@ class UserRoleUiData
 
         $baseRecordsQuery = MasterDataRecord::query()
             ->where('document_category', $category)
-            ->where('status', 'active');
+            ->where('status', 'active')
+            ->when(self::preferredProfileAreas(), fn ($query, array $areas) => $query->whereIn('area', $areas));
 
         $plantOptions = (clone $baseRecordsQuery)
             ->whereNotNull('plant')
@@ -1099,8 +1100,9 @@ class UserRoleUiData
             'photo_url' => $user?->profilePhotoUrl(),
             'usertype' => self::profileUsertypeLabel($user?->usertype),
             'role' => self::layout($role)['role_label'],
-            'plants' => self::profileMasterDataOptions('plant', $category),
-            'areas' => self::profileMasterDataOptions('area', $category),
+            'plants' => self::profilePlants($category),
+            'areas' => self::profileAreas($category),
+            'area_options' => self::profileMasterDataOptions('area', $category),
             'position' => self::profilePositionLabel($role),
         ];
     }
@@ -1153,6 +1155,49 @@ class UserRoleUiData
             ->distinct()
             ->orderBy($column)
             ->pluck($column)
+            ->all();
+    }
+
+    private static function profileAreas(?string $category): array
+    {
+        $areas = self::preferredProfileAreas();
+
+        return $areas ?: self::profileMasterDataOptions('area', $category);
+    }
+
+    private static function profilePlants(?string $category): array
+    {
+        $user = auth()->user();
+        $plants = collect($user?->profile_plants ?? [])->filter()->values()->all();
+
+        if ($plants) {
+            return $plants;
+        }
+
+        $areas = self::preferredProfileAreas();
+
+        if (! $areas) {
+            return self::profileMasterDataOptions('plant', $category);
+        }
+
+        return MasterDataRecord::query()
+            ->when($category, fn ($query) => $query->where('document_category', $category))
+            ->where('status', 'active')
+            ->whereIn('area', $areas)
+            ->whereNotNull('plant')
+            ->where('plant', '<>', '')
+            ->distinct()
+            ->orderBy('plant')
+            ->pluck('plant')
+            ->all();
+    }
+
+    private static function preferredProfileAreas(): array
+    {
+        return collect(auth()->user()?->profile_areas ?? [])
+            ->filter()
+            ->unique()
+            ->values()
             ->all();
     }
 

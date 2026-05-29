@@ -28,6 +28,8 @@ class User extends Authenticatable
         'usertype',
         'role',
         'profile_photo_path',
+        'profile_plants',
+        'profile_areas',
     ];
 
     /**
@@ -50,6 +52,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'profile_plants' => 'array',
+            'profile_areas' => 'array',
         ];
     }
 

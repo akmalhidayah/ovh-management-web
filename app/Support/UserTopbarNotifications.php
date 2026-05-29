@@ -60,6 +60,7 @@ class UserTopbarNotifications
         return MasterDataRecord::query()
             ->where('document_category', $category)
             ->where('status', 'active')
+            ->when(self::preferredProfileAreas(), fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->where(fn ($query) => $query
                 ->whereNull('inspection_status')
                 ->orWhere('inspection_status', ''))
@@ -122,5 +123,14 @@ class UserTopbarNotifications
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
             || (filled($functionalLocation) && (string) $functionalLocation === (string) $record->func_location)
             || (filled($equipmentNo) && filled($record->equipment_no) && (string) $equipmentNo === (string) $record->equipment_no);
+    }
+
+    private static function preferredProfileAreas(): array
+    {
+        return collect(auth()->user()?->profile_areas ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

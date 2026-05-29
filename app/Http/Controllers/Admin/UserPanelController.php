@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissioningFormSubmission;
+use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\User;
 use App\Services\InspectionSubmissionDeletionService;
@@ -57,6 +58,7 @@ class UserPanelController extends Controller
             'summary' => $this->summary(),
             'defaultPassword' => self::DEFAULT_PASSWORD,
             'publicRegistrationEnabled' => PublicRegistrationAccess::enabled(),
+            'workAreaOptions' => $this->workAreaOptions(),
         ]);
     }
 
@@ -208,12 +210,30 @@ class UserPanelController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'usertype' => ['required', Rule::in(array_keys(self::usertypeOptions()))],
             'role' => ['required', Rule::in(array_keys(self::roleOptions()))],
+            'profile_areas' => ['nullable', 'array'],
+            'profile_areas.*' => ['string', Rule::in($this->allWorkAreaOptions())],
         ]);
 
         if ($validated['usertype'] === 'admin') {
             $validated['role'] = 'admin';
         } elseif ($validated['role'] === 'admin') {
             $validated['role'] = 'qc';
+        }
+
+        if (in_array($validated['role'], ['qc', 'commissioning'], true)) {
+            $areas = collect($validated['profile_areas'] ?? [])
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $validated['profile_areas'] = $areas ?: null;
+            $validated['profile_plants'] = $areas
+                ? $this->plantsForAreas($validated['role'], $areas)
+                : null;
+        } else {
+            $validated['profile_areas'] = null;
+            $validated['profile_plants'] = null;
         }
 
         return $validated;
@@ -246,6 +266,54 @@ class UserPanelController extends Controller
             'user' => User::where('usertype', 'user')->count(),
             'approval' => User::where('role', 'approval')->count(),
         ];
+    }
+
+    private function workAreaOptions(): array
+    {
+        return [
+            'qc' => $this->workAreaOptionsFor(MasterDataRecord::CATEGORY_QC),
+            'commissioning' => $this->workAreaOptionsFor(MasterDataRecord::CATEGORY_COMMISSIONING),
+        ];
+    }
+
+    private function allWorkAreaOptions(): array
+    {
+        return collect($this->workAreaOptions())
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function workAreaOptionsFor(string $category): array
+    {
+        return MasterDataRecord::query()
+            ->where('document_category', $category)
+            ->where('status', 'active')
+            ->whereNotNull('area')
+            ->where('area', '<>', '')
+            ->distinct()
+            ->orderBy('area')
+            ->pluck('area')
+            ->all();
+    }
+
+    private function plantsForAreas(string $role, array $areas): array
+    {
+        $category = $role === 'qc'
+            ? MasterDataRecord::CATEGORY_QC
+            : MasterDataRecord::CATEGORY_COMMISSIONING;
+
+        return MasterDataRecord::query()
+            ->where('document_category', $category)
+            ->where('status', 'active')
+            ->whereIn('area', $areas)
+            ->whereNotNull('plant')
+            ->where('plant', '<>', '')
+            ->distinct()
+            ->orderBy('plant')
+            ->pluck('plant')
+            ->all();
     }
 
     private function logStatus(string $event, array $context = []): void

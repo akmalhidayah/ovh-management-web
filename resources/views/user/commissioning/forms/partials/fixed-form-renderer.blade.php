@@ -25,6 +25,9 @@
         $areaOptions->push($selectedArea);
     }
     $areaOptions = $areaOptions->sort()->values();
+    if (! $selectedArea && $areaOptions->isNotEmpty()) {
+        $selectedArea = $areaOptions->first();
+    }
     $masterDataOptions = $masterDataRecords->map(fn ($record) => [
         'id' => (string) $record->id,
         'tahun' => (string) ($record->year ?? ''),

@@ -656,10 +656,12 @@ class FormController extends Controller
     private function activeMasterDataRecords(?CommissioningFormSubmission $currentSubmission = null)
     {
         $used = $this->usedMasterDataKeys($currentSubmission);
+        $profileAreas = collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all();
 
         return MasterDataRecord::query()
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->where('status', 'active')
+            ->when($profileAreas, fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->orderBy('func_location')
             ->orderBy('equipment_no')
             ->get()
@@ -692,6 +694,10 @@ class FormController extends Controller
         $record = MasterDataRecord::whereKey($request->input('header.master_data_record_id'))
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->where('status', 'active')
+            ->when(
+                collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all(),
+                fn ($query, array $areas) => $query->whereIn('area', $areas)
+            )
             ->first();
 
         if (

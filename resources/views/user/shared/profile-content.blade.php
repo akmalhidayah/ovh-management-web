@@ -50,6 +50,20 @@
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" value="{{ $profile['email'] }}" readonly>
                     </div>
+                    @if (in_array($roleUi['role'], ['qc', 'commissioning'], true))
+                        @php
+                            $selectedProfileAreas = old('profile_areas', $profile['areas'] ?? []);
+                        @endphp
+                        <div class="col-12">
+                            <label class="form-label">Area Terkait</label>
+                            <select name="profile_areas[]" class="form-select profile-area-select" multiple size="6">
+                                @foreach ($profile['area_options'] ?? [] as $areaOption)
+                                    <option value="{{ $areaOption }}" @selected(in_array($areaOption, $selectedProfileAreas, true))>{{ $areaOption }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Pilih satu atau beberapa area. Kosongkan pilihan untuk menampilkan semua area.</small>
+                        </div>
+                    @endif
                     <div class="col-12 d-flex flex-column flex-sm-row gap-2">
                         <button type="submit" class="btn btn-primary">Simpan Profil</button>
                         <button type="reset" class="btn btn-outline-secondary">Reset</button>

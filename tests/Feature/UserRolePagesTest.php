@@ -443,6 +443,125 @@ class UserRolePagesTest extends TestCase
             ->assertDontSee('COMMISSIONING ONLY PLANT');
     }
 
+    public function test_qc_user_can_update_profile_areas_and_filter_dashboard_and_form(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+        QcFormTemplate::create([
+            'code' => 'QC-AREA-FILTER',
+            'name' => 'Template Area Filter QC',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => 'general',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-AREA-001',
+            'equipment_no' => 'EQ-QC-AREA-001',
+            'section_no' => 'SEC-QC-AREA-001',
+            'description' => 'Allowed Area Equipment',
+            'plant' => 'TONASA ALLOWED',
+            'area' => 'AREA ALLOWED',
+            'status' => 'active',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-AREA-002',
+            'equipment_no' => 'EQ-QC-AREA-002',
+            'section_no' => 'SEC-QC-AREA-002',
+            'description' => 'Hidden Area Equipment',
+            'plant' => 'TONASA HIDDEN',
+            'area' => 'AREA HIDDEN',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.profile.update'), [
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'profile_areas' => ['AREA ALLOWED'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $user->refresh();
+        $this->assertSame(['AREA ALLOWED'], $user->profile_areas);
+        $this->assertSame(['TONASA ALLOWED'], $user->profile_plants);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.dashboard'))
+            ->assertOk()
+            ->assertSee('Allowed Area Equipment')
+            ->assertDontSee('Hidden Area Equipment');
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create'))
+            ->assertOk()
+            ->assertSee('AREA ALLOWED')
+            ->assertDontSee('AREA HIDDEN');
+    }
+
+    public function test_commissioning_user_profile_areas_filter_dashboard_and_form(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'commissioning']);
+        CommissioningFormTemplate::create([
+            'code' => 'COM-AREA-FILTER',
+            'name' => 'Template Area Filter Commissioning',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-AREA-001',
+            'equipment_no' => 'EQ-COM-AREA-001',
+            'section_no' => 'SEC-COM-AREA-001',
+            'description' => 'Allowed Commissioning Equipment',
+            'plant' => 'TONASA COM ALLOWED',
+            'area' => 'COM AREA ALLOWED',
+            'status' => 'active',
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-AREA-002',
+            'equipment_no' => 'EQ-COM-AREA-002',
+            'section_no' => 'SEC-COM-AREA-002',
+            'description' => 'Hidden Commissioning Equipment',
+            'plant' => 'TONASA COM HIDDEN',
+            'area' => 'COM AREA HIDDEN',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('user.commissioning.profile.update'), [
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'profile_areas' => ['COM AREA ALLOWED'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.dashboard'))
+            ->assertOk()
+            ->assertSee('Allowed Commissioning Equipment')
+            ->assertDontSee('Hidden Commissioning Equipment');
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create'))
+            ->assertOk()
+            ->assertSee('COM AREA ALLOWED')
+            ->assertDontSee('COM AREA HIDDEN');
+    }
+
     public function test_equipment_dashboard_uses_server_side_filter_and_pagination(): void
     {
         $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);

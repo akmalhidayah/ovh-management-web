@@ -1304,9 +1304,12 @@ class FormController extends Controller
 
     private function activeQcMasterDataRecords()
     {
+        $profileAreas = collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all();
+
         return MasterDataRecord::query()
             ->where('document_category', MasterDataRecord::CATEGORY_QC)
             ->where('status', 'active')
+            ->when($profileAreas, fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->orderBy('func_location')
             ->orderBy('equipment_no')
             ->get();
@@ -1342,6 +1345,10 @@ class FormController extends Controller
             ->whereKey($recordId)
             ->where('document_category', MasterDataRecord::CATEGORY_QC)
             ->where('status', 'active')
+            ->when(
+                collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all(),
+                fn ($query, array $areas) => $query->whereIn('area', $areas)
+            )
             ->first();
     }
 

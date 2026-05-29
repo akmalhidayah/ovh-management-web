@@ -184,6 +184,7 @@
                                             data-phone="{{ $user->phone }}"
                                             data-usertype="{{ $user->usertype }}"
                                             data-role="{{ $user->role }}"
+                                            data-profile-areas='@json($user->profile_areas ?? [])'
                                             title="Edit user"
                                             aria-label="Edit user">
                                         <i class="bi bi-pencil-square"></i>
@@ -227,6 +228,7 @@
         'method' => null,
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
+        'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => $defaultPassword,
     ])
 
@@ -237,6 +239,7 @@
         'method' => 'PUT',
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
+        'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => null,
     ])
 @endsection
@@ -258,6 +261,7 @@
         .userpanel-actions form { display: inline-flex; }
         .userpanel-type-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
         .userpanel-type-toggle .btn { min-height: 42px; font-weight: 800; }
+        .userpanel-area-select { min-height: 9rem; }
         .page-actions form { display: inline-flex; }
     </style>
 @endpush
@@ -275,6 +279,28 @@
                 } else if (role.value === 'admin') {
                     role.value = 'qc';
                 }
+
+                syncAreaField(form);
+            };
+
+            const syncAreaField = (form) => {
+                const role = form.querySelector('[name="role"]')?.value;
+                const group = form.querySelector('[data-userpanel-area-group]');
+                const select = form.querySelector('[data-userpanel-area-select]');
+                if (!group || !select) return;
+
+                const active = ['qc', 'commissioning'].includes(role);
+                group.classList.toggle('d-none', !active);
+                select.disabled = !active;
+
+                select.querySelectorAll('option').forEach((option) => {
+                    const optionActive = !active || option.dataset.role === role;
+                    option.hidden = !optionActive;
+                    option.disabled = !optionActive;
+                    if (!optionActive) {
+                        option.selected = false;
+                    }
+                });
             };
 
             document.querySelectorAll('[data-userpanel-form]').forEach((form) => {
@@ -302,6 +328,11 @@
 
                 const typeInput = form.querySelector(`input[name="usertype"][value="${button.dataset.usertype}"]`);
                 if (typeInput) typeInput.checked = true;
+
+                const selectedAreas = JSON.parse(button.dataset.profileAreas || '[]');
+                form.querySelectorAll('[name="profile_areas[]"]').forEach((option) => {
+                    option.selected = selectedAreas.includes(option.value);
+                });
 
                 syncRoleByType(form);
             });

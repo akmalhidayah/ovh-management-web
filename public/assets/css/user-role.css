@@ -1485,6 +1485,10 @@ body.inspector-body {
     font-weight: 700;
 }
 
+.profile-area-select {
+    min-height: 10rem;
+}
+
 .qc-upload-message:not(:empty) {
     padding: 0.45rem 0.55rem;
     border-radius: 8px;

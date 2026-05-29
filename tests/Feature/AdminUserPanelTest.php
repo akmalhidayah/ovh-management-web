@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
+use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\User;
@@ -82,6 +83,45 @@ class AdminUserPanelTest extends TestCase
         $this->assertSame('PGO Updated', $user->name);
         $this->assertSame('pgo', $user->role);
         $this->assertTrue(Hash::check('existing-password', $user->password));
+    }
+
+    public function test_admin_can_update_qc_user_work_areas(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $user = User::factory()->create([
+            'usertype' => 'user',
+            'role' => 'qc',
+            'profile_areas' => ['OLD AREA'],
+        ]);
+
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-ADMIN-AREA-001',
+            'equipment_no' => 'EQ-ADMIN-AREA-001',
+            'section_no' => 'SEC-ADMIN-AREA-001',
+            'description' => 'Admin Area Equipment',
+            'plant' => 'TONASA ADMIN',
+            'area' => 'ADMIN AREA',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.user-panel.update', $user), [
+                'name' => 'QC Area Updated',
+                'email' => 'qc.area.updated@ovh.test',
+                'phone' => '0800000001',
+                'usertype' => 'user',
+                'role' => 'qc',
+                'profile_areas' => ['ADMIN AREA'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $user->refresh();
+
+        $this->assertSame(['ADMIN AREA'], $user->profile_areas);
+        $this->assertSame(['TONASA ADMIN'], $user->profile_plants);
     }
 
     public function test_admin_cannot_demote_own_account_to_user(): void

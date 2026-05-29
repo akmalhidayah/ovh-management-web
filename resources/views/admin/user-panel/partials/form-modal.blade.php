@@ -51,6 +51,22 @@
                             </select>
                             <div class="form-text">Jika tipe akun Admin dipilih, role otomatis menjadi Admin.</div>
                         </div>
+                        <div class="col-12" data-userpanel-area-group>
+                            <label class="form-label">Area Terkait</label>
+                            <select name="profile_areas[]" class="form-select userpanel-area-select" multiple size="7" data-userpanel-area-select>
+                                <optgroup label="Quality Control">
+                                    @foreach (($workAreaOptions['qc'] ?? []) as $area)
+                                        <option value="{{ $area }}" data-role="qc" @selected(in_array($area, old('profile_areas', []), true))>{{ $area }}</option>
+                                    @endforeach
+                                </optgroup>
+                                <optgroup label="Commissioning">
+                                    @foreach (($workAreaOptions['commissioning'] ?? []) as $area)
+                                        <option value="{{ $area }}" data-role="commissioning" @selected(in_array($area, old('profile_areas', []), true))>{{ $area }}</option>
+                                    @endforeach
+                                </optgroup>
+                            </select>
+                            <div class="form-text">Untuk user QC/Commissioning. Kosongkan pilihan untuk menampilkan semua area.</div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

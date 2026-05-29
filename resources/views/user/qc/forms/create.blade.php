@@ -18,6 +18,9 @@
             $areaOptions->push($selectedArea);
             $areaOptions = $areaOptions->sort()->values();
         }
+        if (! $selectedArea && $areaOptions->isNotEmpty()) {
+            $selectedArea = $areaOptions->first();
+        }
     @endphp
 
     <div class="user-simple-form-header qc-template-form-heading">
