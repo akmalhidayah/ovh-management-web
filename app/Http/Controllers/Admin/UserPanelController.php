@@ -145,6 +145,38 @@ class UserPanelController extends Controller
         return back()->with('success', "Data {$user->name} berhasil diperbarui.");
     }
 
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        if ($request->user()?->is($user)) {
+            $this->logStatus('admin_user_self_delete_blocked', [
+                'target_user_id' => $user->id,
+                'status_code' => 403,
+            ]);
+
+            return back()->withErrors(['user' => 'Akun admin yang sedang login tidak bisa dihapus.']);
+        }
+
+        $name = $user->name;
+
+        try {
+            $user->delete();
+        } catch (Throwable $exception) {
+            $this->logError(self::ERROR_UPDATE, $exception, [
+                'target_user_id' => $user->id,
+                'status_code' => 500,
+            ]);
+
+            return back()->withErrors(['user' => 'User gagal dihapus. Kode error: '.self::ERROR_UPDATE]);
+        }
+
+        $this->logStatus('admin_user_deleted', [
+            'target_user_id' => $user->id,
+            'status_code' => 200,
+        ]);
+
+        return back()->with('success', "Akun {$name} berhasil dihapus.");
+    }
+
     private function validateUser(Request $request, ?User $user = null): array
     {
         $validated = $request->validate([

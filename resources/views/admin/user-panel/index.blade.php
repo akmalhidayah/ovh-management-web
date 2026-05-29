@@ -173,20 +173,37 @@
                                 <div class="text-muted small">{{ $user->updated_at?->format('H:i') ?: '-' }}</div>
                             </td>
                             <td class="text-end">
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary userpanel-icon-btn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editUserModal"
-                                        data-update-url="{{ route('admin.user-panel.update', $user) }}"
-                                        data-name="{{ $user->name }}"
-                                        data-email="{{ $user->email }}"
-                                        data-phone="{{ $user->phone }}"
-                                        data-usertype="{{ $user->usertype }}"
-                                        data-role="{{ $user->role }}"
-                                        title="Edit user"
-                                        aria-label="Edit user">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
+                                <div class="userpanel-actions">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary userpanel-icon-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editUserModal"
+                                            data-update-url="{{ route('admin.user-panel.update', $user) }}"
+                                            data-name="{{ $user->name }}"
+                                            data-email="{{ $user->email }}"
+                                            data-phone="{{ $user->phone }}"
+                                            data-usertype="{{ $user->usertype }}"
+                                            data-role="{{ $user->role }}"
+                                            title="Edit user"
+                                            aria-label="Edit user">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    @unless (auth()->id() === $user->id)
+                                        <form method="POST"
+                                              action="{{ route('admin.user-panel.destroy', $user) }}"
+                                              data-delete-user-form
+                                              data-delete-label="{{ $user->name }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger userpanel-icon-btn"
+                                                    title="Hapus user"
+                                                    aria-label="Hapus user">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endunless
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -237,6 +254,8 @@
         .userpanel-name { color: #172033; font-weight: 800; line-height: 1.2; }
         .userpanel-table .badge { padding: .38rem .58rem; border-radius: .45rem; font-weight: 750; }
         .userpanel-icon-btn { width: 2.05rem; height: 2.05rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+        .userpanel-actions { display: inline-flex; justify-content: flex-end; gap: .4rem; }
+        .userpanel-actions form { display: inline-flex; }
         .userpanel-type-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
         .userpanel-type-toggle .btn { min-height: 42px; font-weight: 800; }
         .page-actions form { display: inline-flex; }
@@ -303,6 +322,30 @@
                         confirmButtonText: `Ya, ${action}`,
                         cancelButtonText: 'Batal',
                         confirmButtonColor: action === 'aktifkan' ? '#198754' : '#dc3545',
+                    });
+
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-delete-user-form]').forEach((form) => {
+                form.addEventListener('submit', async (event) => {
+                    if (!window.Swal) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    const label = form.dataset.deleteLabel || 'akun ini';
+                    const result = await Swal.fire({
+                        title: 'Apakah Anda yakin?',
+                        text: `Akun ${label} akan dihapus permanen.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, hapus',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#dc3545',
                     });
 
                     if (result.isConfirmed) {

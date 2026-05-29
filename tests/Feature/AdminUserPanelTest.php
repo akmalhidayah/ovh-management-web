@@ -101,6 +101,40 @@ class AdminUserPanelTest extends TestCase
         $this->assertSame('admin', $admin->role);
     }
 
+    public function test_admin_can_delete_other_user_account(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $user = User::factory()->create([
+            'name' => 'User Hapus',
+            'email' => 'hapus@ovh.test',
+            'usertype' => 'user',
+            'role' => 'qc',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.user-panel.destroy', $user))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Akun User Hapus berhasil dihapus.');
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_cannot_delete_own_account(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.user-panel.destroy', $admin))
+            ->assertRedirect()
+            ->assertSessionHasErrors('user');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+        ]);
+    }
+
     public function test_admin_can_toggle_public_registration_access(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

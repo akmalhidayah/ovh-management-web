@@ -138,6 +138,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
     Route::patch('/user-panel/registration-access', [UserPanelController::class, 'toggleRegistration'])->name('user-panel.registration-access');
     Route::put('/user-panel/{user}', [UserPanelController::class, 'update'])->name('user-panel.update');
+    Route::delete('/user-panel/{user}', [UserPanelController::class, 'destroy'])->name('user-panel.destroy');
 });
 
 Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->group(function () {
