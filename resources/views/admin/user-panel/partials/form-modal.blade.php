@@ -53,18 +53,23 @@
                         </div>
                         <div class="col-12" data-userpanel-area-group>
                             <label class="form-label">Area Terkait</label>
-                            <select name="profile_areas[]" class="form-select userpanel-area-select" multiple size="7" data-userpanel-area-select>
-                                <optgroup label="Quality Control">
+                            <div class="area-picker" data-area-picker>
+                                <select class="form-select" data-userpanel-area-select data-area-picker-select>
+                                    <option value="">Pilih area</option>
                                     @foreach (($workAreaOptions['qc'] ?? []) as $area)
-                                        <option value="{{ $area }}" data-role="qc" @selected(in_array($area, old('profile_areas', []), true))>{{ $area }}</option>
+                                        <option value="{{ $area }}" data-role="qc">{{ $area }}</option>
                                     @endforeach
-                                </optgroup>
-                                <optgroup label="Commissioning">
                                     @foreach (($workAreaOptions['commissioning'] ?? []) as $area)
-                                        <option value="{{ $area }}" data-role="commissioning" @selected(in_array($area, old('profile_areas', []), true))>{{ $area }}</option>
+                                        <option value="{{ $area }}" data-role="commissioning">{{ $area }}</option>
                                     @endforeach
-                                </optgroup>
-                            </select>
+                                </select>
+                                <div class="area-picker-tags" data-area-picker-tags></div>
+                                <div data-area-picker-inputs>
+                                    @foreach (old('profile_areas', []) as $selectedArea)
+                                        <input type="hidden" name="profile_areas[]" value="{{ $selectedArea }}">
+                                    @endforeach
+                                </div>
+                            </div>
                             <div class="form-text">Untuk user QC/Commissioning. Kosongkan pilihan untuk menampilkan semua area.</div>
                         </div>
                     </div>

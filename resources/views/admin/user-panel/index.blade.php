@@ -261,7 +261,11 @@
         .userpanel-actions form { display: inline-flex; }
         .userpanel-type-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
         .userpanel-type-toggle .btn { min-height: 42px; font-weight: 800; }
-        .userpanel-area-select { min-height: 9rem; }
+        .area-picker { display: grid; gap: .55rem; }
+        .area-picker-tags { display: flex; flex-wrap: wrap; gap: .45rem; min-height: 2.45rem; padding: .45rem; border: 1px solid #d7dee8; border-radius: .75rem; background: #f8fafc; }
+        .area-picker-tags:empty::before { content: "Semua area"; color: #64748b; font-size: .88rem; }
+        .area-picker-tag { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .34rem .45rem .34rem .65rem; border-radius: 999px; background: #e8f1fb; color: #16324f; font-size: .84rem; font-weight: 800; }
+        .area-picker-remove { width: 1.25rem; height: 1.25rem; display: inline-grid; place-items: center; border: 0; border-radius: 999px; background: #d7e6f6; color: #16324f; line-height: 1; }
         .page-actions form { display: inline-flex; }
     </style>
 @endpush
@@ -294,13 +298,83 @@
                 select.disabled = !active;
 
                 select.querySelectorAll('option').forEach((option) => {
+                    if (!option.value) return;
                     const optionActive = !active || option.dataset.role === role;
                     option.hidden = !optionActive;
                     option.disabled = !optionActive;
                     if (!optionActive) {
-                        option.selected = false;
+                        removeAreaValue(form, option.value);
                     }
                 });
+            };
+
+            const selectedAreaValues = (form) => Array.from(form.querySelectorAll('[data-area-picker-inputs] input[name="profile_areas[]"]'))
+                .map((input) => input.value)
+                .filter(Boolean);
+
+            const renderAreaTags = (form) => {
+                const tags = form.querySelector('[data-area-picker-tags]');
+                if (!tags) return;
+
+                tags.innerHTML = '';
+                selectedAreaValues(form).forEach((area) => {
+                    const tag = document.createElement('span');
+                    tag.className = 'area-picker-tag';
+                    tag.textContent = area;
+
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'area-picker-remove';
+                    remove.setAttribute('aria-label', `Hapus ${area}`);
+                    remove.textContent = 'x';
+                    remove.addEventListener('click', () => removeAreaValue(form, area));
+
+                    tag.appendChild(remove);
+                    tags.appendChild(tag);
+                });
+            };
+
+            const addAreaValue = (form, area) => {
+                if (!area || selectedAreaValues(form).includes(area)) return;
+
+                const inputs = form.querySelector('[data-area-picker-inputs]');
+                if (!inputs) return;
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'profile_areas[]';
+                input.value = area;
+                inputs.appendChild(input);
+                renderAreaTags(form);
+            };
+
+            const removeAreaValue = (form, area) => {
+                form.querySelectorAll('[data-area-picker-inputs] input[name="profile_areas[]"]').forEach((input) => {
+                    if (input.value === area) {
+                        input.remove();
+                    }
+                });
+                renderAreaTags(form);
+            };
+
+            const resetAreaValues = (form, areas = []) => {
+                const inputs = form.querySelector('[data-area-picker-inputs]');
+                if (!inputs) return;
+
+                inputs.innerHTML = '';
+                areas.forEach((area) => addAreaValue(form, area));
+                renderAreaTags(form);
+            };
+
+            const setupAreaPicker = (form) => {
+                const select = form.querySelector('[data-area-picker-select]');
+                if (!select) return;
+
+                select.addEventListener('change', () => {
+                    addAreaValue(form, select.value);
+                    select.value = '';
+                });
+                renderAreaTags(form);
             };
 
             document.querySelectorAll('[data-userpanel-form]').forEach((form) => {
@@ -308,6 +382,7 @@
                     input.addEventListener('change', () => syncRoleByType(form));
                 });
                 form.querySelector('[name="role"]')?.addEventListener('change', () => syncRoleByType(form));
+                setupAreaPicker(form);
                 syncRoleByType(form);
             });
 
@@ -329,10 +404,7 @@
                 const typeInput = form.querySelector(`input[name="usertype"][value="${button.dataset.usertype}"]`);
                 if (typeInput) typeInput.checked = true;
 
-                const selectedAreas = JSON.parse(button.dataset.profileAreas || '[]');
-                form.querySelectorAll('[name="profile_areas[]"]').forEach((option) => {
-                    option.selected = selectedAreas.includes(option.value);
-                });
+                resetAreaValues(form, JSON.parse(button.dataset.profileAreas || '[]'));
 
                 syncRoleByType(form);
             });

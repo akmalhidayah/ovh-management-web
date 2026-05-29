@@ -56,11 +56,20 @@
                         @endphp
                         <div class="col-12">
                             <label class="form-label">Area Terkait</label>
-                            <select name="profile_areas[]" class="form-select profile-area-select" multiple size="6">
-                                @foreach ($profile['area_options'] ?? [] as $areaOption)
-                                    <option value="{{ $areaOption }}" @selected(in_array($areaOption, $selectedProfileAreas, true))>{{ $areaOption }}</option>
-                                @endforeach
-                            </select>
+                            <div class="area-picker" data-area-picker>
+                                <select class="form-select" data-area-picker-select>
+                                    <option value="">Pilih area</option>
+                                    @foreach ($profile['area_options'] ?? [] as $areaOption)
+                                        <option value="{{ $areaOption }}">{{ $areaOption }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="area-picker-tags" data-area-picker-tags></div>
+                                <div data-area-picker-inputs>
+                                    @foreach ($selectedProfileAreas as $selectedArea)
+                                        <input type="hidden" name="profile_areas[]" value="{{ $selectedArea }}">
+                                    @endforeach
+                                </div>
+                            </div>
                             <small class="text-muted">Pilih satu atau beberapa area. Kosongkan pilihan untuk menampilkan semua area.</small>
                         </div>
                     @endif
@@ -98,3 +107,65 @@
         </x-user.action-card>
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        (() => {
+            document.querySelectorAll('[data-area-picker]').forEach((picker) => {
+                const select = picker.querySelector('[data-area-picker-select]');
+                const tags = picker.querySelector('[data-area-picker-tags]');
+                const inputs = picker.querySelector('[data-area-picker-inputs]');
+
+                if (!select || !tags || !inputs) {
+                    return;
+                }
+
+                const selectedValues = () => Array.from(inputs.querySelectorAll('input[name="profile_areas[]"]'))
+                    .map((input) => input.value)
+                    .filter(Boolean);
+
+                const render = () => {
+                    tags.innerHTML = '';
+
+                    selectedValues().forEach((area) => {
+                        const tag = document.createElement('span');
+                        tag.className = 'area-picker-tag';
+                        tag.textContent = area;
+
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.className = 'area-picker-remove';
+                        remove.setAttribute('aria-label', `Hapus ${area}`);
+                        remove.textContent = 'x';
+                        remove.addEventListener('click', () => {
+                            inputs.querySelectorAll('input[name="profile_areas[]"]').forEach((input) => {
+                                if (input.value === area) {
+                                    input.remove();
+                                }
+                            });
+                            render();
+                        });
+
+                        tag.appendChild(remove);
+                        tags.appendChild(tag);
+                    });
+                };
+
+                select.addEventListener('change', () => {
+                    const area = select.value;
+                    if (area && !selectedValues().includes(area)) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'profile_areas[]';
+                        input.value = area;
+                        inputs.appendChild(input);
+                        render();
+                    }
+                    select.value = '';
+                });
+
+                render();
+            });
+        })();
+    </script>
+@endpush

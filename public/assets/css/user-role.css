@@ -1485,8 +1485,51 @@ body.inspector-body {
     font-weight: 700;
 }
 
-.profile-area-select {
-    min-height: 10rem;
+.area-picker {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.area-picker-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    min-height: 2.45rem;
+    padding: 0.45rem;
+    border: 1px solid #d7dee8;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+}
+
+.area-picker-tags:empty::before {
+    content: "Semua area";
+    color: var(--inspector-muted);
+    font-size: 0.88rem;
+}
+
+.area-picker-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0.34rem 0.45rem 0.34rem 0.65rem;
+    border-radius: 999px;
+    background: #e8f1fb;
+    color: #16324f;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.area-picker-remove {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-grid;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: #d7e6f6;
+    color: #16324f;
+    line-height: 1;
 }
 
 .qc-upload-message:not(:empty) {
