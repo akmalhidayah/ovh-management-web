@@ -30,6 +30,7 @@ use App\Http\Controllers\User\Pgo\HistoryController as PgoHistoryController;
 use App\Http\Controllers\User\Pgo\MonitoringController as PgoMonitoringController;
 use App\Http\Controllers\User\Pgo\ProfileController as PgoProfileController;
 use App\Http\Controllers\User\Pgo\TaskController as PgoTaskController;
+use App\Http\Controllers\User\NotificationController as UserNotificationController;
 use App\Http\Controllers\User\Qc\DashboardController as QcDashboardController;
 use App\Http\Controllers\User\Qc\DraftController as QcDraftController;
 use App\Http\Controllers\User\Qc\FormController as QcFormController;
@@ -147,6 +148,8 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/drafts', [QcDraftController::class, 'index'])->name('drafts.index');
         Route::get('/history', [QcHistoryController::class, 'index'])->name('history.index');
         Route::redirect('/documents', '/user/qc/history')->name('documents.index');
+        Route::post('/notifications/read-all', [UserNotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::get('/notifications/{masterDataRecord}/open', [UserNotificationController::class, 'open'])->name('notifications.open');
         Route::get('/submissions/{submission}/edit', [QcFormController::class, 'edit'])->name('submissions.edit');
         Route::patch('/submissions/{submission}', [QcFormController::class, 'update'])->name('submissions.update');
         Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show');
@@ -166,6 +169,8 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::get('/drafts', [CommissioningDraftController::class, 'index'])->name('drafts.index');
         Route::get('/history', [CommissioningHistoryController::class, 'index'])->name('history.index');
         Route::redirect('/documents', '/user/commissioning/history')->name('documents.index');
+        Route::post('/notifications/read-all', [UserNotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::get('/notifications/{masterDataRecord}/open', [UserNotificationController::class, 'open'])->name('notifications.open');
         Route::get('/submissions/{submission}/edit', [CommissioningFormController::class, 'edit'])->name('submissions.edit');
         Route::patch('/submissions/{submission}', [CommissioningFormController::class, 'update'])->name('submissions.update');
         Route::get('/submissions/{submission}', [CommissioningFormController::class, 'show'])->name('submissions.show');

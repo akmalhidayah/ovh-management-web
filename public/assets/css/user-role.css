@@ -224,14 +224,28 @@ body.inspector-body {
     border-bottom: 1px solid #e5e7eb;
 }
 
+.user-notification-head > div {
+    display: grid;
+    gap: .12rem;
+}
+
 .user-notification-head span {
     color: #64748b;
     font-size: .78rem;
 }
 
+.user-notification-read-all {
+    border: 0;
+    background: transparent;
+    color: #8f2231;
+    font-size: .78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
 .user-notification-item {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     gap: .55rem .65rem;
     padding: .72rem .65rem;
     border-radius: .7rem;
@@ -242,6 +256,21 @@ body.inspector-body {
 .user-notification-item:hover {
     background: #f8fafc;
     color: #172033;
+}
+
+.user-notification-item.is-read {
+    opacity: .72;
+}
+
+.user-notification-state {
+    align-self: start;
+    color: #64748b;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.user-notification-item.is-unread .user-notification-state {
+    color: #dc2626;
 }
 
 .user-notification-type {
@@ -2740,6 +2769,12 @@ body.inspector-body {
     border-bottom: 1px solid #e5e7eb !important;
 }
 
+.inspector-topbar .user-notification-head > div {
+    display: grid !important;
+    gap: .12rem !important;
+    min-width: 0 !important;
+}
+
 .inspector-topbar .user-notification-head strong {
     color: #172033 !important;
     font-size: .95rem !important;
@@ -2752,15 +2787,29 @@ body.inspector-body {
     white-space: nowrap !important;
 }
 
+.inspector-topbar .user-notification-read-all {
+    border: 0 !important;
+    background: transparent !important;
+    color: #8f2231 !important;
+    font-size: .78rem !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+}
+
 .inspector-topbar .user-notification-item {
     display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
     gap: .55rem .65rem !important;
     padding: .72rem .65rem !important;
     border-radius: .75rem !important;
     color: #172033 !important;
     text-decoration: none !important;
     white-space: normal !important;
+}
+
+.inspector-topbar .user-notification-item.is-read {
+    opacity: .72 !important;
 }
 
 .inspector-topbar .user-notification-item:hover {
@@ -2807,6 +2856,18 @@ body.inspector-body {
     font-size: .78rem !important;
     line-height: 1.35 !important;
     overflow-wrap: anywhere !important;
+}
+
+.inspector-topbar .user-notification-state {
+    align-self: start !important;
+    color: #64748b !important;
+    font-size: .72rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+}
+
+.inspector-topbar .user-notification-item.is-unread .user-notification-state {
+    color: #dc2626 !important;
 }
 
 .inspector-topbar .user-notification-empty {

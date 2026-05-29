@@ -13,6 +13,7 @@ class AdminTopbarNotifications
         $qc = QcFormSubmission::query()
             ->whereIn('status', ['submitted', 'pending_approval'])
             ->whereNotNull('submitted_at')
+            ->with('user')
             ->latest('submitted_at')
             ->limit($limit)
             ->get()
@@ -21,6 +22,7 @@ class AdminTopbarNotifications
         $commissioning = CommissioningFormSubmission::query()
             ->whereIn('status', ['submitted', 'pending_approval'])
             ->whereNotNull('submitted_at')
+            ->with('user')
             ->latest('submitted_at')
             ->limit($limit)
             ->get()
@@ -55,6 +57,7 @@ class AdminTopbarNotifications
         return [
             'type' => 'QC',
             'title' => Str::limit($submission->form_number ?: 'Form QC', 42),
+            'description' => self::submittedByText($submission->user?->name, 'QC'),
             'meta' => Str::limit(collect([$submission->equipment, $submission->area])->filter()->implode(' / '), 58),
             'submitted_at' => $submission->submitted_at,
             'url' => route('admin.qc.submissions.pdf', $submission),
@@ -68,9 +71,17 @@ class AdminTopbarNotifications
         return [
             'type' => 'Commissioning',
             'title' => Str::limit($submission->form_number ?: 'Form Commissioning', 42),
+            'description' => self::submittedByText($submission->user?->name, 'Commissioning'),
             'meta' => Str::limit(collect([$submission->equipment, $header['area'] ?? $submission->area])->filter()->implode(' / '), 58),
             'submitted_at' => $submission->submitted_at,
             'url' => route('admin.commissioning.submissions.pdf', $submission),
         ];
+    }
+
+    private static function submittedByText(?string $name, string $type): string
+    {
+        $actor = filled($name) ? $name : 'User';
+
+        return Str::limit("{$actor} sudah membuat form {$type}.", 72);
     }
 }

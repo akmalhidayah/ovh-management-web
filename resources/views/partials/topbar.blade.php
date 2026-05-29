@@ -39,6 +39,9 @@
                         <span class="topbar-notification-type">{{ $item['type'] }}</span>
                         <span class="topbar-notification-body">
                             <strong>{{ $item['title'] }}</strong>
+                            @if (! empty($item['description']))
+                                <small>{{ $item['description'] }}</small>
+                            @endif
                             @if ($item['meta'])
                                 <small>{{ $item['meta'] }}</small>
                             @endif

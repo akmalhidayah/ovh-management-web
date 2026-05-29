@@ -3,6 +3,7 @@
     $profilePhotoUrl = $currentUser?->profilePhotoUrl();
     $userNotifications = \App\Support\UserTopbarNotifications::make($roleUi['role'] ?? '');
     $notificationCount = (int) ($userNotifications['count'] ?? 0);
+    $notificationTotal = (int) ($userNotifications['total'] ?? $notificationCount);
     $notificationItems = collect($userNotifications['items'] ?? []);
 @endphp
 
@@ -49,18 +50,30 @@
                     </button>
                     <div class="dropdown-menu dropdown-menu-end user-notification-menu">
                         <div class="user-notification-head">
-                            <strong>Notifikasi</strong>
-                            <span>{{ $notificationCount }} equipment aktif</span>
+                            <div>
+                                <strong>Notifikasi</strong>
+                                <span>{{ $notificationCount }} belum dibaca dari {{ $notificationTotal }} equipment aktif</span>
+                            </div>
+                            @if ($notificationCount > 0)
+                                <form method="POST" action="{{ route('user.'.$roleUi['role'].'.notifications.read-all') }}">
+                                    @csrf
+                                    <button type="submit" class="user-notification-read-all">Tandai dibaca</button>
+                                </form>
+                            @endif
                         </div>
                         @forelse ($notificationItems as $item)
-                            <a class="user-notification-item" href="{{ $item['url'] }}">
+                            <a class="user-notification-item {{ ! empty($item['is_read']) ? 'is-read' : 'is-unread' }}" href="{{ $item['url'] }}">
                                 <span class="user-notification-type">{{ $item['type'] }}</span>
                                 <span class="user-notification-body">
                                     <strong>{{ $item['title'] }}</strong>
+                                    @if (! empty($item['description']))
+                                        <small>{{ $item['description'] }}</small>
+                                    @endif
                                     @if ($item['meta'])
                                         <small>{{ $item['meta'] }}</small>
                                     @endif
                                 </span>
+                                <span class="user-notification-state">{{ ! empty($item['is_read']) ? 'Dibaca' : 'Baru' }}</span>
                             </a>
                         @empty
                             <div class="user-notification-empty">Belum ada equipment aktif baru.</div>

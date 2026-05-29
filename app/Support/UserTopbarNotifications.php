@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CommissioningFormSubmission;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
+use App\Models\UserNotificationRead;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -18,14 +19,31 @@ class UserTopbarNotifications
         }
 
         $records = self::availableRecords($role);
+        $readRecordIds = self::readRecordIds($role);
+        $unreadCount = $records
+            ->reject(fn (MasterDataRecord $record) => $readRecordIds->contains((int) $record->id))
+            ->count();
 
         return [
-            'count' => $records->count(),
+            'count' => $unreadCount,
+            'total' => $records->count(),
             'items' => $records
                 ->take($limit)
-                ->map(fn (MasterDataRecord $record) => self::item($record, $role))
+                ->map(fn (MasterDataRecord $record) => self::item($record, $role, $readRecordIds->contains((int) $record->id)))
                 ->values(),
         ];
+    }
+
+    public static function availableRecordIds(string $role): array
+    {
+        if (! in_array($role, ['qc', 'commissioning'], true)) {
+            return [];
+        }
+
+        return self::availableRecords($role)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     private static function availableRecords(string $role): Collection
@@ -58,21 +76,35 @@ class UserTopbarNotifications
             ->values();
     }
 
-    private static function item(MasterDataRecord $record, string $role): array
+    private static function item(MasterDataRecord $record, string $role, bool $isRead): array
     {
-        $route = $role === 'qc'
-            ? 'user.qc.forms.create'
-            : 'user.commissioning.forms.create';
+        $route = $role === 'qc' ? 'user.qc.notifications.open' : 'user.commissioning.notifications.open';
 
         return [
             'type' => $role === 'qc' ? 'QC' : 'Commissioning',
             'title' => Str::limit($record->description ?: 'Equipment baru', 44),
+            'description' => $role === 'qc'
+                ? 'Equipment baru aktif untuk dibuat form QC.'
+                : 'Equipment baru aktif untuk dibuat form Commissioning.',
             'meta' => Str::limit(collect([$record->section_no, $record->area, $record->plant])->filter()->implode(' / '), 64),
-            'url' => route($route, [
-                'master_data_record_id' => $record->id,
-                'area' => $record->area,
-            ]),
+            'url' => route($route, $record),
+            'is_read' => $isRead,
         ];
+    }
+
+    private static function readRecordIds(string $role): Collection
+    {
+        $userId = auth()->id();
+
+        if (! $userId) {
+            return collect();
+        }
+
+        return UserNotificationRead::query()
+            ->where('user_id', $userId)
+            ->where('role', $role)
+            ->pluck('master_data_record_id')
+            ->map(fn ($id) => (int) $id);
     }
 
     private static function submissionMatchesMasterRecord(Model $submission, MasterDataRecord $record): bool

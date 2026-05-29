@@ -17,7 +17,7 @@ class AdminTopbarNotificationTest extends TestCase
     public function test_admin_topbar_shows_submitted_qc_and_commissioning_notifications(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
-        $user = User::factory()->create();
+        $user = User::factory()->create(['name' => 'User Inspector']);
         $qcTemplate = QcFormTemplate::create([
             'code' => 'QC-NOTIF',
             'name' => 'QC Notification',
@@ -61,6 +61,8 @@ class AdminTopbarNotificationTest extends TestCase
             ->assertSee('2 baru')
             ->assertSee('001/QC/05-2026')
             ->assertSee('002/COM/05-2026')
+            ->assertSee('User Inspector sudah membuat form QC.')
+            ->assertSee('User Inspector sudah membuat form Commissioning.')
             ->assertSee(route('admin.qc.submissions.pdf', QcFormSubmission::first()), false)
             ->assertSee(route('admin.commissioning.submissions.pdf', CommissioningFormSubmission::first()), false);
     }
