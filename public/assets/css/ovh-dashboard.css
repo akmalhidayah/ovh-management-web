@@ -273,6 +273,30 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     display: flex; flex-direction: column; justify-content: flex-end;
     background: linear-gradient(180deg, rgba(15, 36, 66, .18), rgba(15, 36, 66, .88)), url('../images/illustrations/bg-login.jpg') center / cover no-repeat;
 }
+.login-guide-link {
+    position: absolute;
+    top: clamp(1.25rem, 3vw, 2.25rem);
+    left: clamp(1.25rem, 3vw, 2.25rem);
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .7rem 1rem;
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: .75rem;
+    background: rgba(15, 23, 42, .48);
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .24);
+    backdrop-filter: blur(8px);
+}
+.login-guide-link:hover {
+    color: #fff;
+    background: rgba(37, 99, 235, .72);
+}
+.login-guide-link i {
+    font-size: 1rem;
+}
 .login-visual h1 { position: relative; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; text-shadow: 0 4px 18px rgba(0, 0, 0, .35); }
 .login-card { padding: clamp(1.5rem, 4vw, 3rem); display: flex; flex-direction: column; justify-content: center; }
 .login-logo-group { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }

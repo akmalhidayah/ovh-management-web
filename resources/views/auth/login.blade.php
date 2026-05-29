@@ -12,6 +12,10 @@
 <body class="login-body">
     <main class="login-shell">
         <section class="login-visual">
+            <a href="{{ asset('assets/docs/buku-panduan.pdf') }}" class="login-guide-link" target="_blank" rel="noopener">
+                <i class="bi bi-book"></i>
+                <span>Buku Panduan</span>
+            </a>
             <h1>Unit Overhaul<br>PT. Semen Tonasa</h1>
         </section>
 
