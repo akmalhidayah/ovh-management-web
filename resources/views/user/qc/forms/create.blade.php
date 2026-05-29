@@ -435,6 +435,7 @@
 
             document.querySelectorAll('[data-upload-box]').forEach((box) => {
                 const input = box.querySelector('[data-upload-input]');
+                const cameraInput = box.querySelector('[data-camera-input]');
                 const preview = box.querySelector('[data-upload-preview]');
                 const message = box.querySelector('[data-upload-message]');
                 const maxFiles = Number(box.dataset.maxFiles || 0);
@@ -486,12 +487,21 @@
                     });
                 };
 
-                input?.addEventListener('change', async () => {
-                    const files = Array.from(input.files || []);
-                    input.dataset.uploadProcessing = '1';
-                    message.textContent = files.some((file) => file.type.startsWith('image/') && file.size > MAX_IMAGE_BYTES)
-                        ? 'Mengompres foto agar ukuran upload aman...'
-                        : '';
+                const addFiles = async (files, sourceInput = input) => {
+                    if (!sourceInput || files.length === 0) {
+                        return;
+                    }
+
+                    sourceInput.dataset.uploadProcessing = '1';
+                    if (input) {
+                        input.dataset.uploadProcessing = '1';
+                    }
+
+                    if (message) {
+                        message.textContent = files.some((file) => file.type.startsWith('image/') && file.size > MAX_IMAGE_BYTES)
+                            ? 'Mengompres foto agar ukuran upload aman...'
+                            : '';
+                    }
 
                     const compressedFiles = [];
 
@@ -503,7 +513,10 @@
                         }
                     }
 
-                    input.dataset.uploadProcessing = '0';
+                    sourceInput.dataset.uploadProcessing = '0';
+                    if (input) {
+                        input.dataset.uploadProcessing = '0';
+                    }
 
                     const reducedCount = compressedFiles.filter((file, index) => file.size < files[index].size).length;
                     let statusMessage = '';
@@ -511,7 +524,7 @@
                         statusMessage = `${reducedCount} foto dikompres otomatis sebelum upload.`;
                     }
 
-                    const nextFiles = input.multiple ? selectedFiles.concat(compressedFiles) : compressedFiles.slice(0, 1);
+                    const nextFiles = input?.multiple ? selectedFiles.concat(compressedFiles) : compressedFiles.slice(0, 1);
 
                     if (maxFiles && nextFiles.length > maxFiles) {
                         selectedFiles = nextFiles.slice(0, maxFiles);
@@ -522,7 +535,19 @@
 
                     syncInputFiles();
                     renderPreview();
-                    message.textContent = statusMessage;
+                    if (message) {
+                        message.textContent = statusMessage;
+                    }
+
+                    sourceInput.value = '';
+                };
+
+                input?.addEventListener('change', async () => {
+                    await addFiles(Array.from(input.files || []), input);
+                });
+
+                cameraInput?.addEventListener('change', async () => {
+                    await addFiles(Array.from(cameraInput.files || []), cameraInput);
                 });
             });
 

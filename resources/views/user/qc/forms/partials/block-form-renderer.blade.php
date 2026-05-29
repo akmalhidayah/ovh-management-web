@@ -142,6 +142,7 @@
                             $accept = '.jpg,.jpeg,.png,image/jpeg,image/png';
                             $multiple = $attachmentMultiple($field);
                             $maxFiles = $attachmentMaxFiles($field);
+                            $uploadInputId = 'qc-upload-'.$key;
                         @endphp
                         <div class="qc-upload-box" data-upload-box data-upload-type="{{ $type }}" data-max-files="{{ $maxFiles }}">
                             <div class="qc-upload-box-head">
@@ -152,13 +153,19 @@
                                 <i class="bi {{ $type === 'image' ? 'bi-images' : 'bi-paperclip' }}"></i>
                             </div>
                             <input
+                                id="{{ $uploadInputId }}"
                                 type="file"
-                                class="form-control"
+                                class="visually-hidden"
                                 name="attachments[{{ $key }}][]"
                                 data-upload-input
                                 accept="{{ $accept }}"
                                 @if ($multiple) multiple @endif
                             >
+                            <div class="qc-upload-actions">
+                                <label class="btn btn-sm btn-outline-primary" for="{{ $uploadInputId }}">
+                                    <i class="bi bi-upload me-1"></i>Pilih File
+                                </label>
+                            </div>
                             <div class="qc-upload-message" data-upload-message></div>
                             <div class="qc-upload-preview" data-upload-preview></div>
                         </div>

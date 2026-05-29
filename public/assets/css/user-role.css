@@ -1466,6 +1466,20 @@ body.inspector-body {
     font-size: 1.35rem;
 }
 
+.qc-upload-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.qc-upload-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.1rem;
+    font-weight: 700;
+}
+
 .qc-upload-message:not(:empty) {
     padding: 0.45rem 0.55rem;
     border-radius: 8px;

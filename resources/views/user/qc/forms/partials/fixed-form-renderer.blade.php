@@ -236,6 +236,8 @@
                     $hasExistingAttachment = ($draftSubmission ?? null)
                         ? $draftSubmission->attachments->where('field_key', $attachmentKey)->isNotEmpty()
                         : false;
+                    $uploadInputId = "qc-upload-{$attachmentKey}";
+                    $cameraInputId = "qc-camera-{$attachmentKey}";
                 @endphp
                 <div class="qc-upload-box" data-upload-box data-upload-type="image">
                     <div class="qc-upload-box-head">
@@ -246,14 +248,34 @@
                         <i class="bi bi-images"></i>
                     </div>
                     <input
+                        id="{{ $uploadInputId }}"
                         type="file"
-                        class="form-control"
+                        class="visually-hidden"
                         name="attachments[{{ $attachmentKey }}][]"
                         data-upload-input
                         accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                         multiple
-                        @if ($isRequiredAttachment && ! $hasExistingAttachment && $temporaryAttachmentMetas->isEmpty()) required @endif
                     >
+                    @if ($isRequiredAttachment)
+                        <input
+                            id="{{ $cameraInputId }}"
+                            type="file"
+                            class="visually-hidden"
+                            data-camera-input
+                            accept="image/*"
+                            capture="environment"
+                        >
+                    @endif
+                    <div class="qc-upload-actions">
+                        @if ($isRequiredAttachment)
+                            <label class="btn btn-sm btn-primary" for="{{ $cameraInputId }}">
+                                <i class="bi bi-camera me-1"></i>Ambil Foto
+                            </label>
+                        @endif
+                        <label class="btn btn-sm btn-outline-primary" for="{{ $uploadInputId }}">
+                            <i class="bi bi-upload me-1"></i>Pilih File
+                        </label>
+                    </div>
                     <div class="qc-upload-message" data-upload-message></div>
                     <div class="qc-upload-preview" data-upload-preview></div>
                     @if ($temporaryAttachmentMetas->isNotEmpty())
