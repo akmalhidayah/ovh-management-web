@@ -319,11 +319,47 @@
                         ->map(fn ($token) => ['token' => $token] + (session("commissioning_temporary_attachments.{$token}") ?? []))
                         ->filter(fn ($attachment) => isset($attachment['original_name']));
                     $hasTemporaryDocumentation = $temporaryAttachmentMetas->isNotEmpty();
+                    $hasExistingDocumentation = $draftSubmission?->attachments()->exists() ?? false;
                 @endphp
                 <label class="qc-user-note-box">
                     <span>{{ $labels['documentation_label'] }}</span>
-                    <input type="file" name="attachments[dokumentasi][]" class="form-control" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple @if (! $hasTemporaryDocumentation && ! ($draftSubmission?->attachments()->exists() ?? false)) required @endif>
+                    <input
+                        id="commissioning-upload-dokumentasi"
+                        type="file"
+                        name="attachments[dokumentasi][]"
+                        class="visually-hidden"
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                        multiple
+                        data-commissioning-upload-input
+                    >
+                    <input
+                        id="commissioning-camera-dokumentasi"
+                        type="file"
+                        class="visually-hidden"
+                        accept="image/*"
+                        capture="environment"
+                        data-commissioning-camera-input
+                    >
+                    <div class="qc-upload-actions mt-2" data-commissioning-upload-box>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-camera me-1"></i>Upload Dokumentasi
+                            </button>
+                            <div class="dropdown-menu">
+                                <label class="dropdown-item" for="commissioning-camera-dokumentasi">
+                                    <i class="bi bi-camera me-2"></i>Ambil Foto
+                                </label>
+                                <label class="dropdown-item" for="commissioning-upload-dokumentasi">
+                                    <i class="bi bi-images me-2"></i>Pilih dari Galeri/File
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="qc-upload-preview mt-2" data-commissioning-upload-preview></div>
                     <small class="text-muted d-block mt-2">Hanya JPG atau PNG. Bisa upload lebih dari satu gambar sekaligus.</small>
+                    @if (! $hasTemporaryDocumentation && ! $hasExistingDocumentation)
+                        <small class="text-muted d-block">Wajib diisi saat submit.</small>
+                    @endif
                     @if ($temporaryAttachmentMetas->isNotEmpty())
                         <div class="mt-2 small text-muted">
                             <strong class="d-block text-body">Lampiran tersimpan sementara:</strong>

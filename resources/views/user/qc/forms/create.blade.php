@@ -539,7 +539,9 @@
                         message.textContent = statusMessage;
                     }
 
-                    sourceInput.value = '';
+                    if (sourceInput !== input) {
+                        sourceInput.value = '';
+                    }
                 };
 
                 input?.addEventListener('change', async () => {

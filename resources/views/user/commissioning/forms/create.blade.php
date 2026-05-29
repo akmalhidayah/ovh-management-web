@@ -92,5 +92,76 @@ document.getElementById('template-select')?.addEventListener('change', function 
     }
     window.location.href = url.toString();
 });
+
+(() => {
+    const box = document.querySelector('[data-commissioning-upload-box]');
+    const input = document.querySelector('[data-commissioning-upload-input]');
+    const cameraInput = document.querySelector('[data-commissioning-camera-input]');
+    const preview = document.querySelector('[data-commissioning-upload-preview]');
+
+    if (!box || !input || !cameraInput || !preview) {
+        return;
+    }
+
+    let selectedFiles = [];
+
+    const syncInputFiles = () => {
+        const transfer = new DataTransfer();
+        selectedFiles.forEach((file) => transfer.items.add(file));
+        input.files = transfer.files;
+    };
+
+    const renderPreview = () => {
+        preview.innerHTML = '';
+
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = file.type.startsWith('image/') ? 'qc-upload-thumb' : 'qc-file-list-item';
+
+            if (file.type.startsWith('image/')) {
+                const image = document.createElement('img');
+                image.src = URL.createObjectURL(file);
+                image.alt = file.name;
+                item.appendChild(image);
+            } else {
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-file-earmark-text';
+                item.appendChild(icon);
+            }
+
+            const name = document.createElement('span');
+            name.textContent = file.name;
+            item.appendChild(name);
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-sm btn-light border';
+            remove.textContent = 'Hapus';
+            remove.addEventListener('click', () => {
+                selectedFiles.splice(index, 1);
+                syncInputFiles();
+                renderPreview();
+            });
+            item.appendChild(remove);
+            preview.appendChild(item);
+        });
+    };
+
+    const addFiles = (files, sourceInput) => {
+        if (files.length === 0) {
+            return;
+        }
+
+        selectedFiles = selectedFiles.concat(files);
+        syncInputFiles();
+        renderPreview();
+        if (sourceInput !== input) {
+            sourceInput.value = '';
+        }
+    };
+
+    input.addEventListener('change', () => addFiles(Array.from(input.files || []), input));
+    cameraInput.addEventListener('change', () => addFiles(Array.from(cameraInput.files || []), cameraInput));
+})();
 </script>
 @endpush
