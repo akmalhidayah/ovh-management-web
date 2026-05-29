@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\PublicRegistrationAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,8 @@ class RegisterController extends Controller
 
     public function showRegistrationForm(): View
     {
+        abort_unless(PublicRegistrationAccess::enabled(), 404);
+
         return view('auth.register', [
             'roles' => self::roles(),
         ]);
@@ -34,6 +37,8 @@ class RegisterController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
+        abort_unless(PublicRegistrationAccess::enabled(), 404);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],

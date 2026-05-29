@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\PublicRegistrationAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -52,7 +53,29 @@ class UserPanelController extends Controller
             'roleOptions' => self::roleOptions(),
             'summary' => $this->summary(),
             'defaultPassword' => self::DEFAULT_PASSWORD,
+            'publicRegistrationEnabled' => PublicRegistrationAccess::enabled(),
         ]);
+    }
+
+    public function toggleRegistration(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        PublicRegistrationAccess::setEnabled((bool) $validated['enabled']);
+
+        $this->logStatus('public_registration_toggled', [
+            'enabled' => (bool) $validated['enabled'],
+            'status_code' => 200,
+        ]);
+
+        return back()->with(
+            'success',
+            (bool) $validated['enabled']
+                ? 'Registrasi publik berhasil diaktifkan.'
+                : 'Registrasi publik berhasil dinonaktifkan.'
+        );
     }
 
     public function store(Request $request): RedirectResponse

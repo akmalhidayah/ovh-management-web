@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PublicRegistrationAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -26,7 +27,8 @@ class AdminUserPanelTest extends TestCase
             ->assertOk()
             ->assertSee('Userpanel')
             ->assertSee('QC Operator')
-            ->assertSee('Quality Control');
+            ->assertSee('Quality Control')
+            ->assertSee('Register Aktif');
     }
 
     public function test_admin_can_create_user_with_default_password(): void
@@ -97,5 +99,35 @@ class AdminUserPanelTest extends TestCase
 
         $this->assertSame('admin', $admin->usertype);
         $this->assertSame('admin', $admin->role);
+    }
+
+    public function test_admin_can_toggle_public_registration_access(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->assertTrue(PublicRegistrationAccess::enabled());
+
+        $this->actingAs($admin)
+            ->patch(route('admin.user-panel.registration-access'), [
+                'enabled' => false,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Registrasi publik berhasil dinonaktifkan.');
+
+        $this->assertFalse(PublicRegistrationAccess::enabled());
+        auth()->logout();
+        $this->get('/register')->assertNotFound();
+        $this->get('/')->assertOk()->assertDontSee(route('register'), false);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.user-panel.registration-access'), [
+                'enabled' => true,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Registrasi publik berhasil diaktifkan.');
+
+        $this->assertTrue(PublicRegistrationAccess::enabled());
+        auth()->logout();
+        $this->get('/register')->assertOk();
     }
 }

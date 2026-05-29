@@ -39,6 +39,18 @@
             <p>Kelola akun admin dan user operasional berdasarkan role akses masing-masing.</p>
         </div>
         <div class="page-actions">
+            <form method="POST"
+                  action="{{ route('admin.user-panel.registration-access') }}"
+                  data-registration-toggle-form
+                  data-next-state="{{ $publicRegistrationEnabled ? 'nonaktifkan' : 'aktifkan' }}">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="enabled" value="{{ $publicRegistrationEnabled ? 0 : 1 }}">
+                <button type="submit" class="btn {{ $publicRegistrationEnabled ? 'btn-outline-danger' : 'btn-outline-success' }}">
+                    <i class="bi {{ $publicRegistrationEnabled ? 'bi-toggle-on' : 'bi-toggle-off' }} me-1"></i>
+                    Register {{ $publicRegistrationEnabled ? 'Aktif' : 'Nonaktif' }}
+                </button>
+            </form>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
                 <i class="bi bi-person-plus me-1"></i>Tambah Akun
             </button>
@@ -227,6 +239,7 @@
         .userpanel-icon-btn { width: 2.05rem; height: 2.05rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
         .userpanel-type-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
         .userpanel-type-toggle .btn { min-height: 42px; font-weight: 800; }
+        .page-actions form { display: inline-flex; }
     </style>
 @endpush
 
@@ -272,6 +285,30 @@
                 if (typeInput) typeInput.checked = true;
 
                 syncRoleByType(form);
+            });
+
+            document.querySelectorAll('[data-registration-toggle-form]').forEach((form) => {
+                form.addEventListener('submit', async (event) => {
+                    if (!window.Swal) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    const action = form.dataset.nextState || 'ubah';
+                    const result = await Swal.fire({
+                        title: 'Apakah Anda yakin?',
+                        text: `Akses registrasi publik akan di${action}.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: `Ya, ${action}`,
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: action === 'aktifkan' ? '#198754' : '#dc3545',
+                    });
+
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
             });
         })();
     </script>
