@@ -7,12 +7,12 @@
     @include('partials.tonasa-meta')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{{ asset('assets/css/ovh-dashboard.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/ovh-dashboard.css') }}?v={{ file_exists(public_path('assets/css/ovh-dashboard.css')) ? filemtime(public_path('assets/css/ovh-dashboard.css')) : time() }}" rel="stylesheet">
 </head>
 <body class="login-body">
     <main class="login-shell">
         <section class="login-visual">
-            <a href="{{ asset('assets/docs/buku-panduan.pdf') }}" class="login-guide-link" target="_blank" rel="noopener">
+            <a href="{{ route('guide.book') }}" class="login-guide-link" target="_blank" rel="noopener">
                 <i class="bi bi-book"></i>
                 <span>Buku Panduan</span>
             </a>

@@ -46,6 +46,18 @@ Route::get('/', function () {
     return redirect()->route(auth()->user()->dashboardRouteName());
 });
 
+Route::get('/buku-panduan', function () {
+    $path = storage_path('app/private/docs/buku-panduan.pdf');
+
+    abort_unless(is_file($path), 404);
+
+    return response()->file($path, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="buku-panduan.pdf"',
+        'X-Content-Type-Options' => 'nosniff',
+    ]);
+})->middleware('throttle:30,1')->name('guide.book');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
