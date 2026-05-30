@@ -78,7 +78,6 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
 Route::get('/profile-photo/{user}', function (User $user) {
-    abort_unless(auth()->id() === $user->id || auth()->user()?->isAdmin(), 403);
     abort_unless($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path), 404);
 
     return response()->file(Storage::disk('public')->path($user->profile_photo_path), [

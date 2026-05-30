@@ -211,9 +211,13 @@ class UserPanelController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'usertype' => ['required', Rule::in(array_keys(self::usertypeOptions()))],
             'role' => ['required', Rule::in(array_keys(self::roleOptions()))],
-            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'profile_areas' => ['nullable', 'array'],
             'profile_areas.*' => ['string', Rule::in($this->allWorkAreaOptions())],
+        ], [
+            'profile_photo.image' => 'Foto profil harus berupa gambar.',
+            'profile_photo.mimes' => 'Foto profil hanya boleh format JPG atau PNG.',
+            'profile_photo.max' => 'Ukuran foto profil maksimal 2 MB.',
         ]);
 
         if ($validated['usertype'] === 'admin') {

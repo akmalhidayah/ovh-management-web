@@ -32,8 +32,8 @@
                     </span>
                     <div>
                         <label class="form-label">Foto Profil</label>
-                        <input type="file" name="profile_photo" class="form-control" accept="image/png,image/jpeg,image/webp">
-                        <small class="text-muted">Format JPG, PNG, atau WEBP. Maksimal 2 MB.</small>
+                        <input type="file" name="profile_photo" class="form-control" accept="image/png,image/jpeg">
+                        <small class="text-muted">Format JPG atau PNG. Maksimal 2 MB.</small>
                     </div>
                 </div>
 

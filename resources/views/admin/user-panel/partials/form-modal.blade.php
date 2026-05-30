@@ -23,8 +23,8 @@
                             <div class="userpanel-photo-editor">
                                 <span class="userpanel-photo-preview" data-userpanel-photo-preview>U</span>
                                 <div class="flex-grow-1">
-                                    <input type="file" name="profile_photo" class="form-control" accept="image/png,image/jpeg,image/webp" data-userpanel-photo-input>
-                                    <div class="form-text">Opsional. Format JPG, PNG, atau WEBP. Maksimal 2 MB.</div>
+                                    <input type="file" name="profile_photo" class="form-control" accept="image/png,image/jpeg" data-userpanel-photo-input>
+                                    <div class="form-text">Opsional. Format JPG atau PNG. Maksimal 2 MB.</div>
                                 </div>
                             </div>
                         </div>
