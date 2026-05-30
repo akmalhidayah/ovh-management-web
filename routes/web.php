@@ -36,7 +36,9 @@ use App\Http\Controllers\User\Qc\DraftController as QcDraftController;
 use App\Http\Controllers\User\Qc\FormController as QcFormController;
 use App\Http\Controllers\User\Qc\HistoryController as QcHistoryController;
 use App\Http\Controllers\User\Qc\ProfileController as QcProfileController;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
     if (! auth()->check()) {
@@ -74,6 +76,16 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+Route::get('/profile-photo/{user}', function (User $user) {
+    abort_unless(auth()->id() === $user->id || auth()->user()?->isAdmin(), 403);
+    abort_unless($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path), 404);
+
+    return response()->file(Storage::disk('public')->path($user->profile_photo_path), [
+        'Cache-Control' => 'private, max-age=3600',
+        'X-Content-Type-Options' => 'nosniff',
+    ]);
+})->middleware('auth')->name('profile.photo');
 
 Route::get('/approval/{token}', [PublicApprovalController::class, 'show'])
     ->middleware('throttle:30,1')

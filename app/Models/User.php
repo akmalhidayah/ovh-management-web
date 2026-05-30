@@ -92,7 +92,7 @@ class User extends Authenticatable
             return null;
         }
 
-        return asset('storage/'.$this->profile_photo_path);
+        return route('profile.photo', $this);
     }
 
     public function sendPasswordResetNotification($token): void
