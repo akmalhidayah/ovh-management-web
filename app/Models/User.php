@@ -92,7 +92,10 @@ class User extends Authenticatable
             return null;
         }
 
-        return route('profile.photo', $this);
+        return route('profile.photo', [
+            'user' => $this,
+            'v' => $this->updated_at?->timestamp ?? time(),
+        ]);
     }
 
     public function sendPasswordResetNotification($token): void

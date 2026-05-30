@@ -82,7 +82,7 @@ Route::get('/profile-photo/{user}', function (User $user) {
     abort_unless($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path), 404);
 
     return response()->file(Storage::disk('public')->path($user->profile_photo_path), [
-        'Cache-Control' => 'private, max-age=3600',
+        'Cache-Control' => 'private, no-cache, max-age=0',
         'X-Content-Type-Options' => 'nosniff',
     ]);
 })->middleware('auth')->name('profile.photo');
