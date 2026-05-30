@@ -152,13 +152,25 @@
                 </thead>
                 <tbody>
                     @forelse ($users as $user)
+                        @php
+                            $areaSummary = filled($user->profile_areas ?? [])
+                                ? implode(', ', array_slice($user->profile_areas, 0, 3)).(count($user->profile_areas) > 3 ? ' +' . (count($user->profile_areas) - 3) : '')
+                                : 'Semua area';
+                            $profilePhotoUrl = $user->profilePhotoUrl();
+                        @endphp
                         <tr>
                             <td>
                                 <div class="userpanel-user">
-                                    <div class="userpanel-avatar">{{ Str::upper(Str::substr($user->name, 0, 1)) }}</div>
+                                    <div class="userpanel-avatar">
+                                        @if ($profilePhotoUrl)
+                                            <img src="{{ $profilePhotoUrl }}" alt="{{ $user->name }}">
+                                        @else
+                                            {{ Str::upper(Str::substr($user->name, 0, 1)) }}
+                                        @endif
+                                    </div>
                                     <div>
                                         <div class="userpanel-name">{{ $user->name }}</div>
-                                        <div class="text-muted small">ID {{ $user->id }}</div>
+                                        <div class="text-muted small userpanel-area-summary">{{ $areaSummary }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -185,6 +197,7 @@
                                             data-usertype="{{ $user->usertype }}"
                                             data-role="{{ $user->role }}"
                                             data-profile-areas='@json($user->profile_areas ?? [])'
+                                            data-profile-photo-url="{{ $profilePhotoUrl }}"
                                             title="Edit user"
                                             aria-label="Edit user">
                                         <i class="bi bi-pencil-square"></i>
@@ -253,8 +266,13 @@
         .userpanel-table thead th { padding: .75rem .8rem; color: #475569; font-size: .76rem; text-transform: uppercase; background: #f8fafc; white-space: nowrap; }
         .userpanel-table tbody td { padding: .85rem .8rem; border-bottom-color: #e8edf4; vertical-align: middle; }
         .userpanel-user { display: flex; align-items: center; gap: .75rem; }
-        .userpanel-avatar { width: 42px; height: 42px; display: grid; place-items: center; border-radius: .65rem; background: #1d4ed8; color: #fff; font-weight: 800; }
+        .userpanel-avatar { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: .65rem; background: #1d4ed8; color: #fff; font-weight: 800; }
+        .userpanel-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .userpanel-name { color: #172033; font-weight: 800; line-height: 1.2; }
+        .userpanel-area-summary { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .userpanel-photo-editor { display: flex; align-items: center; gap: .85rem; }
+        .userpanel-photo-preview { width: 58px; height: 58px; display: grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: .8rem; background: #1d4ed8; color: #fff; font-size: 1.25rem; font-weight: 800; }
+        .userpanel-photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .userpanel-table .badge { padding: .38rem .58rem; border-radius: .45rem; font-weight: 750; }
         .userpanel-icon-btn { width: 2.05rem; height: 2.05rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
         .userpanel-actions { display: inline-flex; justify-content: flex-end; gap: .4rem; }
@@ -377,12 +395,41 @@
                 renderAreaTags(form);
             };
 
+            const setPhotoPreview = (form, url = '', fallback = 'U') => {
+                const preview = form.querySelector('[data-userpanel-photo-preview]');
+                if (!preview) return;
+
+                preview.innerHTML = '';
+                if (url) {
+                    const image = document.createElement('img');
+                    image.src = url;
+                    image.alt = fallback;
+                    preview.appendChild(image);
+                    return;
+                }
+
+                preview.textContent = (fallback || 'U').trim().charAt(0).toUpperCase() || 'U';
+            };
+
+            const setupPhotoInput = (form) => {
+                const input = form.querySelector('[data-userpanel-photo-input]');
+                if (!input) return;
+
+                input.addEventListener('change', () => {
+                    const file = input.files?.[0];
+                    const fallback = form.querySelector('[name="name"]')?.value || 'U';
+                    setPhotoPreview(form, file ? URL.createObjectURL(file) : '', fallback);
+                });
+            };
+
             document.querySelectorAll('[data-userpanel-form]').forEach((form) => {
                 form.querySelectorAll('input[name="usertype"]').forEach((input) => {
                     input.addEventListener('change', () => syncRoleByType(form));
                 });
                 form.querySelector('[name="role"]')?.addEventListener('change', () => syncRoleByType(form));
                 setupAreaPicker(form);
+                setupPhotoInput(form);
+                setPhotoPreview(form, '', form.querySelector('[name="name"]')?.value || 'U');
                 syncRoleByType(form);
             });
 
@@ -401,10 +448,16 @@
                     if (input) input.value = button.dataset[name] || '';
                 });
 
+                const photoInput = form.querySelector('[data-userpanel-photo-input]');
+                if (photoInput) {
+                    photoInput.value = '';
+                }
+
                 const typeInput = form.querySelector(`input[name="usertype"][value="${button.dataset.usertype}"]`);
                 if (typeInput) typeInput.checked = true;
 
                 resetAreaValues(form, JSON.parse(button.dataset.profileAreas || '[]'));
+                setPhotoPreview(form, button.dataset.profilePhotoUrl || '', button.dataset.name || 'U');
 
                 syncRoleByType(form);
             });

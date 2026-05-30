@@ -1,7 +1,7 @@
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <form action="{{ $action }}" method="POST" data-userpanel-form>
+            <form action="{{ $action }}" method="POST" enctype="multipart/form-data" data-userpanel-form>
                 @csrf
                 @if ($method)
                     @method($method)
@@ -18,6 +18,16 @@
                     @endif
 
                     <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Foto Profil</label>
+                            <div class="userpanel-photo-editor">
+                                <span class="userpanel-photo-preview" data-userpanel-photo-preview>U</span>
+                                <div class="flex-grow-1">
+                                    <input type="file" name="profile_photo" class="form-control" accept="image/png,image/jpeg,image/webp" data-userpanel-photo-input>
+                                    <div class="form-text">Opsional. Format JPG, PNG, atau WEBP. Maksimal 2 MB.</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Nama</label>
                             <input type="text" name="name" class="form-control" value="{{ old('name') }}" required placeholder="Nama lengkap">

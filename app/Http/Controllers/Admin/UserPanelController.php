@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Throwable;
@@ -210,6 +211,7 @@ class UserPanelController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'usertype' => ['required', Rule::in(array_keys(self::usertypeOptions()))],
             'role' => ['required', Rule::in(array_keys(self::roleOptions()))],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'profile_areas' => ['nullable', 'array'],
             'profile_areas.*' => ['string', Rule::in($this->allWorkAreaOptions())],
         ]);
@@ -235,6 +237,16 @@ class UserPanelController extends Controller
             $validated['profile_areas'] = null;
             $validated['profile_plants'] = null;
         }
+
+        if ($request->hasFile('profile_photo')) {
+            if ($user?->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+
+            $validated['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
+
+        unset($validated['profile_photo']);
 
         return $validated;
     }
