@@ -617,6 +617,7 @@ class FormController extends Controller
         $profileAreas = collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all();
 
         return MasterDataRecord::query()
+            ->with('organizationSection')
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->when($profileAreas, fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->orderBy('func_location')

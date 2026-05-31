@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterDataRecord;
+use App\Models\OrganizationSection;
 use App\Services\MasterDataInspectionStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,7 @@ class MasterDataController extends Controller
         $filters = $this->filtersFromRequest($request);
 
         $records = $this->filteredRecordsQuery($filters)
+            ->with('organizationSection')
             ->orderByRaw("case when status = 'active' then 0 else 1 end")
             ->orderBy('document_category')
             ->orderBy('plant')
@@ -37,6 +39,7 @@ class MasterDataController extends Controller
             ],
             'categoryOptions' => MasterDataRecord::documentCategories(),
             'statusOptions' => MasterDataRecord::statuses(),
+            'organizationSectionOptions' => $this->organizationSectionOptions(),
             'summary' => $this->summary(),
         ]);
     }
@@ -165,11 +168,15 @@ class MasterDataController extends Controller
             'description' => ['required', 'string', 'max:255'],
             'plant' => ['required', 'string', 'max:255'],
             'area' => ['required', 'string', 'max:255'],
+            'organization_section_id' => ['nullable', 'integer', Rule::exists('organization_sections', 'id')],
             'status' => ['required', Rule::in(array_keys(MasterDataRecord::statuses()))],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $validated['equipment_no'] = $this->nullableEquipmentNo($validated['equipment_no'] ?? null);
+        if ($validated['document_category'] !== MasterDataRecord::CATEGORY_COMMISSIONING) {
+            $validated['organization_section_id'] = null;
+        }
 
         return $validated;
     }
@@ -231,5 +238,21 @@ class MasterDataController extends Controller
             'active_qc' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_QC)->where('status', 'active')->count(),
             'active_commissioning' => MasterDataRecord::where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)->where('status', 'active')->count(),
         ];
+    }
+
+    private function organizationSectionOptions(): array
+    {
+        return OrganizationSection::query()
+            ->active()
+            ->orderBy('department')
+            ->orderBy('unit_kerja')
+            ->orderBy('section')
+            ->get()
+            ->map(fn (OrganizationSection $section) => [
+                'id' => $section->id,
+                'label' => $section->section,
+                'meta' => collect([$section->unit_kerja, $section->department])->filter()->implode(' - '),
+            ])
+            ->all();
     }
 }

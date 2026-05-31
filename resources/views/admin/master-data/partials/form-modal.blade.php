@@ -1,5 +1,6 @@
 @php
     $record = $record ?? null;
+    $organizationSectionOptions = $organizationSectionOptions ?? [];
 @endphp
 
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
@@ -18,7 +19,7 @@
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <label class="form-label">Kategori Dokumen</label>
-                            <select name="document_category" class="form-select" required>
+                            <select name="document_category" class="form-select" required data-master-document-category>
                                 @foreach ($categoryOptions as $value => $label)
                                     <option value="{{ $value }}" @selected(old('document_category', $record?->document_category ?? 'qc') === $value)>{{ $label }}</option>
                                 @endforeach
@@ -51,6 +52,17 @@
                         <div class="col-12 col-md-4">
                             <label class="form-label">Area</label>
                             <input type="text" name="area" class="form-control" value="{{ old('area', $record?->area) }}" required placeholder="RAW MILL">
+                        </div>
+                        <div class="col-12 col-md-4" data-commissioning-unit-field>
+                            <label class="form-label">Unit Kerja</label>
+                            <select name="organization_section_id" class="form-select">
+                                <option value="">Pilih Unit Kerja</option>
+                                @foreach ($organizationSectionOptions as $section)
+                                    <option value="{{ $section['id'] }}" @selected((string) old('organization_section_id', $record?->organization_section_id) === (string) $section['id'])>
+                                        {{ $section['label'] }}{{ $section['meta'] ? ' - '.$section['meta'] : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label">Status</label>

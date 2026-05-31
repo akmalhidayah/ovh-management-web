@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MasterDataRecord;
 use App\Models\MasterDataInspectionStatusHistory;
+use App\Models\OrganizationSection;
 use App\Models\User;
 use Database\Seeders\Crusher4MasterDataRecordSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +82,12 @@ class AdminMasterDataTest extends TestCase
     public function test_admin_can_create_filter_update_and_delete_master_data(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $unitKerja = OrganizationSection::create([
+            'department' => 'MAINTENANCE',
+            'unit_kerja' => 'OVERHAUL',
+            'section' => 'Line 2/3 FM Operation',
+            'status' => 'active',
+        ]);
 
         $payload = [
             'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
@@ -91,6 +98,7 @@ class AdminMasterDataTest extends TestCase
             'description' => 'TEST EQUIPMENT',
             'plant' => 'TONASA 5',
             'area' => 'KILN',
+            'organization_section_id' => $unitKerja->id,
             'status' => 'active',
             'notes' => 'Seed manual test',
         ];
@@ -101,6 +109,7 @@ class AdminMasterDataTest extends TestCase
 
         $record = MasterDataRecord::where('equipment_no', '90000001')->firstOrFail();
         $this->assertSame($admin->id, $record->created_by);
+        $this->assertSame($unitKerja->id, $record->organization_section_id);
 
         $this->actingAs($admin)
             ->get(route('admin.master-data', [
@@ -111,7 +120,8 @@ class AdminMasterDataTest extends TestCase
                 'search' => 'TEST EQUIPMENT',
             ]))
             ->assertOk()
-            ->assertSee('TEST EQUIPMENT');
+            ->assertSee('TEST EQUIPMENT')
+            ->assertSee('Unit Kerja: Line 2/3 FM Operation');
 
         $this->actingAs($admin)
             ->put(route('admin.master-data.update', $record), array_merge($payload, [

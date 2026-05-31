@@ -37,10 +37,14 @@
         'functionalLocation' => (string) ($record->func_location ?? ''),
         'nameEquipment' => (string) ($record->description ?? ''),
         'idEquipment' => (string) ($record->equipment_no ?? ''),
+        'organizationSectionId' => (string) ($record->organization_section_id ?? ''),
+        'organizationDepartment' => (string) ($record->organizationSection?->department ?? ''),
+        'organizationWorkUnit' => (string) ($record->organizationSection?->unit_kerja ?? ''),
+        'organizationSection' => (string) ($record->organizationSection?->section ?? ''),
         'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
     $organizationSections = collect($activeOrganizationSections ?? []);
-    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
+    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? ($selectedMasterDataRecord?->organizationSection?->section ?? ''));
     $organizationSectionOptions = $organizationSections
         ->map(fn ($section, $index) => [
             'id' => (string) ($section->id ?? $index),
@@ -574,6 +578,7 @@
     });
     const clearMasterHeader = () => {
         ['tahun','plant','tag_num','functional_location','name_equipment','id_equipment'].forEach((key) => setHeader(key, ''));
+        setOrganizationValue('');
     };
     const filterMasterOptions = () => {
         const selectedArea = area?.value || '';
@@ -603,6 +608,10 @@
                 option.dataset.functionalLocation = record.functionalLocation;
                 option.dataset.nameEquipment = record.nameEquipment;
                 option.dataset.idEquipment = record.idEquipment;
+                option.dataset.organizationSectionId = record.organizationSectionId;
+                option.dataset.organizationDepartment = record.organizationDepartment;
+                option.dataset.organizationWorkUnit = record.organizationWorkUnit;
+                option.dataset.organizationSection = record.organizationSection;
                 master.appendChild(option);
             });
 
@@ -635,7 +644,19 @@
         setHeader('functional_location', option.dataset.functionalLocation);
         setHeader('name_equipment', option.dataset.nameEquipment);
         setHeader('id_equipment', option.dataset.idEquipment);
+        setOrganizationValue(option.dataset.organizationSectionId || '');
         persistMasterState();
+    };
+    const setOrganizationValue = (value) => {
+        if (!organizationSection) return;
+
+        if (organizationTomSelect) {
+            organizationTomSelect.setValue(value || '', true);
+        } else {
+            organizationSection.value = value || '';
+        }
+
+        syncOrganizationSection();
     };
     area?.addEventListener('change', () => {
         filterMasterOptions();

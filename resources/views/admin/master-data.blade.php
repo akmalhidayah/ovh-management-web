@@ -323,6 +323,9 @@
                                 <span class="master-data-location">
                                     <strong>{{ $record->plant }}</strong>
                                     <small>{{ $record->area }}</small>
+                                    @if ($record->document_category === \App\Models\MasterDataRecord::CATEGORY_COMMISSIONING && $record->organizationSection)
+                                        <small>Unit Kerja: {{ $record->organizationSection->section }}</small>
+                                    @endif
                                 </span>
                             </td>
                             <td><span class="badge {{ $statusBadge[$record->status] ?? 'text-bg-secondary' }}">{{ $record->status_label }}</span></td>
@@ -341,6 +344,7 @@
                                             data-description="{{ $record->description }}"
                                             data-plant="{{ $record->plant }}"
                                             data-area="{{ $record->area }}"
+                                            data-organization-section-id="{{ $record->organization_section_id }}"
                                             data-status="{{ $record->status }}"
                                             data-notes="{{ $record->notes }}"
                                             title="Edit"
@@ -378,6 +382,7 @@
         'method' => null,
         'categoryOptions' => $categoryOptions,
         'statusOptions' => $statusOptions,
+        'organizationSectionOptions' => $organizationSectionOptions,
         'record' => null,
     ])
 
@@ -388,6 +393,7 @@
         'method' => 'PUT',
         'categoryOptions' => $categoryOptions,
         'statusOptions' => $statusOptions,
+        'organizationSectionOptions' => $organizationSectionOptions,
         'record' => null,
     ])
 @endsection
@@ -402,6 +408,23 @@
             const selectedCount = document.querySelector('[data-bulk-selected-count]');
             const filteredBulkForms = document.querySelectorAll('[data-filtered-bulk-form]');
             const deleteForms = document.querySelectorAll('[data-delete-master-data-form]');
+            const syncCommissioningUnitField = (form) => {
+                const category = form?.querySelector('[data-master-document-category]')?.value || '';
+                const unitField = form?.querySelector('[data-commissioning-unit-field]');
+                const unitSelect = form?.querySelector('[name="organization_section_id"]');
+
+                if (!unitField || !unitSelect) {
+                    return;
+                }
+
+                const isCommissioning = category === 'commissioning';
+                unitField.classList.toggle('d-none', !isCommissioning);
+                unitSelect.disabled = !isCommissioning;
+
+                if (!isCommissioning) {
+                    unitSelect.value = '';
+                }
+            };
 
             const confirmAction = async ({title, text, confirmButtonText = 'Lanjutkan', icon = 'warning'}) => {
                 if (!window.Swal) {
@@ -529,6 +552,12 @@
 
             syncBulkControls();
 
+            document.querySelectorAll('[data-master-document-category]').forEach((select) => {
+                const form = select.closest('form');
+                syncCommissioningUnitField(form);
+                select.addEventListener('change', () => syncCommissioningUnitField(form));
+            });
+
             if (!editModal) return;
 
             editModal.addEventListener('show.bs.modal', (event) => {
@@ -547,6 +576,7 @@
                     description: button.dataset.description,
                     plant: button.dataset.plant,
                     area: button.dataset.area,
+                    organization_section_id: button.dataset.organizationSectionId,
                     status: button.dataset.status,
                     notes: button.dataset.notes,
                 };
@@ -555,6 +585,8 @@
                     const input = form.querySelector(`[name="${name}"]`);
                     if (input) input.value = value || '';
                 });
+
+                syncCommissioningUnitField(form);
             });
         })();
     </script>

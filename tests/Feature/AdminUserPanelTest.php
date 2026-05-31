@@ -74,16 +74,37 @@ class AdminUserPanelTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.qc'))
-            ->assertForbidden();
+            ->assertRedirect(route('admin.dashboard'))
+            ->assertSessionHas('warning', 'Akses menu tersebut dibatasi. Anda diarahkan ke menu yang tersedia.');
     }
 
-    public function test_non_super_admin_cannot_open_role_permission_page(): void
+    public function test_non_super_admin_is_redirected_from_restricted_role_permission_page(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
 
         $this->actingAs($admin)
             ->get(route('admin.user-panel.role-permission'))
-            ->assertForbidden();
+            ->assertRedirect(route('admin.dashboard'));
+    }
+
+    public function test_admin_is_redirected_to_first_allowed_menu_when_opening_restricted_url(): void
+    {
+        $superAdmin = User::factory()->create(['usertype' => 'admin', 'role' => 'super_admin']);
+        $approval = User::factory()->create(['usertype' => 'admin', 'role' => 'approval']);
+
+        $this->actingAs($superAdmin)
+            ->patch(route('admin.user-panel.role-permission.update'), [
+                'permissions' => [
+                    'admin' => ['dashboard.dashboard'],
+                    'approval' => ['qc_commissioning.qc'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($approval)
+            ->get(route('admin.master-data'))
+            ->assertRedirect(route('admin.qc'))
+            ->assertSessionHas('warning', 'Akses menu tersebut dibatasi. Anda diarahkan ke menu yang tersedia.');
     }
 
     public function test_admin_can_create_user_with_default_password(): void

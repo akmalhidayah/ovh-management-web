@@ -24,6 +24,7 @@ class MasterDataRecord extends Model
         'description',
         'plant',
         'area',
+        'organization_section_id',
         'status',
         'inspection_status',
         'notes',
@@ -57,6 +58,11 @@ class MasterDataRecord extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function organizationSection(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationSection::class);
     }
 
     public function inspectionStatusHistories(): HasMany

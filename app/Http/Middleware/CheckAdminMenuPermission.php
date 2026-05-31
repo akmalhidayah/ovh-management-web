@@ -9,6 +9,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckAdminMenuPermission
 {
+    private const MENU_ROUTE_NAMES = [
+        'dashboard.dashboard' => 'admin.dashboard',
+        'dashboard.overview' => 'admin.overview',
+        'planning.kalender-overhaul' => 'admin.kalender-overhaul',
+        'planning.schedule' => 'admin.schedule',
+        'qc_commissioning.qc' => 'admin.qc',
+        'qc_commissioning.commissioning' => 'admin.commissioning',
+        'qc_commissioning.template-qc' => 'admin.template-form-qc.index',
+        'qc_commissioning.template-commissioning' => 'admin.template-form-commissioning.index',
+        'procurement.index' => 'admin.procurement',
+        'asset_records.equipment' => 'admin.equipment',
+        'asset_records.mom' => 'admin.mom',
+        'asset_records.dokumen' => 'admin.dokumen',
+        'master_data.equipment' => 'admin.master-data',
+        'master_data.unit-kerja' => 'admin.organization-sections.index',
+        'userpanel.management' => 'admin.user-panel',
+        'userpanel.role-permission' => 'admin.user-panel.role-permission',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
@@ -16,10 +35,27 @@ class CheckAdminMenuPermission
         $menuKey = $this->menuKeyForRoute($routeName);
 
         if ($menuKey && ! AdminMenuPermissions::canSee($user, $menuKey)) {
+            if ($request->isMethodSafe() && $fallbackRoute = $this->firstAllowedRouteName($user)) {
+                return redirect()
+                    ->route($fallbackRoute)
+                    ->with('warning', 'Akses menu tersebut dibatasi. Anda diarahkan ke menu yang tersedia.');
+            }
+
             abort(403);
         }
 
         return $next($request);
+    }
+
+    private function firstAllowedRouteName($user): ?string
+    {
+        foreach (self::MENU_ROUTE_NAMES as $menuKey => $routeName) {
+            if (AdminMenuPermissions::canSee($user, $menuKey)) {
+                return $routeName;
+            }
+        }
+
+        return null;
     }
 
     private function menuKeyForRoute(string $routeName): ?string
