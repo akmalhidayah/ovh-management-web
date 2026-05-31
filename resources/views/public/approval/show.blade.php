@@ -99,11 +99,12 @@
                                 <label class="form-label">Tanda Tangan</label>
                                 <canvas width="900" height="280" class="signature-canvas" data-signature-canvas></canvas>
                                 <input type="file" name="signature_file" accept="image/png,image/jpeg" class="d-none" data-signature-input>
-                                <div class="form-text">Gunakan mouse atau sentuhan layar untuk membuat tanda tangan.</div>
+                                <div class="form-text">Gunakan mouse, sentuhan layar, atau upload gambar TTD PNG/JPG.</div>
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-2 mt-4">
                             <button type="button" class="btn btn-outline-secondary" data-signature-clear>Clear</button>
+                            <button type="button" class="btn btn-outline-primary" data-signature-upload>Upload TTD</button>
                             <button type="submit" class="btn btn-success">Approve & Sign</button>
                             <button type="button" class="btn btn-outline-danger" data-show-reject>Reject</button>
                         </div>
@@ -131,6 +132,7 @@
     const context = canvas.getContext('2d');
     let drawing = false;
     let hasDrawing = false;
+    let signaturePrepared = false;
 
     const reset = () => {
         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -141,6 +143,7 @@
         context.lineCap = 'round';
         context.lineJoin = 'round';
         hasDrawing = false;
+        signaturePrepared = false;
         input.value = '';
     };
     const point = (event) => {
@@ -165,6 +168,7 @@
         context.lineTo(p.x, p.y);
         context.stroke();
         hasDrawing = true;
+        signaturePrepared = false;
     };
     const stop = () => { drawing = false; };
     reset();
@@ -175,6 +179,55 @@
     canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', stop);
     document.querySelector('[data-signature-clear]')?.addEventListener('click', reset);
+    document.querySelector('[data-signature-upload]')?.addEventListener('click', () => input.click());
+
+    const drawUploadedSignature = (file) => {
+        if (!['image/png', 'image/jpeg'].includes(file.type)) {
+            alert('File TTD harus PNG atau JPG.');
+            input.value = '';
+            return;
+        }
+
+        if (file.size > 1024 * 1024) {
+            alert('Ukuran file TTD maksimal 1MB.');
+            input.value = '';
+            return;
+        }
+
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        image.onload = () => {
+            reset();
+
+            const padding = 18;
+            const maxWidth = canvas.width - (padding * 2);
+            const maxHeight = canvas.height - (padding * 2);
+            const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+            const width = image.width * ratio;
+            const height = image.height * ratio;
+            const x = (canvas.width - width) / 2;
+            const y = (canvas.height - height) / 2;
+
+            context.drawImage(image, x, y, width, height);
+            hasDrawing = true;
+            signaturePrepared = false;
+            URL.revokeObjectURL(objectUrl);
+        };
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            input.value = '';
+            alert('File TTD gagal dibaca. Silakan pilih gambar lain.');
+        };
+        image.src = objectUrl;
+    };
+
+    input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        if (file) {
+            drawUploadedSignature(file);
+        }
+    });
+
     const setSignatureFile = (blob) => {
         const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
         const transfer = new DataTransfer();
@@ -183,7 +236,6 @@
     };
 
     const approvalForm = document.querySelector('[data-approval-form]');
-    let signaturePrepared = false;
     approvalForm?.addEventListener('submit', (event) => {
         if (signaturePrepared) {
             return;

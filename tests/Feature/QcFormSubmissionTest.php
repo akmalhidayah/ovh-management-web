@@ -268,6 +268,7 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Preview PDF')
             ->assertSee('Tanda Tangani Dokumen')
+            ->assertSee('Upload TTD')
             ->assertSee('value="Leader From Form"', false)
             ->assertSee(route('public.approval.pdf', $token), false);
 

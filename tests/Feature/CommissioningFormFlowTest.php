@@ -312,6 +312,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Preview PDF')
             ->assertSee('Tanda Tangani Dokumen')
+            ->assertSee('Upload TTD')
             ->assertSee('value="Leader A"', false)
             ->assertSee(route('public.approval.pdf', $token), false);
 
