@@ -84,6 +84,20 @@ class UserPanelController extends Controller
         );
     }
 
+    public function rolePermission(): View
+    {
+        return view('admin.user-panel.role-permission', [
+            'roles' => self::roleOptions(),
+            'permissions' => [
+                ['module' => 'Dashboard', 'actions' => ['Lihat ringkasan', 'Lihat grafik']],
+                ['module' => 'QC', 'actions' => ['Buat form', 'Edit draft', 'Buka PDF']],
+                ['module' => 'Commissioning', 'actions' => ['Buat form', 'Edit draft', 'Buka PDF']],
+                ['module' => 'Approval', 'actions' => ['Buka link approval', 'Approve', 'Reject']],
+                ['module' => 'Admin', 'actions' => ['Kelola master data', 'Kelola user']],
+            ],
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateUser($request);

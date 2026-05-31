@@ -69,8 +69,11 @@
         $groups[] = [
             'label' => 'Userpanel',
             'icon' => 'bi-people',
-            'route' => 'admin.user-panel',
-            'active' => 'admin.user-panel*',
+            'routes' => ['admin.user-panel*'],
+            'items' => [
+                ['label' => 'Manajemen User', 'route' => 'admin.user-panel', 'active' => 'admin.user-panel'],
+                ['label' => 'Role & Permission', 'route' => 'admin.user-panel.role-permission', 'active' => 'admin.user-panel.role-permission'],
+            ],
         ];
     }
 @endphp

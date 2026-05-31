@@ -31,9 +31,23 @@ class AdminUserPanelTest extends TestCase
             ->get(route('admin.user-panel'))
             ->assertOk()
             ->assertSee('Userpanel')
+            ->assertSee('Manajemen User')
+            ->assertSee('Role &amp; Permission', false)
             ->assertSee('QC Operator')
             ->assertSee('Quality Control')
             ->assertSee('Register Aktif');
+    }
+
+    public function test_admin_can_open_role_permission_dummy_page(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.user-panel.role-permission'))
+            ->assertOk()
+            ->assertSee('Role &amp; Permission', false)
+            ->assertSee('Dummy Mode')
+            ->assertSee('Matrix Permission');
     }
 
     public function test_admin_can_create_user_with_default_password(): void

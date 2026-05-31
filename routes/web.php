@@ -160,6 +160,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::get('/user-panel', [UserPanelController::class, 'index'])->name('user-panel');
     Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
     Route::patch('/user-panel/registration-access', [UserPanelController::class, 'toggleRegistration'])->name('user-panel.registration-access');
+    Route::get('/user-panel/role-permission', [UserPanelController::class, 'rolePermission'])->name('user-panel.role-permission');
     Route::put('/user-panel/{user}', [UserPanelController::class, 'update'])->name('user-panel.update');
     Route::delete('/user-panel/{user}', [UserPanelController::class, 'destroy'])->name('user-panel.destroy');
 });
