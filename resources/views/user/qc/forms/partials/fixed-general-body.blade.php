@@ -26,7 +26,14 @@
                                 <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Not Ok" @checked(($row['status'] ?? null) === 'Not Ok') data-qc-not-ok-status> <span>Not Ok</span></label>
                             </div>
                         </td>
-                        <td data-label="Catatan"><textarea name="body[general_rows][{{ $index }}][catatan]" class="form-control qc-user-table-note">{{ $row['catatan'] ?? '' }}</textarea></td>
+                        <td data-label="Catatan">
+                            <textarea
+                                name="body[general_rows][{{ $index }}][catatan]"
+                                class="form-control qc-user-table-note"
+                                data-qc-general-note
+                                placeholder="Opsional jika status Ok"
+                            >{{ $row['catatan'] ?? '' }}</textarea>
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="text-center text-muted py-3" data-label="Info">Belum ada row default.</td></tr>

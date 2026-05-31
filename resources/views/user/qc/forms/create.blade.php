@@ -354,6 +354,29 @@
         })();
 
         (() => {
+            const syncGeneralNotePlaceholder = (row) => {
+                const note = row.querySelector('[data-qc-general-note]');
+                if (!note) return;
+
+                const status = row.querySelector('input[name*="[status]"]:checked')?.value;
+                const isNotOk = status === 'Not Ok';
+
+                note.placeholder = isNotOk
+                    ? 'Wajib diisi karena status Not Ok'
+                    : 'Opsional jika status Ok';
+                note.toggleAttribute('required', isNotOk);
+            };
+
+            document.querySelectorAll('.qc-general-check-table tbody tr').forEach((row) => {
+                syncGeneralNotePlaceholder(row);
+
+                row.querySelectorAll('input[name*="[status]"]').forEach((input) => {
+                    input.addEventListener('change', () => syncGeneralNotePlaceholder(row));
+                });
+            });
+        })();
+
+        (() => {
             const MAX_IMAGE_BYTES = 1.4 * 1024 * 1024;
             const MAX_TOTAL_UPLOAD_BYTES = 6 * 1024 * 1024;
             const MAX_IMAGE_DIMENSION = 1800;

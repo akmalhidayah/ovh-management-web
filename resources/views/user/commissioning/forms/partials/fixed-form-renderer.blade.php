@@ -314,7 +314,12 @@
 
     <section class="inspector-panel qc-form-card">
         <div class="row g-3">
-            <div class="col-12 col-lg-7"><label class="qc-user-note-box"><span>{{ $labels['note_label'] }}</span><textarea name="note" rows="5" class="form-control">{{ old('note', $draftSubmission?->note ?? '') }}</textarea></label></div>
+            <div class="col-12 col-lg-7">
+                <label class="qc-user-note-box">
+                    <span>{{ $labels['note_label'] }} (Opsional)</span>
+                    <textarea name="note" rows="5" class="form-control" placeholder="Tulis notes/finding jika diperlukan">{{ old('note', $draftSubmission?->note ?? '') }}</textarea>
+                </label>
+            </div>
             <div class="col-12 col-lg-5">
                 @php
                     $temporaryAttachmentTokens = old('temporary_attachments.dokumentasi', []);

@@ -829,6 +829,10 @@ class FormController extends Controller
                         $errors["body.general_rows.{$index}.{$key}"] = 'Item pengecekan, standar, dan status wajib diisi.';
                     }
                 }
+
+                if (($row['status'] ?? null) === 'Not Ok' && blank($row['catatan'] ?? null)) {
+                    $errors["body.general_rows.{$index}.catatan"] = 'Catatan wajib diisi jika status Not Ok.';
+                }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_CASTABLE) {
             foreach (FixedQcTemplate::castableInspectionRows() as $definition) {

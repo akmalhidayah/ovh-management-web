@@ -708,7 +708,26 @@ class QcFormSubmissionTest extends TestCase
 
         $this->assertSame('pending_approval', $submission->status);
         $this->assertSame('Not Ok', $submission->body_data['general_rows'][0]['status']);
+        $this->assertSame('Perlu tindak lanjut', $submission->body_data['general_rows'][0]['catatan']);
         $this->assertTrue($submission->body_data['final_check']);
+    }
+
+    public function test_fixed_general_qc_requires_note_when_status_is_not_ok(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['body']['general_rows'][0]['status'] = 'Not Ok';
+        $payload['body']['general_rows'][0]['catatan'] = '';
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors([
+                'body.general_rows.0.catatan' => 'Catatan wajib diisi jika status Not Ok.',
+            ]);
+
+        $this->assertSame(0, QcFormSubmission::count());
     }
 
     public function test_user_can_submit_fixed_brics_qc_with_dynamic_manpower_rows(): void
