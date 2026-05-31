@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CommissioningFormSubmission;
 use App\Services\InspectionSubmissionDeletionService;
+use App\Support\AdminMenuPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -17,6 +18,8 @@ class CommissioningSubmissionController extends Controller
         CommissioningFormSubmission $submission,
         InspectionSubmissionDeletionService $deletionService
     ): RedirectResponse {
+        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+
         $submissionId = $submission->id;
 
         try {

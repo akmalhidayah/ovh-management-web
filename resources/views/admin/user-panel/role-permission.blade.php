@@ -14,12 +14,6 @@
     <div class="page-header">
         <div>
             <h1>Role & Permission</h1>
-            <p>Atur menu admin yang boleh dilihat oleh role Admin dan Approval. Super Admin selalu punya akses penuh.</p>
-        </div>
-        <div class="page-actions">
-            <button type="submit" form="rolePermissionForm" class="btn btn-primary">
-                <i class="bi bi-save me-1"></i>Simpan Permission
-            </button>
         </div>
     </div>
 
@@ -99,6 +93,12 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="role-permission-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i>Simpan Permission
+                </button>
+            </div>
         </div>
     </form>
 @endsection
@@ -145,6 +145,13 @@
         .role-permission-table {
             min-width: 920px;
             margin-bottom: 0;
+        }
+        .role-permission-actions {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 1rem;
+            margin-top: 1rem;
+            border-top: 1px solid #e2e8f0;
         }
         .role-permission-table thead th {
             color: #475569;

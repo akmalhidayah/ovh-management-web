@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\User\Qc\FormController as UserQcFormController;
 use App\Models\QcFormSubmission;
 use App\Services\InspectionSubmissionDeletionService;
+use App\Support\AdminMenuPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -51,6 +52,8 @@ class QcSubmissionController extends Controller
 
     public function destroy(QcFormSubmission $submission, InspectionSubmissionDeletionService $deletionService): RedirectResponse
     {
+        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+
         $submissionId = $submission->id;
 
         try {

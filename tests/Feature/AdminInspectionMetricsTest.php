@@ -380,4 +380,77 @@ class AdminInspectionMetricsTest extends TestCase
             'inspection_status' => null,
         ]);
     }
+
+    public function test_approval_admin_cannot_see_or_use_qc_delete_action(): void
+    {
+        $approval = User::factory()->create(['usertype' => 'admin', 'role' => 'approval']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-APPROVAL-NO-DELETE',
+            'name' => 'QC Approval No Delete',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $submission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '030/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'QC Approval Equipment',
+            'general_info' => [
+                'id_equipment' => 'EQ-QC-APPROVAL',
+                'name_equipment' => 'QC Approval Equipment',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->actingAs($approval)
+            ->get(route('admin.qc'))
+            ->assertOk()
+            ->assertDontSee('data-admin-delete-submission-form', false)
+            ->assertDontSee('Hapus Permanen');
+
+        $this->actingAs($approval)
+            ->delete(route('admin.qc.submissions.destroy', $submission))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('qc_form_submissions', ['id' => $submission->id]);
+    }
+
+    public function test_approval_admin_cannot_delete_commissioning_submission_directly(): void
+    {
+        $approval = User::factory()->create(['usertype' => 'admin', 'role' => 'approval']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-APPROVAL-NO-DELETE',
+            'name' => 'Commissioning Approval No Delete',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+            'body_schema' => ['equipment_check_rows' => []],
+        ]);
+        $submission = CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'form_number' => '030/COM/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'area' => 'RAW MILL',
+            'equipment' => 'Commissioning Approval Equipment',
+            'equipment_no' => 'EQ-COM-APPROVAL',
+            'header_data' => [
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->actingAs($approval)
+            ->delete(route('admin.commissioning.submissions.destroy', $submission))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('commissioning_form_submissions', ['id' => $submission->id]);
+    }
 }

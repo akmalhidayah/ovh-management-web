@@ -17,6 +17,7 @@
     $formatPercentage = fn ($value) => rtrim(rtrim(number_format((float) $value, 1, ',', '.'), '0'), ',');
     $metricsLabel = $inspectionMetrics['label'] ?? ($filters['type'] === 'commissioning' ? 'Commissioning' : 'QC');
     $supportsRemarks = in_array(($filters['type'] ?? null), ['qc', 'commissioning'], true);
+    $canDeleteInspectionSubmission = auth()->user()?->role !== \App\Support\AdminMenuPermissions::ROLE_APPROVAL;
 @endphp
 
 <form method="GET" action="{{ route($filterRoute) }}">
@@ -252,7 +253,7 @@
                                     <span class="text-muted small">-</span>
                                 @endif
 
-                                @if ($submission->model)
+                                @if ($canDeleteInspectionSubmission && $submission->model)
                                     <form method="POST"
                                           action="{{ $submission->type === 'qc' ? route('admin.qc.submissions.destroy', $submission->model) : route('admin.commissioning.submissions.destroy', $submission->model) }}"
                                           class="d-inline"
@@ -538,38 +539,40 @@
     @endpush
 @endif
 
-@push('scripts')
-    <script>
-        document.querySelectorAll('[data-admin-delete-submission-form]').forEach(function (form) {
-            form.addEventListener('submit', async function (event) {
-                event.preventDefault();
+@if ($canDeleteInspectionSubmission)
+    @push('scripts')
+        <script>
+            document.querySelectorAll('[data-admin-delete-submission-form]').forEach(function (form) {
+                form.addEventListener('submit', async function (event) {
+                    event.preventDefault();
 
-                const label = form.dataset.deleteLabel || 'submission ini';
-                let confirmed = false;
+                    const label = form.dataset.deleteLabel || 'submission ini';
+                    let confirmed = false;
 
-                if (window.Swal) {
-                    const result = await window.Swal.fire({
-                        title: 'Hapus submission?',
-                        text: `Submission ${label} akan dihapus permanen beserta attachment dan data approval terkait.`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Ya, hapus permanen',
-                        cancelButtonText: 'Batal',
-                        confirmButtonColor: '#dc3545',
-                    });
+                    if (window.Swal) {
+                        const result = await window.Swal.fire({
+                            title: 'Hapus submission?',
+                            text: `Submission ${label} akan dihapus permanen beserta attachment dan data approval terkait.`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Ya, hapus permanen',
+                            cancelButtonText: 'Batal',
+                            confirmButtonColor: '#dc3545',
+                        });
 
-                    confirmed = result.isConfirmed;
-                } else {
-                    confirmed = window.confirm(`Hapus permanen submission ${label}?`);
-                }
+                        confirmed = result.isConfirmed;
+                    } else {
+                        confirmed = window.confirm(`Hapus permanen submission ${label}?`);
+                    }
 
-                if (confirmed) {
-                    form.submit();
-                }
+                    if (confirmed) {
+                        form.submit();
+                    }
+                });
             });
-        });
-    </script>
-@endpush
+        </script>
+    @endpush
+@endif
 
 @push('styles')
     <style>
