@@ -254,7 +254,18 @@ class CommissioningFormFlowTest extends TestCase
                 'area' => $master->area,
             ]))
             ->assertRedirect(route('user.commissioning.dashboard'))
-            ->assertSessionHas('warning', 'Equipment tersebut sudah dipakai, di-close, atau tidak aktif. Silakan pilih equipment lain dari daftar terbaru.');
+            ->assertSessionHas('warning', 'Equipment tersebut sudah dipakai atau di-close. Silakan pilih equipment lain dari daftar terbaru.');
+    }
+
+    public function test_commissioning_manual_form_lists_inactive_master_data_by_area(): void
+    {
+        [$user, $template] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('INACTIVE COMMISSIONING')
+            ->assertSee('EQ-COM-INACTIVE');
     }
 
     public function test_public_approval_approve_advances_commissioning_flow(): void

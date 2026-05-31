@@ -1311,7 +1311,6 @@ class FormController extends Controller
 
         return MasterDataRecord::query()
             ->where('document_category', MasterDataRecord::CATEGORY_QC)
-            ->where('status', 'active')
             ->when($profileAreas, fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->orderBy('func_location')
             ->orderBy('equipment_no')
@@ -1347,7 +1346,6 @@ class FormController extends Controller
         return MasterDataRecord::query()
             ->whereKey($recordId)
             ->where('document_category', MasterDataRecord::CATEGORY_QC)
-            ->where('status', 'active')
             ->when(
                 collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all(),
                 fn ($query, array $areas) => $query->whereIn('area', $areas)

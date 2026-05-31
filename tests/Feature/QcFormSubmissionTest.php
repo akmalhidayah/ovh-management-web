@@ -444,7 +444,7 @@ class QcFormSubmissionTest extends TestCase
         }
     }
 
-    public function test_fixed_qc_name_equipment_uses_active_qc_master_data(): void
+    public function test_fixed_qc_name_equipment_uses_qc_master_data_for_manual_form(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();
 
@@ -460,7 +460,7 @@ class QcFormSubmissionTest extends TestCase
             'status' => 'active',
         ]);
 
-        MasterDataRecord::create([
+        $inactiveRecord = MasterDataRecord::create([
             'document_category' => MasterDataRecord::CATEGORY_QC,
             'year' => '2026',
             'func_location' => 'ST-INACTIVE-QC',
@@ -492,7 +492,8 @@ class QcFormSubmissionTest extends TestCase
             ->assertSee('data-master-area-select', false)
             ->assertSee('ACTIVE BELT CONVEYOR')
             ->assertSee('EQ-ACTIVE-001')
-            ->assertDontSee('ST-INACTIVE-QC')
+            ->assertSee('INACTIVE EQUIPMENT')
+            ->assertSee('EQ-INACTIVE-001')
             ->assertDontSee('ST-COMMISSIONING');
 
         $this->actingAs($user)
@@ -534,6 +535,19 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('TONASA 4', $submission->plant);
         $this->assertSame('SEC-ACTIVE-001', $submission->tag_num);
         $this->assertSame('RAW MILL', $submission->area);
+
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['master_data_record_id'] = $inactiveRecord->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $inactiveSubmission = QcFormSubmission::latest('id')->firstOrFail();
+
+        $this->assertSame($inactiveRecord->id, $inactiveSubmission->general_info['master_data_record_id']);
+        $this->assertSame('INACTIVE EQUIPMENT', $inactiveSubmission->general_info['name_equipment']);
+        $this->assertSame('ST-INACTIVE-QC', $inactiveSubmission->general_info['functional_location']);
     }
 
     public function test_user_can_continue_fixed_qc_draft_with_saved_data(): void
