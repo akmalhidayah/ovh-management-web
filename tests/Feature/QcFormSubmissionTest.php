@@ -917,6 +917,72 @@ class QcFormSubmissionTest extends TestCase
         Storage::disk('local')->assertMissing($attachmentPath);
     }
 
+    public function test_deleting_one_qc_submission_keeps_master_status_close_when_another_submitted_form_exists(): void
+    {
+        Storage::fake('local');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $master = $this->sharedQcMasterDataRecord();
+
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['master_data_record_id'] = $master->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['master_data_record_id'] = $master->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submissions = QcFormSubmission::orderBy('id')->get();
+        $this->assertCount(2, $submissions);
+        $this->assertSame('close', $master->refresh()->inspection_status);
+
+        $this->actingAs($user)
+            ->delete(route('user.qc.submissions.destroy', $submissions->first()))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $this->assertSoftDeleted('qc_form_submissions', ['id' => $submissions->first()->id]);
+        $this->assertSame('close', $master->refresh()->inspection_status);
+    }
+
+    public function test_deleting_one_qc_draft_keeps_master_status_ongoing_when_another_draft_exists(): void
+    {
+        Storage::fake('local');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $master = $this->sharedQcMasterDataRecord();
+
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+        $payload['header']['master_data_record_id'] = $master->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+        $payload['header']['master_data_record_id'] = $master->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submissions = QcFormSubmission::orderBy('id')->get();
+        $this->assertCount(2, $submissions);
+        $this->assertSame('ongoing', $master->refresh()->inspection_status);
+
+        $this->actingAs($user)
+            ->delete(route('user.qc.submissions.destroy', $submissions->first()))
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $this->assertSoftDeleted('qc_form_submissions', ['id' => $submissions->first()->id]);
+        $this->assertSame('ongoing', $master->refresh()->inspection_status);
+    }
+
     public function test_admin_can_permanently_delete_qc_submission_with_related_files(): void
     {
         Storage::fake('local');
@@ -1198,6 +1264,21 @@ class QcFormSubmissionTest extends TestCase
                 ],
             ],
         ] + $this->requiredQcAttachments();
+    }
+
+    private function sharedQcMasterDataRecord(): MasterDataRecord
+    {
+        return MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'FL-SHARED-QC',
+            'equipment_no' => 'EQ-SHARED-QC',
+            'section_no' => 'SEC-SHARED-QC',
+            'description' => 'SHARED QC EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
     }
 
     private function fixedWeldingPayload(QcFormTemplate $template): array

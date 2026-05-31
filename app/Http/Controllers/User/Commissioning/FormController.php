@@ -39,6 +39,14 @@ class FormController extends Controller
     private const ERROR_DESTROY = 'COM-SUB-DESTROY-FAILED';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
     private const TEMP_ATTACHMENT_SESSION_KEY = 'commissioning_temporary_attachments';
+    private const MASTER_DATA_BLOCKING_STATUSES = [
+        'draft',
+        'submitted',
+        'pending_approval',
+        'approved',
+        'revision',
+        'revision_required',
+    ];
 
     public function create(Request $request): View|RedirectResponse
     {
@@ -684,6 +692,7 @@ class FormController extends Controller
 
         CommissioningFormSubmission::query()
             ->when($currentSubmission, fn ($query) => $query->whereKeyNot($currentSubmission->id))
+            ->whereIn('status', self::MASTER_DATA_BLOCKING_STATUSES)
             ->get(['header_data', 'functional_location', 'equipment_no'])
             ->each(function (CommissioningFormSubmission $submission) use (&$used) {
                 $header = $submission->header_data ?? [];

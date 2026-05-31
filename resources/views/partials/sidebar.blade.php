@@ -60,14 +60,11 @@
         $groups[] = [
             'label' => 'Master Data',
             'icon' => 'bi-database-gear',
-            'route' => 'admin.master-data',
-            'active' => 'admin.master-data*',
-        ];
-        $groups[] = [
-            'label' => 'Unit Kerja',
-            'icon' => 'bi-diagram-3',
-            'route' => 'admin.organization-sections.index',
-            'active' => 'admin.organization-sections*',
+            'routes' => ['admin.master-data*', 'admin.organization-sections*'],
+            'items' => [
+                ['label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
+                ['label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
+            ],
         ];
         $groups[] = [
             'label' => 'Userpanel',

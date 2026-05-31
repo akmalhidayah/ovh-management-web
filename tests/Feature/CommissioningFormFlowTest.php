@@ -400,6 +400,71 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee($availableMaster->description);
     }
 
+    public function test_commissioning_rejected_or_cancelled_submission_does_not_hide_master_data_from_new_forms(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '001/COM/05-2026',
+            'status' => 'rejected',
+            'year' => $master->year,
+            'area' => $master->area,
+            'equipment' => $master->description,
+            'equipment_no' => $master->equipment_no,
+            'functional_location' => $master->func_location,
+            'header_data' => [
+                'master_data_record_id' => $master->id,
+                'id_equipment' => $master->equipment_no,
+                'functional_location' => $master->func_location,
+            ],
+        ]);
+
+        $cancelledMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-CANCELLED',
+            'equipment_no' => 'EQ-COM-CANCELLED',
+            'section_no' => 'SEC-COM-CANCELLED',
+            'description' => 'CANCELLED MOTOR',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '002/COM/05-2026',
+            'status' => 'cancelled',
+            'year' => $cancelledMaster->year,
+            'area' => $cancelledMaster->area,
+            'equipment' => $cancelledMaster->description,
+            'equipment_no' => $cancelledMaster->equipment_no,
+            'functional_location' => $cancelledMaster->func_location,
+            'header_data' => [
+                'master_data_record_id' => $cancelledMaster->id,
+                'id_equipment' => $cancelledMaster->equipment_no,
+                'functional_location' => $cancelledMaster->func_location,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('SEC-COM-001')
+            ->assertSee('GEARBOX MOTOR')
+            ->assertSee('SEC-COM-CANCELLED')
+            ->assertSee('CANCELLED MOTOR');
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $this->assertSame(3, CommissioningFormSubmission::count());
+    }
+
     public function test_commissioning_master_data_closed_manually_is_hidden_from_new_forms(): void
     {
         [$user, $template, $master] = $this->makeCommissioningSetup();
@@ -504,7 +569,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertRedirect(route('user.commissioning.history.index'))
             ->assertSessionHas('success', 'Form Commissioning berhasil dihapus.');
 
-        $this->assertDatabaseMissing('commissioning_form_submissions', ['id' => $submission->id]);
+        $this->assertSoftDeleted('commissioning_form_submissions', ['id' => $submission->id]);
         $this->assertDatabaseMissing('commissioning_form_submission_attachments', ['file_path' => $attachmentPath]);
         $this->assertNull($master->refresh()->inspection_status);
         Storage::disk('local')->assertMissing($attachmentPath);

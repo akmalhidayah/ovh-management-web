@@ -9,6 +9,7 @@ use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -37,7 +38,7 @@ class InspectionSubmissionDeletionService
             $this->deleteStoredFiles($submission);
             $this->deleteApprovalFlows($submission);
             $submission->attachments()->delete();
-            $submission->delete();
+            $submission->forceDelete();
         });
     }
 
@@ -49,17 +50,21 @@ class InspectionSubmissionDeletionService
             return;
         }
 
+        $remainingStatus = $this->remainingQcInspectionStatus($record, $submission);
+
         if ($this->submissionChangedMasterDataInspectionStatus($record, $submission)) {
             app(MasterDataInspectionStatusService::class)->setStatus(
                 $record,
-                null,
+                $remainingStatus,
                 MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
                 $actor,
                 $submission
             );
         }
 
-        $this->restoreAutoActivatedMasterStatus($record, $submission->general_info ?? []);
+        if ($remainingStatus === null) {
+            $this->restoreAutoActivatedMasterStatus($record, $submission->general_info ?? []);
+        }
     }
 
     public function resetCommissioningMasterStatus(CommissioningFormSubmission $submission, ?User $actor = null): void
@@ -145,6 +150,44 @@ class InspectionSubmissionDeletionService
             ->where('submission_type', $submission->getMorphClass())
             ->where('submission_id', $submission->getKey())
             ->exists();
+    }
+
+    private function remainingQcInspectionStatus(MasterDataRecord $record, QcFormSubmission $excludedSubmission): ?string
+    {
+        $remainingSubmissions = $this->remainingQcSubmissionsForMasterRecord($record, $excludedSubmission);
+
+        if ($remainingSubmissions->isEmpty()) {
+            return null;
+        }
+
+        if ($remainingSubmissions->contains(fn (QcFormSubmission $submission) => ! $this->isOngoingQcStatus($submission->status))) {
+            return 'close';
+        }
+
+        return 'ongoing';
+    }
+
+    private function remainingQcSubmissionsForMasterRecord(MasterDataRecord $record, QcFormSubmission $excludedSubmission): Collection
+    {
+        return QcFormSubmission::query()
+            ->whereKeyNot($excludedSubmission->getKey())
+            ->get()
+            ->filter(fn (QcFormSubmission $submission) => $this->qcSubmissionMatchesMasterRecord($submission, $record))
+            ->values();
+    }
+
+    private function qcSubmissionMatchesMasterRecord(QcFormSubmission $submission, MasterDataRecord $record): bool
+    {
+        $header = $submission->general_info ?? [];
+
+        return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
+            || (filled($header['functional_location'] ?? null) && (string) $header['functional_location'] === (string) $record->func_location)
+            || (filled($header['id_equipment'] ?? null) && filled($record->equipment_no) && (string) $header['id_equipment'] === (string) $record->equipment_no);
+    }
+
+    private function isOngoingQcStatus(?string $status): bool
+    {
+        return in_array($status, ['draft', 'revision', 'revision_required'], true);
     }
 
     private function qcMasterRecordForSubmission(QcFormSubmission $submission): ?MasterDataRecord
