@@ -216,7 +216,6 @@
         <section class="inspector-panel qc-form-card">
             <div class="qc-form-section-title"><h3>Catatan <span class="text-muted fw-normal">(Opsional)</span></h3></div>
             <label class="qc-user-note-box">
-                <span>Catatan (Opsional)</span>
                 <textarea class="form-control" name="note" rows="4" placeholder="Tulis catatan umum pemeriksaan jika diperlukan">{{ $noteValue }}</textarea>
             </label>
         </section>
