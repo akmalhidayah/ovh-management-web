@@ -114,9 +114,9 @@ class FormController extends Controller
                 ]);
 
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
+                $this->syncMasterDataInspectionStatus($submission, $request);
 
                 if ($validated['action'] === 'submit') {
-                    $this->closeMasterDataInspectionStatus($submission, $request);
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
                 }
 
@@ -205,9 +205,9 @@ class FormController extends Controller
                 ]);
 
                 $this->storeAttachments($submission, $request->file('attachments', []), $request->input('temporary_attachments', []));
+                $this->syncMasterDataInspectionStatus($submission, $request);
 
                 if ($validated['action'] === 'submit') {
-                    $this->closeMasterDataInspectionStatus($submission, $request);
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
                 }
             });
@@ -724,7 +724,7 @@ class FormController extends Controller
             || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
     }
 
-    private function closeMasterDataInspectionStatus(CommissioningFormSubmission $submission, Request $request): void
+    private function syncMasterDataInspectionStatus(CommissioningFormSubmission $submission, Request $request): void
     {
         $record = $this->masterDataRecordForSubmission($submission);
 
@@ -732,13 +732,28 @@ class FormController extends Controller
             return;
         }
 
+        $previousStatus = $record->status;
+        $wasAutoActivated = $previousStatus !== 'active';
+
+        if ($wasAutoActivated) {
+            $record->forceFill(['status' => 'active'])->save();
+        }
+
         app(MasterDataInspectionStatusService::class)->setStatus(
             $record,
-            'close',
+            $submission->status === 'draft' ? 'ongoing' : 'close',
             MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
             $request->user(),
             $submission
         );
+
+        if ($wasAutoActivated) {
+            $header = $submission->header_data ?? [];
+            $header['master_data_auto_activated'] = true;
+            $header['master_data_previous_status'] = $previousStatus;
+
+            $submission->forceFill(['header_data' => $header])->save();
+        }
     }
 
     private function resetMasterDataInspectionStatusForDeletedSubmission(CommissioningFormSubmission $submission): void

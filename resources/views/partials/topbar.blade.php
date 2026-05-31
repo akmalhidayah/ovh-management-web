@@ -36,7 +36,7 @@
                 </div>
                 @forelse ($notificationItems as $item)
                     <a class="topbar-notification-item" href="{{ $item['url'] }}" target="_blank">
-                        <span class="topbar-notification-type">{{ $item['type'] }}</span>
+                        <span class="topbar-notification-type topbar-notification-type-{{ strtolower((string) $item['type']) }}">{{ $item['type'] }}</span>
                         <span class="topbar-notification-body">
                             <strong>{{ $item['title'] }}</strong>
                             @if (! empty($item['description']))
@@ -45,7 +45,7 @@
                             @if ($item['meta'])
                                 <small>{{ $item['meta'] }}</small>
                             @endif
-                            <time>{{ $item['submitted_at']?->format('d M Y H:i') }}</time>
+                            <time>{{ $item['notified_at']?->format('d M Y H:i') }}</time>
                         </span>
                     </a>
                 @empty

@@ -260,12 +260,28 @@ class CommissioningFormFlowTest extends TestCase
     public function test_commissioning_manual_form_lists_inactive_master_data_by_area(): void
     {
         [$user, $template] = $this->makeCommissioningSetup();
+        $inactiveMaster = MasterDataRecord::where('equipment_no', 'EQ-COM-INACTIVE')->firstOrFail();
 
         $this->actingAs($user)
             ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
             ->assertOk()
             ->assertSee('INACTIVE COMMISSIONING')
             ->assertSee('EQ-COM-INACTIVE');
+
+        $payload = $this->payload($template, $inactiveMaster, 'draft');
+        unset($payload['attachments']);
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $inactiveMaster->refresh();
+
+        $this->assertTrue($submission->header_data['master_data_auto_activated']);
+        $this->assertSame('inactive', $submission->header_data['master_data_previous_status']);
+        $this->assertSame('active', $inactiveMaster->status);
+        $this->assertSame('ongoing', $inactiveMaster->inspection_status);
     }
 
     public function test_public_approval_approve_advances_commissioning_flow(): void

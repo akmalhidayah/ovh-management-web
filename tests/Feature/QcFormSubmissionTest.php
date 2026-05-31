@@ -544,10 +544,15 @@ class QcFormSubmissionTest extends TestCase
             ->assertRedirect(route('user.qc.history.index'));
 
         $inactiveSubmission = QcFormSubmission::latest('id')->firstOrFail();
+        $inactiveRecord->refresh();
 
         $this->assertSame($inactiveRecord->id, $inactiveSubmission->general_info['master_data_record_id']);
         $this->assertSame('INACTIVE EQUIPMENT', $inactiveSubmission->general_info['name_equipment']);
         $this->assertSame('ST-INACTIVE-QC', $inactiveSubmission->general_info['functional_location']);
+        $this->assertTrue($inactiveSubmission->general_info['master_data_auto_activated']);
+        $this->assertSame('inactive', $inactiveSubmission->general_info['master_data_previous_status']);
+        $this->assertSame('active', $inactiveRecord->status);
+        $this->assertSame('close', $inactiveRecord->inspection_status);
     }
 
     public function test_user_can_continue_fixed_qc_draft_with_saved_data(): void

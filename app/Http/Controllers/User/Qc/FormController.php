@@ -10,6 +10,7 @@ use App\Models\QcFormSubmissionAttachment;
 use App\Models\QcFormTemplate;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\MasterDataInspectionStatusService;
 use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
@@ -144,6 +145,7 @@ class FormController extends Controller
                 }
 
                 $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
+                $this->syncMasterDataInspectionStatus($submission, $request);
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
@@ -272,6 +274,7 @@ class FormController extends Controller
                 }
 
                 $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
+                $this->syncMasterDataInspectionStatus($submission, $request);
 
                 if ($validated['action'] === 'submit') {
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'qc');
@@ -1351,6 +1354,59 @@ class FormController extends Controller
                 fn ($query, array $areas) => $query->whereIn('area', $areas)
             )
             ->first();
+    }
+
+    private function syncMasterDataInspectionStatus(QcFormSubmission $submission, Request $request): void
+    {
+        $record = $this->masterDataRecordForSubmission($submission);
+
+        if (! $record) {
+            return;
+        }
+
+        $previousStatus = $record->status;
+        $wasAutoActivated = $previousStatus !== 'active';
+
+        if ($wasAutoActivated) {
+            $record->forceFill(['status' => 'active'])->save();
+        }
+
+        app(MasterDataInspectionStatusService::class)->setStatus(
+            $record,
+            $submission->status === 'draft' ? 'ongoing' : 'close',
+            MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
+            $request->user(),
+            $submission
+        );
+
+        if ($wasAutoActivated) {
+            $generalInfo = $submission->general_info ?? [];
+            $generalInfo['master_data_auto_activated'] = true;
+            $generalInfo['master_data_previous_status'] = $previousStatus;
+
+            $submission->forceFill(['general_info' => $generalInfo])->save();
+        }
+    }
+
+    private function masterDataRecordForSubmission(QcFormSubmission $submission): ?MasterDataRecord
+    {
+        $header = $submission->general_info ?? [];
+        $query = MasterDataRecord::query()
+            ->where('document_category', MasterDataRecord::CATEGORY_QC);
+
+        if (filled($header['master_data_record_id'] ?? null)) {
+            return (clone $query)->whereKey($header['master_data_record_id'])->first();
+        }
+
+        if (filled($header['functional_location'] ?? null)) {
+            return (clone $query)->where('func_location', $header['functional_location'])->first();
+        }
+
+        if (filled($header['id_equipment'] ?? null)) {
+            return (clone $query)->where('equipment_no', $header['id_equipment'])->first();
+        }
+
+        return null;
     }
 
     private function authorizeSubmission(QcFormSubmission $submission): void

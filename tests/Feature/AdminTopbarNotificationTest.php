@@ -43,6 +43,7 @@ class AdminTopbarNotificationTest extends TestCase
             'submitted_at' => now(),
             'equipment' => 'Kiln Drive',
             'area' => 'Kiln',
+            'general_info' => ['master_data_auto_activated' => true],
         ]);
 
         CommissioningFormSubmission::create([
@@ -61,8 +62,9 @@ class AdminTopbarNotificationTest extends TestCase
             ->assertSee('2 baru')
             ->assertSee('001/QC/05-2026')
             ->assertSee('002/COM/05-2026')
-            ->assertSee('User Inspector sudah membuat form QC.')
+            ->assertSee('User Inspector sudah membuat form QC. Equipment otomatis diaktifkan.')
             ->assertSee('User Inspector sudah membuat form Commissioning.')
+            ->assertSee('CM')
             ->assertSee(route('admin.qc.submissions.pdf', QcFormSubmission::first()), false)
             ->assertSee(route('admin.commissioning.submissions.pdf', CommissioningFormSubmission::first()), false);
     }
