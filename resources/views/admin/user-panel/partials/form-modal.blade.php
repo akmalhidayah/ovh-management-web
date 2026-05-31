@@ -56,10 +56,17 @@
                             <label class="form-label">Role</label>
                             <select name="role" class="form-select" required>
                                 @foreach ($roleOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('role', 'qc') === $value)>{{ $label }}</option>
+                                    @php
+                                        $accountTypes = match ($value) {
+                                            'super_admin', 'admin' => 'admin',
+                                            'approval' => 'admin,user',
+                                            default => 'user',
+                                        };
+                                    @endphp
+                                    <option value="{{ $value }}" data-account-types="{{ $accountTypes }}" @selected(old('role', 'qc') === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <div class="form-text">Jika tipe akun Admin dipilih, role otomatis menjadi Admin.</div>
+                            <div class="form-text">Admin dapat memakai role Super Admin, Admin, atau Approval. User operasional memakai role QC, Commissioning, PGO, atau Approval.</div>
                         </div>
                         <div class="col-12" data-userpanel-area-group>
                             <label class="form-label">Area Terkait</label>

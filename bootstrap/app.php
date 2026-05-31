@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\CheckAdminMenuPermission;
 use App\Http\Middleware\CheckUserType;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'usertype' => CheckUserType::class,
             'role' => CheckRole::class,
+            'adminmenu' => CheckAdminMenuPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

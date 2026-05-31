@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\ResetPasswordNotification;
+use App\Support\AdminMenuPermissions;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -60,6 +61,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->usertype === 'admin';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin() && $this->role === AdminMenuPermissions::ROLE_SUPER_ADMIN;
     }
 
     public function isOperationalUser(): bool

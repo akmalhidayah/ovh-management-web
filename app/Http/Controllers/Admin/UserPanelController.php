@@ -8,6 +8,7 @@ use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\User;
 use App\Services\InspectionSubmissionDeletionService;
+use App\Support\AdminMenuPermissions;
 use App\Support\PublicRegistrationAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -86,16 +87,23 @@ class UserPanelController extends Controller
 
     public function rolePermission(): View
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         return view('admin.user-panel.role-permission', [
-            'roles' => self::roleOptions(),
-            'permissions' => [
-                ['module' => 'Dashboard', 'actions' => ['Lihat ringkasan', 'Lihat grafik']],
-                ['module' => 'QC', 'actions' => ['Buat form', 'Edit draft', 'Buka PDF']],
-                ['module' => 'Commissioning', 'actions' => ['Buat form', 'Edit draft', 'Buka PDF']],
-                ['module' => 'Approval', 'actions' => ['Buka link approval', 'Approve', 'Reject']],
-                ['module' => 'Admin', 'actions' => ['Kelola master data', 'Kelola user']],
-            ],
+            'adminRoles' => AdminMenuPermissions::adminRoles(),
+            'configurableRoles' => AdminMenuPermissions::configurableRoles(),
+            'menuOptions' => AdminMenuPermissions::menuOptions(),
+            'permissions' => AdminMenuPermissions::permissions(),
         ]);
+    }
+
+    public function updateRolePermission(Request $request): RedirectResponse
+    {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
+        AdminMenuPermissions::setPermissions($request->input('permissions', []));
+
+        return back()->with('success', 'Permission menu berhasil diperbarui.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -234,9 +242,9 @@ class UserPanelController extends Controller
             'profile_photo.max' => 'Ukuran foto profil maksimal 2 MB.',
         ]);
 
-        if ($validated['usertype'] === 'admin') {
-            $validated['role'] = 'admin';
-        } elseif ($validated['role'] === 'admin') {
+        if ($validated['usertype'] === 'admin' && ! array_key_exists($validated['role'], self::adminRoleOptions())) {
+            $validated['role'] = AdminMenuPermissions::ROLE_ADMIN;
+        } elseif ($validated['usertype'] === 'user' && ! array_key_exists($validated['role'], self::operationalRoleOptions())) {
             $validated['role'] = 'qc';
         }
 
@@ -279,8 +287,17 @@ class UserPanelController extends Controller
 
     private static function roleOptions(): array
     {
+        return self::adminRoleOptions() + self::operationalRoleOptions();
+    }
+
+    private static function adminRoleOptions(): array
+    {
+        return AdminMenuPermissions::adminRoles();
+    }
+
+    private static function operationalRoleOptions(): array
+    {
         return [
-            'admin' => 'Admin',
             'qc' => 'Quality Control',
             'commissioning' => 'Commissioning',
             'pgo' => 'PGO',

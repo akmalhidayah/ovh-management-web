@@ -102,7 +102,7 @@ Route::post('/approval/{token}/reject', [PublicApprovalController::class, 'rejec
     ->middleware('throttle:10,1')
     ->name('public.approval.reject');
 
-Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
     Route::get('/overview', [AdminDashboardController::class, 'overview'])->name('overview');
     Route::get('/procurement', [AdminDashboardController::class, 'procurement'])->name('procurement');
@@ -161,6 +161,7 @@ Route::middleware(['auth', 'usertype:admin'])->prefix('admin')->name('admin.')->
     Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
     Route::patch('/user-panel/registration-access', [UserPanelController::class, 'toggleRegistration'])->name('user-panel.registration-access');
     Route::get('/user-panel/role-permission', [UserPanelController::class, 'rolePermission'])->name('user-panel.role-permission');
+    Route::patch('/user-panel/role-permission', [UserPanelController::class, 'updateRolePermission'])->name('user-panel.role-permission.update');
     Route::put('/user-panel/{user}', [UserPanelController::class, 'update'])->name('user-panel.update');
     Route::delete('/user-panel/{user}', [UserPanelController::class, 'destroy'])->name('user-panel.destroy');
 });

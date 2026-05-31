@@ -10,6 +10,7 @@
             'user' => 'text-bg-primary',
         ];
         $roleBadge = [
+            'super_admin' => 'text-bg-danger',
             'admin' => 'text-bg-dark',
             'qc' => 'text-bg-info',
             'commissioning' => 'text-bg-success',
@@ -296,10 +297,23 @@
                 const role = form.querySelector('[name="role"]');
                 if (!role) return;
 
-                if (type === 'admin') {
-                    role.value = 'admin';
-                } else if (role.value === 'admin') {
-                    role.value = 'qc';
+                const fallback = type === 'admin' ? 'admin' : 'qc';
+                let currentOptionIsAvailable = false;
+
+                role.querySelectorAll('option').forEach((option) => {
+                    const accountTypes = (option.dataset.accountTypes || '').split(',');
+                    const available = accountTypes.includes(type);
+
+                    option.hidden = !available;
+                    option.disabled = !available;
+
+                    if (available && option.value === role.value) {
+                        currentOptionIsAvailable = true;
+                    }
+                });
+
+                if (!currentOptionIsAvailable) {
+                    role.value = fallback;
                 }
 
                 syncAreaField(form);

@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'phone' => '0411-123456',
                 'usertype' => 'admin',
-                'role' => 'admin',
+                'role' => 'super_admin',
                 'profile_photo_path' => null,
             ]
         );

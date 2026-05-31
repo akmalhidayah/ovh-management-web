@@ -19,7 +19,7 @@ class AdminUserPanelTest extends TestCase
 
     public function test_admin_can_open_user_panel(): void
     {
-        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'super_admin']);
         User::factory()->create([
             'name' => 'QC Operator',
             'email' => 'qc.operator@ovh.test',
@@ -38,16 +38,52 @@ class AdminUserPanelTest extends TestCase
             ->assertSee('Register Aktif');
     }
 
-    public function test_admin_can_open_role_permission_dummy_page(): void
+    public function test_super_admin_can_open_role_permission_page(): void
     {
-        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'super_admin']);
 
         $this->actingAs($admin)
             ->get(route('admin.user-panel.role-permission'))
             ->assertOk()
             ->assertSee('Role &amp; Permission', false)
-            ->assertSee('Dummy Mode')
-            ->assertSee('Matrix Permission');
+            ->assertSee('Menu Access Matrix')
+            ->assertSee('Super Admin');
+    }
+
+    public function test_super_admin_can_update_admin_menu_permissions(): void
+    {
+        $superAdmin = User::factory()->create(['usertype' => 'admin', 'role' => 'super_admin']);
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($superAdmin)
+            ->patch(route('admin.user-panel.role-permission.update'), [
+                'permissions' => [
+                    'admin' => ['dashboard.dashboard'],
+                    'approval' => ['qc_commissioning.qc'],
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Permission menu berhasil diperbarui.');
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Dashboard')
+            ->assertDontSee('QC &amp; Commissioning', false)
+            ->assertDontSee('Master Data');
+
+        $this->actingAs($admin)
+            ->get(route('admin.qc'))
+            ->assertForbidden();
+    }
+
+    public function test_non_super_admin_cannot_open_role_permission_page(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.user-panel.role-permission'))
+            ->assertForbidden();
     }
 
     public function test_admin_can_create_user_with_default_password(): void

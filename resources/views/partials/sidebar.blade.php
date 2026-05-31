@@ -1,25 +1,35 @@
 @php
-    $role = (auth()->user()->usertype ?? 'inspector') === 'admin' ? 'admin' : 'inspector';
+    $currentUser = auth()->user();
+    $role = ($currentUser->usertype ?? 'inspector') === 'admin' ? 'admin' : 'inspector';
+    $brandRoleLabel = $role === 'admin'
+        ? (\App\Support\AdminMenuPermissions::adminRoles()[$currentUser->role ?? ''] ?? 'Admin')
+        : strtoupper($role);
+    $canSeeAdminMenu = fn (?string $key): bool => $role !== 'admin'
+        || $key === null
+        || \App\Support\AdminMenuPermissions::canSee($currentUser, $key);
     $groups = [
         [
+            'key' => 'dashboard',
             'label' => 'Dashboard',
             'icon' => 'bi-speedometer2',
             'routes' => ["{$role}.dashboard", "{$role}.overview"],
             'items' => [
-                ['label' => 'Dashboard', 'route' => "{$role}.dashboard"],
-                ['label' => 'Overview', 'route' => "{$role}.overview"],
+                ['key' => 'dashboard.dashboard', 'label' => 'Dashboard', 'route' => "{$role}.dashboard"],
+                ['key' => 'dashboard.overview', 'label' => 'Overview', 'route' => "{$role}.overview"],
             ],
         ],
         [
+            'key' => 'planning',
             'label' => 'Planning',
             'icon' => 'bi-calendar3',
             'routes' => ["{$role}.kalender-overhaul", "{$role}.schedule"],
             'items' => [
-                ['label' => 'Kalender Overhaul', 'route' => "{$role}.kalender-overhaul"],
-                ['label' => 'Schedule', 'route' => "{$role}.schedule"],
+                ['key' => 'planning.kalender-overhaul', 'label' => 'Kalender Overhaul', 'route' => "{$role}.kalender-overhaul"],
+                ['key' => 'planning.schedule', 'label' => 'Schedule', 'route' => "{$role}.schedule"],
             ],
         ],
         [
+            'key' => 'qc_commissioning',
             'label' => 'QC & Commissioning',
             'icon' => 'bi-shield-check',
             'routes' => array_filter([
@@ -32,25 +42,26 @@
             ]),
             'items' => [
                 ...($role === 'admin' ? [
-                    ['label' => 'Quality Control', 'route' => 'admin.qc', 'active' => ['admin.qc', 'admin.qc.submissions.*']],
-                    ['label' => 'Commissioning', 'route' => 'admin.commissioning', 'active' => ['admin.commissioning', 'admin.commissioning.submissions.*']],
-                    ['label' => 'Template Form QC', 'route' => 'admin.template-form-qc.index', 'active' => 'admin.template-form-qc.*'],
-                    ['label' => 'Template Form Commissioning', 'route' => 'admin.template-form-commissioning.index', 'active' => 'admin.template-form-commissioning.*'],
+                    ['key' => 'qc_commissioning.qc', 'label' => 'Quality Control', 'route' => 'admin.qc', 'active' => ['admin.qc', 'admin.qc.submissions.*']],
+                    ['key' => 'qc_commissioning.commissioning', 'label' => 'Commissioning', 'route' => 'admin.commissioning', 'active' => ['admin.commissioning', 'admin.commissioning.submissions.*']],
+                    ['key' => 'qc_commissioning.template-qc', 'label' => 'Template Form QC', 'route' => 'admin.template-form-qc.index', 'active' => 'admin.template-form-qc.*'],
+                    ['key' => 'qc_commissioning.template-commissioning', 'label' => 'Template Form Commissioning', 'route' => 'admin.template-form-commissioning.index', 'active' => 'admin.template-form-commissioning.*'],
                 ] : [
                     ['label' => 'QC', 'route' => "{$role}.qc"],
                     ['label' => 'Commissioning', 'route' => "{$role}.commissioning"],
                 ]),
             ],
         ],
-        ['label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
+        ['key' => 'procurement.index', 'label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
         [
+            'key' => 'asset_records',
             'label' => 'Asset & Records',
             'icon' => 'bi-archive',
             'routes' => ["{$role}.equipment", "{$role}.mom", "{$role}.dokumen"],
             'items' => [
-                ['label' => 'Equipment', 'route' => "{$role}.equipment"],
-                ['label' => 'MoM', 'route' => "{$role}.mom"],
-                ['label' => 'Dokumen', 'route' => "{$role}.dokumen"],
+                ['key' => 'asset_records.equipment', 'label' => 'Equipment', 'route' => "{$role}.equipment"],
+                ['key' => 'asset_records.mom', 'label' => 'MoM', 'route' => "{$role}.mom"],
+                ['key' => 'asset_records.dokumen', 'label' => 'Dokumen', 'route' => "{$role}.dokumen"],
             ],
         ],
     ];
@@ -58,24 +69,59 @@
     if ($role === 'admin') {
         $groups[] = ['section' => 'Lainnya'];
         $groups[] = [
+            'key' => 'master_data',
             'label' => 'Master Data',
             'icon' => 'bi-database-gear',
             'routes' => ['admin.master-data*', 'admin.organization-sections*'],
             'items' => [
-                ['label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
-                ['label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
+                ['key' => 'master_data.equipment', 'label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
+                ['key' => 'master_data.unit-kerja', 'label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
             ],
         ];
         $groups[] = [
+            'key' => 'userpanel',
             'label' => 'Userpanel',
             'icon' => 'bi-people',
             'routes' => ['admin.user-panel*'],
             'items' => [
-                ['label' => 'Manajemen User', 'route' => 'admin.user-panel', 'active' => 'admin.user-panel'],
-                ['label' => 'Role & Permission', 'route' => 'admin.user-panel.role-permission', 'active' => 'admin.user-panel.role-permission'],
+                ['key' => 'userpanel.management', 'label' => 'Manajemen User', 'route' => 'admin.user-panel', 'active' => 'admin.user-panel'],
+                ['key' => 'userpanel.role-permission', 'label' => 'Role & Permission', 'route' => 'admin.user-panel.role-permission', 'active' => 'admin.user-panel.role-permission'],
             ],
         ];
     }
+
+    $groups = collect($groups)
+        ->map(function (array $item) use ($canSeeAdminMenu) {
+            if (isset($item['items'])) {
+                $item['items'] = collect($item['items'])
+                    ->filter(fn (array $child) => $canSeeAdminMenu($child['key'] ?? null))
+                    ->values()
+                    ->all();
+
+                return $item['items'] === [] ? null : $item;
+            }
+
+            if (isset($item['section'])) {
+                return $item;
+            }
+
+            return $canSeeAdminMenu($item['key'] ?? null) ? $item : null;
+        })
+        ->filter()
+        ->values();
+
+    $groups = $groups
+        ->reject(function (array $item, int $index) use ($groups) {
+            if (! isset($item['section'])) {
+                return false;
+            }
+
+            $next = $groups->get($index + 1);
+
+            return ! $next || isset($next['section']);
+        })
+        ->values()
+        ->all();
 @endphp
 
 <aside class="ovh-sidebar" id="ovhSidebar">
@@ -85,7 +131,7 @@
         </div>
         <div class="brand-copy">
             <div class="brand-title">Overhaul PT. Semen Tonasa</div>
-            <div class="brand-subtitle">{{ strtoupper($role) }}</div>
+            <div class="brand-subtitle">{{ strtoupper($brandRoleLabel) }}</div>
         </div>
     </div>
 
