@@ -290,7 +290,6 @@ class TemplateBuilder
                 $rows[] = [
                     'item_pengecekan' => $row['item_pengecekan'] ?? $row['item'] ?? $row['activity'] ?? $row['aktivitas'] ?? $row['parameter'] ?? '',
                     'standar' => $row['standar'] ?? $row['standard'] ?? '',
-                    'actual_default' => $row['actual_default'] ?? $row['actual'] ?? $row['aktual'] ?? '',
                     'urutan' => count($rows) + 1,
                 ];
             }

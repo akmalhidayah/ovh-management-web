@@ -130,7 +130,6 @@
                         <th style="width: 70px;">Urutan</th>
                         <th>Item Pengecekan</th>
                         <th>Standar</th>
-                        <th style="width: 180px;">Actual</th>
                         <th colspan="2">Status</th>
                         <th>Catatan</th>
                         <th style="width: 90px;">Aksi</th>
@@ -139,7 +138,6 @@
                         <th></th>
                         <th class="fw-normal fst-italic">Mengikuti Jenis Alat</th>
                         <th class="fw-normal fst-italic">Mengikuti Jenis Alat</th>
-                        <th class="fw-normal fst-italic">Manual</th>
                         <th>Ok</th>
                         <th>Not Ok</th>
                         <th></th>
@@ -152,7 +150,6 @@
                             <td><input type="number" name="general_rows[{{ $index }}][urutan]" class="form-control form-control-sm" value="{{ $row['urutan'] ?? $loop->iteration }}"></td>
                             <td><input type="text" name="general_rows[{{ $index }}][item_pengecekan]" class="form-control form-control-sm" value="{{ $row['item_pengecekan'] ?? '' }}" placeholder="Item Pengecekan"></td>
                             <td><input type="text" name="general_rows[{{ $index }}][standar]" class="form-control form-control-sm" value="{{ $row['standar'] ?? '' }}" placeholder="Standar"></td>
-                            <td><input type="text" name="general_rows[{{ $index }}][actual_default]" class="form-control form-control-sm" value="{{ $row['actual_default'] ?? '' }}" placeholder="Manual"></td>
                             <td class="text-center"><input type="checkbox" disabled></td>
                             <td class="text-center"><input type="checkbox" disabled></td>
                             <td><input type="text" class="form-control form-control-sm" disabled placeholder="Diisi user"></td>
@@ -431,7 +428,6 @@
                     <td><input type="number" name="general_rows[${index}][urutan]" class="form-control form-control-sm" value="${index + 1}"></td>
                     <td><input type="text" name="general_rows[${index}][item_pengecekan]" class="form-control form-control-sm" placeholder="Item Pengecekan"></td>
                     <td><input type="text" name="general_rows[${index}][standar]" class="form-control form-control-sm" placeholder="Standar"></td>
-                    <td><input type="text" name="general_rows[${index}][actual_default]" class="form-control form-control-sm" placeholder="Manual"></td>
                     <td class="text-center"><input type="checkbox" disabled></td>
                     <td class="text-center"><input type="checkbox" disabled></td>
                     <td><input type="text" class="form-control form-control-sm" disabled placeholder="Diisi user"></td>

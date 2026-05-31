@@ -189,19 +189,18 @@
             <div><strong>Final Check:</strong> {{ ! empty($bodyData['final_check']) ? 'Ya' : 'Tidak' }}</div>
             <div class="qc-user-table-wrap mt-3">
                 <table class="qc-user-checklist-table">
-                    <thead><tr><th>Item Pengecekan</th><th>Standar</th><th>Actual</th><th>Status</th><th>Catatan</th></tr></thead>
+                    <thead><tr><th>Item Pengecekan</th><th>Standar</th><th>Status</th><th>Catatan</th></tr></thead>
                     <tbody>
                         @forelse (($rows['general'] ?? collect()) as $row)
                             @php $data = $row->row_data ?? []; @endphp
                             <tr>
                                 <td>{{ $data['item_pengecekan'] ?? '-' }}</td>
                                 <td>{{ $data['standar'] ?? '-' }}</td>
-                                <td>{{ $row->aktual ?: '-' }}</td>
                                 <td>{{ $row->status_value ?: '-' }}</td>
                                 <td>{{ $row->catatan ?: '-' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center text-muted py-3">Belum ada row.</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-3">Belum ada row.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

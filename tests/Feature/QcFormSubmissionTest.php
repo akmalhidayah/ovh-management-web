@@ -145,7 +145,7 @@ class QcFormSubmissionTest extends TestCase
 
         $this->assertSame('Cek bearing', $submission->body_data['general_rows'][0]['item_pengecekan']);
         $this->assertSame('Normal', $submission->body_data['general_rows'][0]['standar']);
-        $this->assertSame('Normal', $submission->body_data['general_rows'][0]['actual']);
+        $this->assertArrayNotHasKey('actual', $submission->body_data['general_rows'][0]);
     }
 
     public function test_fixed_qc_general_uses_header_unit_kerja_for_unit_kerja_approver(): void
@@ -542,7 +542,7 @@ class QcFormSubmissionTest extends TestCase
         $payload = $this->fixedGeneralPayload($template);
         $payload['action'] = 'draft';
         $payload['header']['doc_number'] = 'DOC-DRAFT-001';
-        $payload['body']['general_rows'][0]['actual'] = 'Normal Draft';
+        $payload['body']['general_rows'][0]['catatan'] = 'Catatan draft general';
 
         $this->actingAs($user)
             ->post(route('user.qc.forms.store'), $payload)
@@ -555,10 +555,10 @@ class QcFormSubmissionTest extends TestCase
             ->get(route('user.qc.submissions.edit', $submission))
             ->assertOk()
             ->assertSee($submission->form_number)
-            ->assertSee('Normal Draft')
+            ->assertSee('Catatan draft general')
             ->assertSee('Catatan fixed general');
 
-        $payload['body']['general_rows'][0]['actual'] = 'Normal Updated';
+        $payload['body']['general_rows'][0]['catatan'] = 'Catatan row diperbarui';
         $payload['note'] = 'Catatan draft diperbarui';
 
         $this->actingAs($user)
@@ -570,7 +570,7 @@ class QcFormSubmissionTest extends TestCase
 
         $this->assertSame(1, QcFormSubmission::count());
         $this->assertSame('draft', $submission->status);
-        $this->assertSame('Normal Updated', $submission->body_data['general_rows'][0]['actual']);
+        $this->assertSame('Catatan row diperbarui', $submission->body_data['general_rows'][0]['catatan']);
         $this->assertSame('Catatan draft diperbarui', $submission->note);
         $this->assertSame(1, $submission->rows()->count());
     }
@@ -1033,7 +1033,7 @@ class QcFormSubmissionTest extends TestCase
             'template_type' => FixedQcTemplate::TYPE_GENERAL,
             'body_schema' => [
                 'rows' => [
-                    ['item_pengecekan' => 'Cek bearing', 'standar' => 'Normal', 'actual_default' => '', 'urutan' => 1],
+                    ['item_pengecekan' => 'Cek bearing', 'standar' => 'Normal', 'urutan' => 1],
                 ],
             ],
         ]);
@@ -1136,7 +1136,6 @@ class QcFormSubmissionTest extends TestCase
                     [
                         'item_pengecekan' => 'Cek bearing',
                         'standar' => 'Normal',
-                        'actual' => 'Normal',
                         'status' => 'Ok',
                         'catatan' => 'Aman',
                     ],

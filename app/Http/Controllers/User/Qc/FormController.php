@@ -743,7 +743,6 @@ class FormController extends Controller
                         return [
                             'item_pengecekan' => trim((string) ($templateRow['item_pengecekan'] ?? '')),
                             'standar' => trim((string) ($templateRow['standar'] ?? '')),
-                            'actual' => trim((string) ($row['actual'] ?? '')),
                             'status' => $row['status'] ?? null,
                             'catatan' => trim((string) ($row['catatan'] ?? '')),
                         ];
@@ -825,9 +824,9 @@ class FormController extends Controller
             }
 
             foreach ($body['general_rows'] ?? [] as $index => $row) {
-                foreach (['item_pengecekan', 'standar', 'actual', 'status'] as $key) {
+                foreach (['item_pengecekan', 'standar', 'status'] as $key) {
                     if (blank($row[$key] ?? null)) {
-                        $errors["body.general_rows.{$index}.{$key}"] = 'Item pengecekan, standar, actual, dan status wajib diisi.';
+                        $errors["body.general_rows.{$index}.{$key}"] = 'Item pengecekan, standar, dan status wajib diisi.';
                     }
                 }
             }
@@ -986,7 +985,7 @@ class FormController extends Controller
                 'row_data' => $row,
                 'status_value' => $row['status'] ?? null,
                 'catatan' => $row['catatan'] ?? null,
-                'aktual' => $row['actual'] ?? null,
+                'aktual' => null,
             ]);
         }
     }

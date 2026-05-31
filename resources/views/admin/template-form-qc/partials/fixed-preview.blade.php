@@ -254,7 +254,6 @@
                         <tr>
                             <th>Item Pengecekan</th>
                             <th>Standar</th>
-                            <th>Actual</th>
                             <th>Status</th>
                             <th>Catatan</th>
                         </tr>
@@ -264,7 +263,6 @@
                             <tr>
                                 <td>{{ $row['item_pengecekan'] ?? '' }}</td>
                                 <td>{{ $row['standar'] ?? '' }}</td>
-                                <td>{{ $row['actual_default'] ?? '' }}</td>
                                 <td>
                                     <label><input type="radio" disabled> Ok</label>
                                     <label class="ms-2"><input type="radio" disabled> Not Ok</label>
@@ -272,7 +270,7 @@
                                 <td></td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center text-muted py-3">Belum ada row default.</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-3">Belum ada row default.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

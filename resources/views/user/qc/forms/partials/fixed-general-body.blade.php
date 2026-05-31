@@ -5,7 +5,6 @@
                 <tr>
                     <th>Item Pengecekan</th>
                     <th>Standar</th>
-                    <th>Actual</th>
                     <th>Status</th>
                     <th>Catatan</th>
                 </tr>
@@ -21,7 +20,6 @@
                             <input type="hidden" name="body[general_rows][{{ $index }}][standar]" value="{{ $row['standar'] ?? '' }}">
                             <div class="qc-readonly-template-text">{{ $row['standar'] ?? '' }}</div>
                         </td>
-                        <td data-label="Actual"><input type="text" name="body[general_rows][{{ $index }}][actual]" value="{{ $row['actual'] ?? $row['actual_default'] ?? '' }}" class="form-control form-control-sm"></td>
                         <td data-label="Status">
                             <div class="qc-user-status-inline">
                                 <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Ok" @checked(($row['status'] ?? null) === 'Ok') data-qc-ok-status> <span>Ok</span></label>
@@ -31,7 +29,7 @@
                         <td data-label="Catatan"><textarea name="body[general_rows][{{ $index }}][catatan]" class="form-control qc-user-table-note">{{ $row['catatan'] ?? '' }}</textarea></td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="text-center text-muted py-3" data-label="Info">Belum ada row default.</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-3" data-label="Info">Belum ada row default.</td></tr>
                 @endforelse
             </tbody>
         </table>

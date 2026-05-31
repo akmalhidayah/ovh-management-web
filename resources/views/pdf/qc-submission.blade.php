@@ -789,10 +789,9 @@
         @else
             <table class="data-table">
                 <tr>
-                    <th rowspan="2" style="width: 22%;">Item Pengecekan</th>
-                    <th rowspan="2" style="width: 25%;">Standar</th>
-                    <th rowspan="2" style="width: 12%;">Actual</th>
-                    <th colspan="2" style="width: 18%;">Status</th>
+                    <th rowspan="2" style="width: 30%;">Item Pengecekan</th>
+                    <th rowspan="2" style="width: 30%;">Standar</th>
+                    <th colspan="2" style="width: 20%;">Status</th>
                     <th rowspan="2">Catatan</th>
                 </tr>
                 <tr>
@@ -804,7 +803,6 @@
                     <tr>
                         <td>{{ $data['item_pengecekan'] ?? '' }}</td>
                         <td>{{ $data['standar'] ?? '' }}</td>
-                        <td class="center">{{ $row->aktual ?: '' }}</td>
                         <td class="center">{!! $check($row->status_value === 'Ok') !!}</td>
                         <td class="center">{!! $check($row->status_value === 'Not Ok') !!}</td>
                         <td>{{ $row->catatan ?: '' }}</td>
@@ -813,7 +811,6 @@
                     <tr>
                         <td class="center"><em>Mengikuti Jenis Alat</em></td>
                         <td class="center"><em>Mengikuti Jenis Alat</em></td>
-                        <td class="center"><em>Manual</em></td>
                         <td class="center">&#9744;</td>
                         <td class="center">&#9744;</td>
                         <td></td>

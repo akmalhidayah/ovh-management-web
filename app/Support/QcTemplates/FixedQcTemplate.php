@@ -176,7 +176,7 @@ class FixedQcTemplate
 
         return [
             'rows' => [
-                ['item_pengecekan' => '', 'standar' => '', 'actual_default' => '', 'urutan' => 1],
+                ['item_pengecekan' => '', 'standar' => '', 'urutan' => 1],
             ],
             'approval_defaults' => self::defaultApprovalDefaults($type),
         ];
@@ -559,7 +559,6 @@ class FixedQcTemplate
                 $rows[] = [
                     'item_pengecekan' => $data['item_pengecekan'] ?? $data['item'] ?? $data['activity'] ?? $data['aktivitas'] ?? $data['parameter'] ?? '',
                     'standar' => $data['standar'] ?? $data['standard'] ?? '',
-                    'actual_default' => $data['actual_default'] ?? $data['actual'] ?? $data['aktual'] ?? '',
                     'urutan' => count($rows) + 1,
                 ];
             }
@@ -575,11 +574,10 @@ class FixedQcTemplate
                 return [
                     'item_pengecekan' => trim((string) Arr::get($row, 'item_pengecekan', Arr::get($row, 'item', ''))),
                     'standar' => trim((string) Arr::get($row, 'standar', Arr::get($row, 'standard', ''))),
-                    'actual_default' => trim((string) Arr::get($row, 'actual_default', Arr::get($row, 'actual', ''))),
                     'urutan' => (int) (Arr::get($row, 'urutan') ?: $index + 1),
                 ];
             })
-            ->filter(fn ($row) => $row['item_pengecekan'] !== '' || $row['standar'] !== '' || $row['actual_default'] !== '')
+            ->filter(fn ($row) => $row['item_pengecekan'] !== '' || $row['standar'] !== '')
             ->sortBy('urutan')
             ->values()
             ->all();

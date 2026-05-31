@@ -81,7 +81,6 @@ class AdminTemplateFormQcTest extends TestCase
                     'urutan' => 1,
                     'item_pengecekan' => 'Cek belt',
                     'standar' => 'Tidak sobek',
-                    'actual_default' => '',
                 ],
             ],
         ]);
@@ -126,7 +125,6 @@ class AdminTemplateFormQcTest extends TestCase
                     'urutan' => 1,
                     'item_pengecekan' => 'Cek belt',
                     'standar' => 'Tidak sobek',
-                    'actual_default' => '',
                 ],
             ],
         ];
@@ -157,7 +155,7 @@ class AdminTemplateFormQcTest extends TestCase
             'status' => 'active',
             'template_type' => FixedQcTemplate::TYPE_GENERAL,
             'general_rows' => [
-                ['urutan' => 1, 'item_pengecekan' => 'Cek visual', 'standar' => 'Baik', 'actual_default' => 'Normal'],
+                ['urutan' => 1, 'item_pengecekan' => 'Cek visual', 'standar' => 'Baik'],
             ],
         ]);
 
@@ -434,7 +432,7 @@ class AdminTemplateFormQcTest extends TestCase
             'status' => 'active',
             'layout_mode' => 'block_based',
             'template_type' => FixedQcTemplate::TYPE_GENERAL,
-            'body_schema' => ['rows' => [['item_pengecekan' => 'Cek bearing', 'standar' => 'Normal', 'actual_default' => '', 'urutan' => 1]]],
+            'body_schema' => ['rows' => [['item_pengecekan' => 'Cek bearing', 'standar' => 'Normal', 'urutan' => 1]]],
         ]);
 
         $welding = QcFormTemplate::create([
