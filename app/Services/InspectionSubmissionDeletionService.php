@@ -19,6 +19,7 @@ class InspectionSubmissionDeletionService
         DB::transaction(function () use ($submission): void {
             $submission->loadMissing(['attachments', 'rows']);
 
+            $this->resetQcMasterStatus($submission, auth()->user());
             $this->deleteStoredFiles($submission);
             $this->deleteApprovalFlows($submission);
             $submission->attachments()->delete();
@@ -38,6 +39,48 @@ class InspectionSubmissionDeletionService
             $submission->attachments()->delete();
             $submission->delete();
         });
+    }
+
+    public function resetQcMasterStatus(QcFormSubmission $submission, ?User $actor = null): void
+    {
+        $record = $this->qcMasterRecordForSubmission($submission);
+
+        if (! $record) {
+            return;
+        }
+
+        if ($this->submissionChangedMasterDataInspectionStatus($record, $submission)) {
+            app(MasterDataInspectionStatusService::class)->setStatus(
+                $record,
+                null,
+                MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
+                $actor,
+                $submission
+            );
+        }
+
+        $this->restoreAutoActivatedMasterStatus($record, $submission->general_info ?? []);
+    }
+
+    public function resetCommissioningMasterStatus(CommissioningFormSubmission $submission, ?User $actor = null): void
+    {
+        $record = $this->commissioningMasterRecordForSubmission($submission);
+
+        if (! $record) {
+            return;
+        }
+
+        if ($this->submissionChangedMasterDataInspectionStatus($record, $submission)) {
+            app(MasterDataInspectionStatusService::class)->setStatus(
+                $record,
+                null,
+                MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
+                $actor,
+                $submission
+            );
+        }
+
+        $this->restoreAutoActivatedMasterStatus($record, $submission->header_data ?? []);
     }
 
     private function deleteStoredFiles(Model $submission): void
@@ -84,24 +127,17 @@ class InspectionSubmissionDeletionService
             ->where('approvable_id', $submission->getKey());
     }
 
-    private function resetCommissioningMasterStatus(CommissioningFormSubmission $submission, ?User $actor): void
+    private function restoreAutoActivatedMasterStatus(MasterDataRecord $record, array $metadata): void
     {
-        $record = $this->commissioningMasterRecordForSubmission($submission);
-
-        if (! $record || ! $this->submissionChangedMasterDataInspectionStatus($record, $submission)) {
+        if (! (bool) ($metadata['master_data_auto_activated'] ?? false)) {
             return;
         }
 
-        app(MasterDataInspectionStatusService::class)->setStatus(
-            $record,
-            null,
-            MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
-            $actor,
-            $submission
-        );
+        $previousStatus = $metadata['master_data_previous_status'] ?? null;
+        $record->forceFill(['status' => filled($previousStatus) ? $previousStatus : 'inactive'])->save();
     }
 
-    private function submissionChangedMasterDataInspectionStatus(MasterDataRecord $record, CommissioningFormSubmission $submission): bool
+    private function submissionChangedMasterDataInspectionStatus(MasterDataRecord $record, Model $submission): bool
     {
         return MasterDataInspectionStatusHistory::query()
             ->where('master_data_record_id', $record->id)
@@ -109,6 +145,27 @@ class InspectionSubmissionDeletionService
             ->where('submission_type', $submission->getMorphClass())
             ->where('submission_id', $submission->getKey())
             ->exists();
+    }
+
+    private function qcMasterRecordForSubmission(QcFormSubmission $submission): ?MasterDataRecord
+    {
+        $header = $submission->general_info ?? [];
+        $query = MasterDataRecord::query()
+            ->where('document_category', MasterDataRecord::CATEGORY_QC);
+
+        if (filled($header['master_data_record_id'] ?? null)) {
+            return (clone $query)->whereKey($header['master_data_record_id'])->first();
+        }
+
+        if (filled($header['functional_location'] ?? null)) {
+            return (clone $query)->where('func_location', $header['functional_location'])->first();
+        }
+
+        if (filled($header['id_equipment'] ?? null)) {
+            return (clone $query)->where('equipment_no', $header['id_equipment'])->first();
+        }
+
+        return null;
     }
 
     private function commissioningMasterRecordForSubmission(CommissioningFormSubmission $submission): ?MasterDataRecord

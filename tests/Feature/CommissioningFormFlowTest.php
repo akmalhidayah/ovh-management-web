@@ -282,6 +282,14 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('inactive', $submission->header_data['master_data_previous_status']);
         $this->assertSame('active', $inactiveMaster->status);
         $this->assertSame('ongoing', $inactiveMaster->inspection_status);
+
+        $this->actingAs($user)
+            ->delete(route('user.commissioning.submissions.destroy', $submission))
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $inactiveMaster->refresh();
+        $this->assertSame('inactive', $inactiveMaster->status);
+        $this->assertNull($inactiveMaster->inspection_status);
     }
 
     public function test_public_approval_approve_advances_commissioning_flow(): void

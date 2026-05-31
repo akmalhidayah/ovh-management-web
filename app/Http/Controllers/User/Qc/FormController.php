@@ -10,6 +10,7 @@ use App\Models\QcFormSubmissionAttachment;
 use App\Models\QcFormTemplate;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\OrganizationSections;
@@ -397,6 +398,7 @@ class FormController extends Controller
 
         try {
             app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission deleted by owner');
+            app(InspectionSubmissionDeletionService::class)->resetQcMasterStatus($submission, $submission->user);
             $this->deleteAttachmentFiles($submission->attachments);
             $submission->attachments()->delete();
             $submission->delete();

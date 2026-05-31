@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormSubmissionAttachment;
 use App\Models\CommissioningFormTemplate;
-use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
 use App\Models\OrganizationSection;
 use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\OrganizationSections;
@@ -318,7 +318,7 @@ class FormController extends Controller
 
         try {
             app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission deleted by owner');
-            $this->resetMasterDataInspectionStatusForDeletedSubmission($submission);
+            app(InspectionSubmissionDeletionService::class)->resetCommissioningMasterStatus($submission, auth()->user());
             $this->deleteAttachmentFiles($submission->attachments);
             $submission->attachments()->delete();
             $submission->delete();
@@ -754,33 +754,6 @@ class FormController extends Controller
 
             $submission->forceFill(['header_data' => $header])->save();
         }
-    }
-
-    private function resetMasterDataInspectionStatusForDeletedSubmission(CommissioningFormSubmission $submission): void
-    {
-        $record = $this->masterDataRecordForSubmission($submission);
-
-        if (! $record || ! $this->submissionChangedMasterDataInspectionStatus($record, $submission)) {
-            return;
-        }
-
-        app(MasterDataInspectionStatusService::class)->setStatus(
-            $record,
-            null,
-            MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM,
-            auth()->user(),
-            $submission
-        );
-    }
-
-    private function submissionChangedMasterDataInspectionStatus(MasterDataRecord $record, CommissioningFormSubmission $submission): bool
-    {
-        return MasterDataInspectionStatusHistory::query()
-            ->where('master_data_record_id', $record->id)
-            ->where('source', MasterDataInspectionStatusService::SOURCE_DIGITAL_FORM)
-            ->where('submission_type', $submission->getMorphClass())
-            ->where('submission_id', $submission->getKey())
-            ->exists();
     }
 
     private function masterDataRecordForSubmission(CommissioningFormSubmission $submission): ?MasterDataRecord
