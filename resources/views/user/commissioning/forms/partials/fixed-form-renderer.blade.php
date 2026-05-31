@@ -473,6 +473,15 @@
     const unitKerjaApprovalLabelInput = document.querySelector('[data-unit-kerja-approval-label-input]');
     const masterOptions = @json($masterDataOptions);
     const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
+    const formStateKey = `ovh:commissioning-form:${document.querySelector('input[name="template_id"]')?.value || 'default'}`;
+    const savedFormState = (() => {
+        try {
+            return JSON.parse(window.sessionStorage?.getItem(formStateKey) || '{}') || {};
+        } catch (error) {
+            return {};
+        }
+    })();
+    const preferredMasterDataId = selectedMasterDataId || savedFormState.masterDataId || '';
     let masterTomSelect = null;
     let organizationTomSelect = null;
 
@@ -499,6 +508,26 @@
     };
 
     const setHeader = (key, value) => { const input = document.querySelector(`[data-header-input="${key}"]`); if (input) input.value = value || ''; };
+    const persistMasterState = () => {
+        try {
+            window.sessionStorage?.setItem(formStateKey, JSON.stringify({
+                area: area?.value || '',
+                masterDataId: master?.value || '',
+            }));
+        } catch (error) {
+            // Browser storage is optional; form restore still works from old input.
+        }
+    };
+    const setMasterValue = (value) => {
+        if (!master || !value) return;
+
+        if (masterTomSelect) {
+            masterTomSelect.setValue(value, true);
+            return;
+        }
+
+        master.value = value;
+    };
     const initOrganizationSearch = () => {
         if (!organizationSection || !window.TomSelect) return;
 
@@ -552,7 +581,7 @@
 
         setHeader('area', selectedArea);
 
-        const currentValue = master.value || selectedMasterDataId;
+        const currentValue = master.value || preferredMasterDataId;
         destroyMasterSearch();
         master.innerHTML = '';
 
@@ -579,13 +608,19 @@
 
         master.disabled = !selectedArea;
 
-        if (currentValue && master.querySelector(`option[value="${CSS.escape(currentValue)}"]`)) {
+        const canRestoreCurrentValue = currentValue && master.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
+
+        if (canRestoreCurrentValue) {
             master.value = currentValue;
         } else {
             clearMasterHeader();
         }
 
         initMasterSearch();
+
+        if (canRestoreCurrentValue) {
+            setMasterValue(currentValue);
+        }
     };
     const syncMaster = () => {
         const option = master?.selectedOptions?.[0];
@@ -600,13 +635,21 @@
         setHeader('functional_location', option.dataset.functionalLocation);
         setHeader('name_equipment', option.dataset.nameEquipment);
         setHeader('id_equipment', option.dataset.idEquipment);
+        persistMasterState();
     };
     area?.addEventListener('change', () => {
         filterMasterOptions();
         syncMaster();
+        persistMasterState();
     });
-    master?.addEventListener('change', syncMaster);
+    master?.addEventListener('change', () => {
+        syncMaster();
+        persistMasterState();
+    });
     organizationSection?.addEventListener('change', syncOrganizationSection);
+    if (!selectedMasterDataId && savedFormState.area && area?.querySelector(`option[value="${CSS.escape(savedFormState.area)}"]`)) {
+        area.value = savedFormState.area;
+    }
     filterMasterOptions();
     syncMaster();
     initOrganizationSearch();

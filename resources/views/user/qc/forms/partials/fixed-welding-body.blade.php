@@ -82,11 +82,11 @@
                 @forelse ($welderRows as $index => $row)
                     <tr data-user-welder-row>
                         <td data-label="No"><input type="text" name="body[welder_rows][{{ $index }}][no]" value="{{ $row['no'] ?? $loop->iteration }}" class="form-control form-control-sm text-center" readonly></td>
-                        <td data-label="Nama Welder"><input type="text" name="body[welder_rows][{{ $index }}][nama_welder]" value="{{ $row['nama_welder'] ?? '' }}" class="form-control form-control-sm"></td>
-                        <td data-label="Posisi Pengelasan"><input type="text" name="body[welder_rows][{{ $index }}][posisi_pengelasan]" value="{{ $row['posisi_pengelasan'] ?? '' }}" class="form-control form-control-sm"></td>
-                        <td data-label="Diameter Electrode"><input type="text" name="body[welder_rows][{{ $index }}][diameter_electrode]" value="{{ $row['diameter_electrode'] ?? '' }}" class="form-control form-control-sm"></td>
-                        <td data-label="Electrode/Filter"><input type="text" name="body[welder_rows][{{ $index }}][electrode_filter]" value="{{ $row['electrode_filter'] ?? '' }}" class="form-control form-control-sm"></td>
-                        <td data-label="Amper"><input type="text" name="body[welder_rows][{{ $index }}][amper]" value="{{ $row['amper'] ?? '' }}" class="form-control form-control-sm"></td>
+                        <td data-label="Nama Welder"><input type="text" name="body[welder_rows][{{ $index }}][nama_welder]" value="{{ $row['nama_welder'] ?? '' }}" class="form-control form-control-sm" required></td>
+                        <td data-label="Posisi Pengelasan"><input type="text" name="body[welder_rows][{{ $index }}][posisi_pengelasan]" value="{{ $row['posisi_pengelasan'] ?? '' }}" class="form-control form-control-sm" required></td>
+                        <td data-label="Diameter Electrode"><input type="text" name="body[welder_rows][{{ $index }}][diameter_electrode]" value="{{ $row['diameter_electrode'] ?? '' }}" class="form-control form-control-sm" required></td>
+                        <td data-label="Electrode/Filter"><input type="text" name="body[welder_rows][{{ $index }}][electrode_filter]" value="{{ $row['electrode_filter'] ?? '' }}" class="form-control form-control-sm" required></td>
+                        <td data-label="Amper"><input type="text" name="body[welder_rows][{{ $index }}][amper]" value="{{ $row['amper'] ?? '' }}" class="form-control form-control-sm" required></td>
                         <td data-label="Keterangan"><input type="text" name="body[welder_rows][{{ $index }}][keterangan]" value="{{ $row['keterangan'] ?? '' }}" class="form-control form-control-sm"></td>
                     </tr>
                 @empty
@@ -130,7 +130,7 @@
                             <div class="qc-readonly-template-text">{{ $row['deskripsi'] ?? '' }}</div>
                         </td>
                         @foreach (['Baik', 'Perlu Perbaikan', 'Tidak Layak'] as $status)
-                            <td class="text-center" data-label="{{ $status }}"><input type="radio" name="body[result_rows][{{ $index }}][status]" value="{{ $status }}" @checked(($row['status'] ?? null) === $status) @if ($status === 'Baik') data-qc-ok-status @else data-qc-not-ok-status @endif></td>
+                            <td class="text-center" data-label="{{ $status }}"><input type="radio" name="body[result_rows][{{ $index }}][status]" value="{{ $status }}" @checked(($row['status'] ?? null) === $status) @if ($status === 'Baik') data-qc-ok-status @else data-qc-not-ok-status @endif required></td>
                         @endforeach
                         <td data-label="Keterangan"><input type="text" name="body[result_rows][{{ $index }}][keterangan]" value="{{ $row['keterangan'] ?? '' }}" class="form-control form-control-sm"></td>
                     </tr>

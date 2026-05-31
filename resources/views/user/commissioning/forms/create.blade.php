@@ -97,6 +97,26 @@ document.getElementById('template-select')?.addEventListener('change', function 
 });
 
 (() => {
+    const focusFirstInvalid = (form) => {
+        const invalid = form.querySelector(':invalid');
+        invalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => invalid?.focus?.({ preventScroll: true }), 250);
+    };
+
+    document.querySelectorAll('form[data-confirm-submit] button[name="action"][value="submit"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            const form = button.form;
+            if (!form || form.checkValidity()) return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            form.reportValidity();
+            focusFirstInvalid(form);
+        }, true);
+    });
+})();
+
+(() => {
     const box = document.querySelector('[data-commissioning-upload-box]');
     const input = document.querySelector('[data-commissioning-upload-input]');
     const cameraInput = document.querySelector('[data-commissioning-camera-input]');

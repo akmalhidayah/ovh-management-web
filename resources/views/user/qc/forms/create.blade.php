@@ -106,6 +106,44 @@
         });
 
         (() => {
+            const validateCheckboxGroup = (form, selector, message) => {
+                const inputs = Array.from(form.querySelectorAll(selector));
+                if (inputs.length === 0) return;
+
+                const isChecked = inputs.some((input) => input.checked);
+                inputs[0].setCustomValidity(isChecked ? '' : message);
+                inputs.forEach((input) => {
+                    input.addEventListener('change', () => {
+                        inputs[0].setCustomValidity(inputs.some((item) => item.checked) ? '' : message);
+                    }, { once: true });
+                });
+            };
+
+            const focusFirstInvalid = (form) => {
+                const invalid = form.querySelector(':invalid');
+                invalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => invalid?.focus?.({ preventScroll: true }), 250);
+            };
+
+            document.querySelectorAll('form[data-confirm-submit] button[name="action"][value="submit"]').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    const form = button.form;
+                    if (!form) return;
+
+                    validateCheckboxGroup(form, 'input[name="body[methods][]"]', 'Pilih minimal satu metode QC.');
+                    validateCheckboxGroup(form, 'input[name="body[check_steps][]"]', 'Pilih minimal satu pengecekan ke.');
+
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        form.reportValidity();
+                        focusFirstInvalid(form);
+                    }
+                }, true);
+            });
+        })();
+
+        (() => {
             const modalElement = document.getElementById('qcSignatureModal');
             const canvas = modalElement?.querySelector('[data-signature-canvas]');
 

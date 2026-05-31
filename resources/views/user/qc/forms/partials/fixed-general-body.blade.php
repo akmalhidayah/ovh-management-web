@@ -22,8 +22,8 @@
                         </td>
                         <td data-label="Status">
                             <div class="qc-user-status-inline">
-                                <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Ok" @checked(($row['status'] ?? null) === 'Ok') data-qc-ok-status> <span>Ok</span></label>
-                                <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Not Ok" @checked(($row['status'] ?? null) === 'Not Ok') data-qc-not-ok-status> <span>Not Ok</span></label>
+                                <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Ok" @checked(($row['status'] ?? null) === 'Ok') data-qc-ok-status required> <span>Ok</span></label>
+                                <label><input type="radio" name="body[general_rows][{{ $index }}][status]" value="Not Ok" @checked(($row['status'] ?? null) === 'Not Ok') data-qc-not-ok-status required> <span>Not Ok</span></label>
                             </div>
                         </td>
                         <td data-label="Catatan">

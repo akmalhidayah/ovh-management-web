@@ -139,7 +139,7 @@
                         <span>{{ $field['label'] }}</span>
                         @if ($fieldKey === 'tag_num')
                             <input type="hidden" name="header[tag_num]" value="{{ $fieldValue }}" data-header-input="tag_num">
-                            <select name="header[master_data_record_id]" class="form-select" data-master-data-select>
+                            <select name="header[master_data_record_id]" class="form-select" data-master-data-select required>
                                 <option value="">Pilih Area terlebih dahulu</option>
                             </select>
                         @elseif ($fieldKey === 'area')
@@ -149,7 +149,8 @@
                                    class="form-control"
                                    data-header-input="{{ $fieldKey }}"
                                    placeholder="Pilih area di bagian atas"
-                                   readonly>
+                                   readonly
+                                   required>
                         @elseif ($fieldKey === 'durasi')
                             <input type="text"
                                    name="header[durasi]"
@@ -158,12 +159,13 @@
                                    data-header-input="durasi"
                                    list="qc-duration-minute-options"
                                    inputmode="numeric"
-                                   placeholder="Contoh: 30">
+                                   placeholder="Contoh: 30"
+                                   required>
                         @elseif ($fieldKey === 'unit_kerja')
                             <input type="hidden" name="header[department]" value="{{ old('header.department', $oldHeader['department'] ?? '') }}" data-header-input="department">
                             <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
                             <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
-                            <select name="header[unit_kerja]" class="form-select" data-organization-section-select>
+                            <select name="header[unit_kerja]" class="form-select" data-organization-section-select required>
                                 <option value="">Pilih Unit Kerja</option>
                                 @foreach ($organizationSectionOptions as $sectionOption)
                                     <option value="{{ $sectionOption['section'] }}"
@@ -181,7 +183,7 @@
                                    value="{{ $fieldValue }}"
                                    class="form-control"
                                    data-header-input="{{ $fieldKey }}"
-                                   @if (in_array($fieldKey, ['doc_number', 'inspector_qc'], true) || $isAutoFilledByMasterData) readonly @endif>
+                                   @if (in_array($fieldKey, ['doc_number', 'inspector_qc'], true) || $isAutoFilledByMasterData) readonly @else required @endif>
                         @endif
                     </label>
                 @endforeach
@@ -309,7 +311,7 @@
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
         <p class="text-muted">Final Check dapat dicentang setelah pemeriksaan selesai.</p>
         <label class="d-inline-flex align-items-center gap-2 mb-2">
-            <input type="checkbox" name="body[final_check]" value="1" @checked((bool) ($oldBody['final_check'] ?? false)) data-final-check>
+            <input type="checkbox" name="body[final_check]" value="1" @checked((bool) ($oldBody['final_check'] ?? false)) data-final-check required>
             <strong>Final Check</strong>
         </label>
         @php
@@ -489,6 +491,15 @@
             const unitKerjaApprovalLabelInput = document.querySelector('[data-unit-kerja-approval-label-input]');
             const masterDataOptions = @json($masterDataOptions);
             const selectedMasterDataId = @json((string) ($selectedMasterDataId ?? ''));
+            const formStateKey = `ovh:qc-form:${document.querySelector('input[name="template_id"]')?.value || 'default'}`;
+            const savedFormState = (() => {
+                try {
+                    return JSON.parse(window.sessionStorage?.getItem(formStateKey) || '{}') || {};
+                } catch (error) {
+                    return {};
+                }
+            })();
+            const preferredMasterDataId = selectedMasterDataId || savedFormState.masterDataId || '';
             let masterDataTomSelect = null;
             let organizationSectionTomSelect = null;
 
@@ -517,6 +528,28 @@
             const setHeaderValue = (key, value) => {
                 const input = document.querySelector(`[data-header-input="${key}"]`);
                 if (input) input.value = value || '';
+            };
+
+            const persistMasterDataState = () => {
+                try {
+                    window.sessionStorage?.setItem(formStateKey, JSON.stringify({
+                        area: areaSelect?.value || '',
+                        masterDataId: masterDataSelect?.value || '',
+                    }));
+                } catch (error) {
+                    // Browser storage is optional; form restore still works from old input.
+                }
+            };
+
+            const setMasterDataValue = (value) => {
+                if (!masterDataSelect || !value) return;
+
+                if (masterDataTomSelect) {
+                    masterDataTomSelect.setValue(value, true);
+                    return;
+                }
+
+                masterDataSelect.value = value;
             };
 
             const initOrganizationSectionSearch = () => {
@@ -571,7 +604,7 @@
 
                 setHeaderValue('area', area);
 
-                const currentValue = masterDataSelect.value || selectedMasterDataId;
+                const currentValue = masterDataSelect.value || preferredMasterDataId;
                 destroyMasterDataSearch();
                 masterDataSelect.innerHTML = '';
 
@@ -598,13 +631,19 @@
 
                 masterDataSelect.disabled = !area;
 
-                if (currentValue && masterDataSelect.querySelector(`option[value="${CSS.escape(currentValue)}"]`)) {
+                const canRestoreCurrentValue = currentValue && masterDataSelect.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
+
+                if (canRestoreCurrentValue) {
                     masterDataSelect.value = currentValue;
                 } else {
                     clearMasterDataHeader();
                 }
 
                 initMasterDataSearch();
+
+                if (canRestoreCurrentValue) {
+                    setMasterDataValue(currentValue);
+                }
             };
 
             const syncMasterDataHeader = () => {
@@ -621,14 +660,22 @@
                 setHeaderValue('area', option.dataset.area);
                 setHeaderValue('id_equipment', option.dataset.idEquipment);
                 setHeaderValue('name_equipment', option.dataset.nameEquipment);
+                persistMasterDataState();
             };
 
             areaSelect?.addEventListener('change', () => {
                 filterMasterDataOptions();
                 syncMasterDataHeader();
+                persistMasterDataState();
             });
-            masterDataSelect?.addEventListener('change', syncMasterDataHeader);
+            masterDataSelect?.addEventListener('change', () => {
+                syncMasterDataHeader();
+                persistMasterDataState();
+            });
             organizationSectionSelect?.addEventListener('change', syncOrganizationSection);
+            if (!selectedMasterDataId && savedFormState.area && areaSelect?.querySelector(`option[value="${CSS.escape(savedFormState.area)}"]`)) {
+                areaSelect.value = savedFormState.area;
+            }
             filterMasterDataOptions();
             syncMasterDataHeader();
             initOrganizationSectionSearch();
