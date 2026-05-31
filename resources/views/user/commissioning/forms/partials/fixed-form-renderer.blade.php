@@ -145,7 +145,7 @@
     </section>
 
     <section class="inspector-panel qc-form-card">
-        <div class="commissioning-section-title">{{ $labels['motor_title'] }}</div>
+        <div class="commissioning-section-title">{{ $labels['motor_title'] }} (Opsional)</div>
         <div class="table-responsive commissioning-mobile-card-wrap mb-3">
             <table class="commissioning-table commissioning-mobile-card-table compact commissioning-rating-table commissioning-motor-rating-table">
                 <thead>
@@ -167,7 +167,7 @@
                             $key = $field['key'];
                             $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                         @endphp
-                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_rating][{{ $key }}]" value="{{ $motorRating[$key] ?? '' }}" class="form-control" required></td>
+                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_rating][{{ $key }}]" value="{{ $motorRating[$key] ?? '' }}" class="form-control"></td>
                     @endforeach
                     <td colspan="4" class="text-center small commissioning-rms-info" data-label="RMS Vibration">
                         Power &lt;= 15 kW : &lt; 4.5 mm/s<br>
@@ -200,7 +200,7 @@
                                     $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
                                     $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                                 @endphp
-                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
+                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[motor_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm"></td>
                             @endforeach
                         </tr>
                     @endforeach
@@ -210,7 +210,7 @@
     </section>
 
     <section class="inspector-panel qc-form-card">
-        <div class="commissioning-section-title">{{ $labels['gearbox_title'] }}</div>
+        <div class="commissioning-section-title">{{ $labels['gearbox_title'] }} (Opsional)</div>
         <div class="table-responsive commissioning-mobile-card-wrap mb-3">
             <table class="commissioning-table commissioning-mobile-card-table compact commissioning-rating-table commissioning-gearbox-rating-table">
                 <thead>
@@ -231,7 +231,7 @@
                             $key = $field['key'];
                             $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                         @endphp
-                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_rating][{{ $key }}]" value="{{ $gearboxRating[$key] ?? '' }}" class="form-control" required></td>
+                        <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_rating][{{ $key }}]" value="{{ $gearboxRating[$key] ?? '' }}" class="form-control"></td>
                     @endforeach
                 </tr></tbody>
             </table>
@@ -275,7 +275,7 @@
                                     $isRemarksField = in_array(strtolower(trim((string) $key)), ['remarks', 'remark'], true);
                                     $mobileLabel = $field['label'] . (($unitLabel = FixedCommissioningTemplate::fieldUnitLabel($field)) ? ' (' . $unitLabel . ')' : '');
                                 @endphp
-                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm" @if (! $isRemarksField) required @endif></td>
+                                <td data-label="{{ $mobileLabel }}"><input type="text" name="body[gearbox_test_rows][{{ $index }}][{{ $key }}]" value="{{ $row[$key] ?? '' }}" class="form-control form-control-sm"></td>
                             @endforeach
                         </tr>
                     @endforeach

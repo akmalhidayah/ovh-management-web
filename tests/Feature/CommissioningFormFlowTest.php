@@ -426,12 +426,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertRedirect(route('user.commissioning.forms.create', ['template' => $template->id]))
             ->assertSessionHasErrors([
                 'header.functional_location',
-                'body.motor_rating.power_kw',
-                'body.motor_test_rows',
-                'body.gearbox_rating.power_kw',
-                'body.gearbox_test_rows',
                 'body.equipment_check_rows',
-                'note',
                 'attachments.dokumentasi',
             ]);
 

@@ -382,52 +382,6 @@ class FormController extends Controller
             }
         }
 
-        foreach ($schema['motor_rating_fields'] as $field) {
-            if (blank($body['motor_rating'][$field['key']] ?? null)) {
-                $errors["body.motor_rating.{$field['key']}"] = "{$field['label']} wajib diisi.";
-            }
-        }
-
-        $motorRows = $body['motor_test_rows'] ?? [];
-        if ($motorRows === []) {
-            $errors['body.motor_test_rows'] = 'Minimal satu row motor test wajib diisi.';
-        }
-
-        foreach ($motorRows as $index => $row) {
-            foreach ($schema['motor_test_fields'] as $field) {
-                if ($this->isRemarksField($field['key'] ?? null)) {
-                    continue;
-                }
-
-                if (blank($row[$field['key']] ?? null)) {
-                    $errors["body.motor_test_rows.{$index}.{$field['key']}"] = "{$field['label']} motor test wajib diisi.";
-                }
-            }
-        }
-
-        foreach ($schema['gearbox_rating_fields'] as $field) {
-            if (blank($body['gearbox_rating'][$field['key']] ?? null)) {
-                $errors["body.gearbox_rating.{$field['key']}"] = "{$field['label']} gearbox wajib diisi.";
-            }
-        }
-
-        $gearboxRows = $body['gearbox_test_rows'] ?? [];
-        if ($gearboxRows === []) {
-            $errors['body.gearbox_test_rows'] = 'Minimal satu row gearbox test wajib diisi.';
-        }
-
-        foreach ($gearboxRows as $index => $row) {
-            foreach ($schema['gearbox_test_fields'] as $field) {
-                if ($this->isRemarksField($field['key'] ?? null)) {
-                    continue;
-                }
-
-                if (blank($row[$field['key']] ?? null)) {
-                    $errors["body.gearbox_test_rows.{$index}.{$field['key']}"] = "{$field['label']} gearbox test wajib diisi.";
-                }
-            }
-        }
-
         $equipmentRows = $body['equipment_check_rows'] ?? [];
         if ($equipmentRows === []) {
             $errors['body.equipment_check_rows'] = 'Minimal satu equipment check wajib diisi.';
@@ -455,10 +409,6 @@ class FormController extends Controller
         $hasExistingAttachment = $submission?->attachments()->exists() ?? false;
         if (! $hasNewAttachment && ! $hasTemporaryAttachment && ! $hasExistingAttachment) {
             $errors['attachments.dokumentasi'] = 'Dokumentasi wajib diupload. Hanya JPG atau PNG.';
-        }
-
-        if (blank($request->input('note'))) {
-            $errors['note'] = 'Notes/Finding wajib diisi.';
         }
 
         if ($errors !== []) {
