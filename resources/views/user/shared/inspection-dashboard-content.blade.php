@@ -120,6 +120,9 @@
                                         @if (empty($row['create_url']))
                                             <span class="commissioning-work-badge is-{{ $row['status_accent'] }}">{{ $row['status_label'] }}</span>
                                         @endif
+                                        @if (! empty($row['form_type']))
+                                            <small class="d-block text-muted mt-1">{{ $row['form_type'] }}</small>
+                                        @endif
                                         @if (! empty($row['form_number']))
                                             <small class="d-block text-muted mt-1">{{ $row['form_number'] }}</small>
                                         @endif

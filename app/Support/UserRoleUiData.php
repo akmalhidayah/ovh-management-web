@@ -702,6 +702,9 @@ class UserRoleUiData
                     'status' => $workStatus,
                     'status_label' => self::inspectionDashboardWorkStatusLabel($workStatus, $role),
                     'status_accent' => self::inspectionDashboardWorkStatusAccent($workStatus),
+                    'form_type' => $role === 'qc' && $submission
+                        ? self::submissionTemplateName($submission, 'QC')
+                        : null,
                     'form_number' => $submission?->form_number,
                     'submitted_by' => $submission?->user?->name,
                     'submitted_at' => $submission ? self::dashboardDateTime($submission->submitted_at ?: $submission->updated_at) : null,

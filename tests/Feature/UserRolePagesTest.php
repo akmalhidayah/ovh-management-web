@@ -203,6 +203,7 @@ class UserRolePagesTest extends TestCase
             ->assertSee('Available QC Equipment')
             ->assertSee('On Going')
             ->assertSee('Close')
+            ->assertSee('QC Conveyor Real')
             ->assertSee('Equipment QC')
             ->assertSee('Close 1 | On Going 1 | Belum QC 1')
             ->assertSee('Belum QC')
