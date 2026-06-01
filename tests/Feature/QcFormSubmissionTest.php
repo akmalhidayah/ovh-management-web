@@ -300,6 +300,103 @@ class QcFormSubmissionTest extends TestCase
             ->assertSee('Link approval sudah digunakan');
     }
 
+    public function test_resubmitting_admin_restored_qc_draft_preserves_approved_approval_steps(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $payload = $this->fixedGeneralPayload($template);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $url = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.approve', $this->tokenFromUrl($url)), [
+            'approver_name' => 'Leader QC',
+            'approver_position' => 'QC Leader',
+            'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
+        ])->assertRedirect();
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[1]->status);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $submission->approvalFlow->steps[2]->status);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.qc.submissions.restore-draft', $submission))
+            ->assertRedirect();
+
+        $payload['note'] = 'Updated after admin restore';
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission->fresh()), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[1]->status);
+        $this->assertSame('Leader QC', $steps[1]->approver_name);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
+        $this->assertNotSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
+    }
+
+    public function test_resubmitting_rejected_qc_revision_preserves_previously_approved_steps(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $leaderUrl = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.approve', $this->tokenFromUrl($leaderUrl)), [
+            'approver_name' => 'Leader QC',
+            'approver_position' => 'QC Leader',
+            'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
+        ])->assertRedirect();
+
+        $unitKerjaUrl = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission->fresh()))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.reject', $this->tokenFromUrl($unitKerjaUrl)), [
+            'reject_reason' => 'Perlu perbaikan data',
+        ])->assertOk();
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $this->assertSame('revision_required', $submission->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[1]->status);
+        $this->assertSame(ApprovalStep::STATUS_REJECTED, $submission->approvalFlow->steps[2]->status);
+
+        $payload['note'] = 'Updated after rejection';
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[1]->status);
+        $this->assertSame('Leader QC', $steps[1]->approver_name);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
+        $this->assertNotSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
+    }
+
     public function test_public_approval_reject_marks_qc_submission_revision_required(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();

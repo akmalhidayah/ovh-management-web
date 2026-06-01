@@ -13,6 +13,7 @@ use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +29,7 @@ class ApprovalFlowService
     public function startForSubmission(Model $submission, string $type): ApprovalFlow
     {
         return DB::transaction(function () use ($submission, $type) {
+            $previousApprovedSteps = $this->previousApprovedSteps($submission);
             $this->cancelFlow($submission, 'Starting new approval flow');
 
             $flow = $submission->approvalFlow()->create([
@@ -46,6 +48,8 @@ class ApprovalFlowService
 
                 if ($step->is_submitter_signature) {
                     $this->approveSubmitterStep($step, $submission);
+                } elseif ($previousStep = $this->matchingPreviousApprovedStep($previousApprovedSteps, $step)) {
+                    $this->copyApprovedStep($previousStep, $step);
                 }
             }
 
@@ -54,6 +58,47 @@ class ApprovalFlowService
 
             return $flow->fresh(['steps.links']);
         });
+    }
+
+    private function previousApprovedSteps(Model $submission): Collection
+    {
+        $flow = $submission->approvalFlow()
+            ->with('steps')
+            ->first();
+
+        if (! $flow) {
+            return collect();
+        }
+
+        return $flow->steps
+            ->where('status', ApprovalStep::STATUS_APPROVED)
+            ->values();
+    }
+
+    private function matchingPreviousApprovedStep(Collection $previousSteps, ApprovalStep $step): ?ApprovalStep
+    {
+        return $previousSteps->first(function (ApprovalStep $previousStep) use ($step): bool {
+            return (int) $previousStep->step_order === (int) $step->step_order
+                && trim((string) $previousStep->label) === trim((string) $step->label)
+                && (bool) $previousStep->is_submitter_signature === (bool) $step->is_submitter_signature;
+        });
+    }
+
+    private function copyApprovedStep(ApprovalStep $from, ApprovalStep $to): void
+    {
+        $to->update([
+            'status' => ApprovalStep::STATUS_APPROVED,
+            'approver_name' => $from->approver_name,
+            'approver_position' => $from->approver_position,
+            'approver_email' => $from->approver_email,
+            'approver_phone' => $from->approver_phone,
+            'signature_path' => $from->signature_path,
+            'signature_data' => null,
+            'reject_reason' => null,
+            'acted_at' => $from->acted_at,
+            'ip_address' => $from->ip_address,
+            'user_agent' => $from->user_agent,
+        ]);
     }
 
     public function buildTemplateSteps(Model $submission, string $type): array
