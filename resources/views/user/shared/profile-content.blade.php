@@ -1,4 +1,12 @@
-<x-user.page-header :title="'Profil '.$roleUi['brand_title']" subtitle="Kelola informasi akun, nomor HP, foto profil, dan keamanan password." eyebrow="Akun Role User" />
+@php
+    $canChangePassword = in_array($roleUi['role'], ['qc', 'commissioning'], true);
+@endphp
+
+<x-user.page-header
+    :title="'Profil '.$roleUi['brand_title']"
+    :subtitle="$canChangePassword ? 'Kelola informasi akun, nomor HP, foto profil, dan keamanan password.' : 'Kelola informasi akun, nomor HP, dan foto profil.'"
+    eyebrow="Akun Role User"
+/>
 
 @if (session('status'))
     <div class="alert alert-success">{{ session('status') }}</div>
@@ -96,7 +104,7 @@
             </dl>
         </x-user.action-card>
 
-        @if (in_array($roleUi['role'], ['qc', 'commissioning'], true))
+        @if ($canChangePassword)
             <x-user.action-card title="Keamanan Akun" description="Ganti password login secara mandiri." icon="bi-shield-lock" class="profile-side-card mt-3">
                 @if (session('password_status'))
                     <div class="alert alert-success py-2">{{ session('password_status') }}</div>
