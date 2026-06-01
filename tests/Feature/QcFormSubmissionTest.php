@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApprovalFlow;
 use App\Models\ApprovalStep;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
@@ -395,6 +396,77 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Leader QC', $steps[1]->approver_name);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
         $this->assertNotSame(ApprovalStep::STATUS_ACTIVE, $steps[1]->status);
+    }
+
+    public function test_resubmitting_uses_older_approved_steps_when_latest_flow_missed_them(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $payload = $this->fixedGeneralPayload($template);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $leaderUrl = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.approve', $this->tokenFromUrl($leaderUrl)), [
+            'approver_name' => 'Leader QC',
+            'approver_position' => 'QC Leader',
+            'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
+        ])->assertRedirect();
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $historicalSteps = $submission->approvalFlow->steps;
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $historicalSteps[1]->status);
+
+        $brokenFlow = $submission->approvalFlow()->create([
+            'status' => ApprovalFlow::STATUS_PENDING,
+            'current_step_order' => $historicalSteps[1]->step_order,
+        ]);
+
+        foreach ($historicalSteps as $index => $historicalStep) {
+            $status = match ($index) {
+                0 => ApprovalStep::STATUS_APPROVED,
+                1 => ApprovalStep::STATUS_ACTIVE,
+                default => ApprovalStep::STATUS_PENDING,
+            };
+
+            $brokenFlow->steps()->create([
+                'step_order' => $historicalStep->step_order,
+                'label' => $historicalStep->label,
+                'is_submitter_signature' => $historicalStep->is_submitter_signature,
+                'requires_magic_link' => $historicalStep->requires_magic_link,
+                'status' => $status,
+                'approver_name' => $index === 0 ? $historicalStep->approver_name : null,
+                'approver_position' => $index === 0 ? $historicalStep->approver_position : null,
+                'signature_path' => $index === 0 ? $historicalStep->signature_path : null,
+                'acted_at' => $index === 0 ? $historicalStep->acted_at : null,
+            ]);
+        }
+
+        $submission->forceFill(['status' => 'pending_approval'])->save();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.qc.submissions.restore-draft', $submission))
+            ->assertRedirect();
+
+        $payload['note'] = 'Updated after broken latest flow';
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission->fresh()), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission->refresh()->load('approvalFlow.steps');
+        $steps = $submission->approvalFlow->steps;
+
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $steps[1]->status);
+        $this->assertSame('Leader QC', $steps[1]->approver_name);
+        $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[2]->status);
     }
 
     public function test_public_approval_reject_marks_qc_submission_revision_required(): void

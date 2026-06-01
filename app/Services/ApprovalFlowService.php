@@ -62,16 +62,18 @@ class ApprovalFlowService
 
     private function previousApprovedSteps(Model $submission): Collection
     {
-        $flow = $submission->approvalFlow()
-            ->with('steps')
-            ->first();
-
-        if (! $flow) {
-            return collect();
-        }
-
-        return $flow->steps
-            ->where('status', ApprovalStep::STATUS_APPROVED)
+        return ApprovalFlow::query()
+            ->where('approvable_type', $submission->getMorphClass())
+            ->where('approvable_id', $submission->getKey())
+            ->with(['steps' => fn ($query) => $query->where('status', ApprovalStep::STATUS_APPROVED)])
+            ->latest('id')
+            ->get()
+            ->flatMap(fn (ApprovalFlow $flow) => $flow->steps)
+            ->unique(fn (ApprovalStep $step) => implode('|', [
+                (int) $step->step_order,
+                trim((string) $step->label),
+                (int) $step->is_submitter_signature,
+            ]))
             ->values();
     }
 
@@ -323,7 +325,9 @@ class ApprovalFlowService
 
     public function cancelFlow(Model $submission, string $reason): void
     {
-        $flows = $submission->approvalFlow()
+        $flows = ApprovalFlow::query()
+            ->where('approvable_type', $submission->getMorphClass())
+            ->where('approvable_id', $submission->getKey())
             ->whereIn('status', [ApprovalFlow::STATUS_PENDING, ApprovalFlow::STATUS_REVISION_REQUIRED])
             ->with('steps.links')
             ->get();
