@@ -10,6 +10,7 @@ use App\Models\QcFormTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserRolePagesTest extends TestCase
@@ -561,6 +562,47 @@ class UserRolePagesTest extends TestCase
             ->assertOk()
             ->assertSee('COM AREA ALLOWED')
             ->assertDontSee('COM AREA HIDDEN');
+    }
+
+    public function test_qc_user_can_update_password_from_profile(): void
+    {
+        $user = User::factory()->create([
+            'usertype' => 'user',
+            'role' => 'qc',
+            'password' => Hash::make('old-password'),
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.profile.password.update'), [
+                'current_password' => 'old-password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('password_status', 'Password berhasil diperbarui.');
+
+        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+    }
+
+    public function test_commissioning_user_cannot_update_password_with_wrong_current_password(): void
+    {
+        $user = User::factory()->create([
+            'usertype' => 'user',
+            'role' => 'commissioning',
+            'password' => Hash::make('old-password'),
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('user.commissioning.profile'))
+            ->patch(route('user.commissioning.profile.password.update'), [
+                'current_password' => 'wrong-password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertRedirect(route('user.commissioning.profile'))
+            ->assertSessionHasErrors('current_password', null, 'passwordUpdate');
+
+        $this->assertTrue(Hash::check('old-password', $user->fresh()->password));
     }
 
     public function test_equipment_dashboard_uses_server_side_filter_and_pagination(): void

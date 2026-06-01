@@ -186,6 +186,7 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy');
         Route::get('/profile', [QcProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [QcProfileController::class, 'update'])->name('profile.update');
+        Route::patch('/profile/password', [QcProfileController::class, 'updatePassword'])->name('profile.password.update');
     });
 
     Route::prefix('commissioning')->name('commissioning.')->middleware('role:commissioning')->group(function () {
@@ -207,6 +208,7 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::delete('/submissions/{submission}', [CommissioningFormController::class, 'destroy'])->name('submissions.destroy');
         Route::get('/profile', [CommissioningProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [CommissioningProfileController::class, 'update'])->name('profile.update');
+        Route::patch('/profile/password', [CommissioningProfileController::class, 'updatePassword'])->name('profile.password.update');
     });
 
     Route::prefix('pgo')->name('pgo.')->middleware('role:pgo')->group(function () {

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\User\Concerns;
 use App\Models\MasterDataRecord;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 trait UpdatesUserProfile
 {
@@ -55,6 +57,26 @@ trait UpdatesUserProfile
         $user->forceFill($payload)->save();
 
         return back()->with('status', 'Profil berhasil diperbarui.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $data = $request->validateWithBag('passwordUpdate', [
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', Password::min(8), 'different:current_password'],
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'current_password.current_password' => 'Password saat ini tidak sesuai.',
+            'password.required' => 'Password baru wajib diisi.',
+            'password.confirmed' => 'Konfirmasi password baru tidak sama.',
+            'password.different' => 'Password baru harus berbeda dari password saat ini.',
+        ]);
+
+        $request->user()->forceFill([
+            'password' => Hash::make($data['password']),
+        ])->save();
+
+        return back()->with('password_status', 'Password berhasil diperbarui.');
     }
 
     private function profileAreaOptions(Request $request): array

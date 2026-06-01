@@ -1,14 +1,14 @@
-<x-user.page-header :title="'Profil '.$roleUi['brand_title']" subtitle="Kelola informasi akun, nomor HP, dan foto profil." eyebrow="Akun Role User" />
+<x-user.page-header :title="'Profil '.$roleUi['brand_title']" subtitle="Kelola informasi akun, nomor HP, foto profil, dan keamanan password." eyebrow="Akun Role User" />
 
 @if (session('status'))
     <div class="alert alert-success">{{ session('status') }}</div>
 @endif
 
-@if ($errors->any())
+@if ($errors->getBag('default')->any())
     <div class="alert alert-danger">
         <strong>Periksa kembali input profil.</strong>
         <ul class="mb-0 mt-2">
-            @foreach ($errors->all() as $error)
+            @foreach ($errors->getBag('default')->all() as $error)
                 <li>{{ $error }}</li>
             @endforeach
         </ul>
@@ -96,6 +96,67 @@
             </dl>
         </x-user.action-card>
 
+        @if (in_array($roleUi['role'], ['qc', 'commissioning'], true))
+            <x-user.action-card title="Keamanan Akun" description="Ganti password login secara mandiri." icon="bi-shield-lock" class="profile-side-card mt-3">
+                @if (session('password_status'))
+                    <div class="alert alert-success py-2">{{ session('password_status') }}</div>
+                @endif
+
+                @if ($errors->passwordUpdate->any())
+                    <div class="alert alert-danger py-2">
+                        <strong>Password belum bisa diubah.</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach ($errors->passwordUpdate->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('user.'.$roleUi['role'].'.profile.password.update') }}" class="profile-password-form">
+                    @csrf
+                    @method('PATCH')
+
+                    <div class="vstack gap-3">
+                        <label class="form-label mb-0">
+                            Password Saat Ini
+                            <div class="input-group mt-1">
+                                <input type="password" name="current_password" class="form-control @error('current_password', 'passwordUpdate') is-invalid @enderror" autocomplete="current-password" required data-password-field>
+                                <button class="btn btn-outline-secondary" type="button" data-password-toggle aria-label="Tampilkan password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </label>
+
+                        <label class="form-label mb-0">
+                            Password Baru
+                            <div class="input-group mt-1">
+                                <input type="password" name="password" class="form-control @error('password', 'passwordUpdate') is-invalid @enderror" autocomplete="new-password" minlength="8" required data-password-field>
+                                <button class="btn btn-outline-secondary" type="button" data-password-toggle aria-label="Tampilkan password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </label>
+
+                        <label class="form-label mb-0">
+                            Konfirmasi Password Baru
+                            <div class="input-group mt-1">
+                                <input type="password" name="password_confirmation" class="form-control" autocomplete="new-password" minlength="8" required data-password-field>
+                                <button class="btn btn-outline-secondary" type="button" data-password-toggle aria-label="Tampilkan password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </label>
+
+                        <small class="text-muted">Minimal 8 karakter dan harus berbeda dari password saat ini.</small>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-key me-1"></i> Update Password
+                        </button>
+                    </div>
+                </form>
+            </x-user.action-card>
+        @endif
+
         <x-user.action-card title="Statistik Singkat" description="Ringkasan progres pekerjaan." icon="bi-speedometer2" class="profile-side-card mt-3">
             <div class="row g-2">
                 @foreach ($stats as $stat)
@@ -165,6 +226,25 @@
                 });
 
                 render();
+            });
+
+            document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const field = button.closest('.input-group')?.querySelector('[data-password-field]');
+                    const icon = button.querySelector('i');
+
+                    if (!field) {
+                        return;
+                    }
+
+                    const shouldShow = field.type === 'password';
+                    field.type = shouldShow ? 'text' : 'password';
+                    button.setAttribute('aria-label', shouldShow ? 'Sembunyikan password' : 'Tampilkan password');
+
+                    if (icon) {
+                        icon.className = shouldShow ? 'bi bi-eye-slash' : 'bi bi-eye';
+                    }
+                });
             });
         })();
     </script>
