@@ -21,10 +21,10 @@ return new class extends Migration
 
             $table->unique(
                 ['user_id', 'role', 'notification_key'],
-                'user_submission_notification_reads_unique'
+                'usr_sub_notif_reads_unique'
             );
-            $table->index(['user_id', 'role']);
-            $table->index(['submission_type', 'submission_id']);
+            $table->index(['user_id', 'role'], 'usr_sub_notif_reads_user_role_idx');
+            $table->index(['submission_type', 'submission_id'], 'usr_sub_notif_reads_submission_idx');
         });
     }
 
