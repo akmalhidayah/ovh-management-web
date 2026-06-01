@@ -111,12 +111,14 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
     Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf');
     Route::post('/commissioning/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('commissioning.submissions.approval-link');
+    Route::patch('/commissioning/submissions/{submission}/restore-draft', [AdminCommissioningSubmissionController::class, 'restoreDraft'])->name('commissioning.submissions.restore-draft');
     Route::delete('/commissioning/submissions/{submission}/delete', [AdminCommissioningSubmissionController::class, 'destroy'])->name('commissioning.submissions.destroy');
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
     Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
         Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
         Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf');
         Route::post('/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('approval-link');
+        Route::patch('/{submission}/restore-draft', [AdminQcSubmissionController::class, 'restoreDraft'])->name('restore-draft');
         Route::delete('/{submission}/delete', [AdminQcSubmissionController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('template-form-qc')->name('template-form-qc.')->group(function () {

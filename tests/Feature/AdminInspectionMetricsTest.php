@@ -381,6 +381,117 @@ class AdminInspectionMetricsTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_restore_qc_submission_to_draft(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-RESTORE-DRAFT',
+            'name' => 'QC Restore Draft',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'LOC-QC-DRAFT',
+            'equipment_no' => 'EQ-QC-DRAFT',
+            'section_no' => 'SEC-QC-DRAFT',
+            'description' => 'QC Restore Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+        $submission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '040/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'QC Restore Equipment',
+            'general_info' => [
+                'master_data_record_id' => $master->id,
+                'id_equipment' => 'EQ-QC-DRAFT',
+                'functional_location' => 'LOC-QC-DRAFT',
+                'name_equipment' => 'QC Restore Equipment',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.qc.submissions.restore-draft', $submission))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('qc_form_submissions', [
+            'id' => $submission->id,
+            'status' => 'draft',
+            'submitted_at' => null,
+        ]);
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $master->id,
+            'inspection_status' => 'ongoing',
+        ]);
+    }
+
+    public function test_admin_can_restore_commissioning_submission_to_draft(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-RESTORE-DRAFT',
+            'name' => 'Commissioning Restore Draft',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+            'body_schema' => ['equipment_check_rows' => []],
+        ]);
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-DRAFT',
+            'equipment_no' => 'EQ-COM-DRAFT',
+            'section_no' => 'SEC-COM-DRAFT',
+            'description' => 'Commissioning Restore Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+        $submission = CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'form_number' => '040/COM/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'area' => 'RAW MILL',
+            'equipment' => 'Commissioning Restore Equipment',
+            'equipment_no' => 'EQ-COM-DRAFT',
+            'functional_location' => 'LOC-COM-DRAFT',
+            'header_data' => [
+                'master_data_record_id' => $master->id,
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.commissioning.submissions.restore-draft', $submission))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('commissioning_form_submissions', [
+            'id' => $submission->id,
+            'status' => 'draft',
+            'submitted_at' => null,
+        ]);
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $master->id,
+            'inspection_status' => 'ongoing',
+        ]);
+    }
+
     public function test_approval_admin_cannot_see_or_use_qc_delete_action(): void
     {
         $approval = User::factory()->create(['usertype' => 'admin', 'role' => 'approval']);
@@ -418,6 +529,10 @@ class AdminInspectionMetricsTest extends TestCase
             ->delete(route('admin.qc.submissions.destroy', $submission))
             ->assertForbidden();
 
+        $this->actingAs($approval)
+            ->patch(route('admin.qc.submissions.restore-draft', $submission))
+            ->assertForbidden();
+
         $this->assertDatabaseHas('qc_form_submissions', ['id' => $submission->id]);
     }
 
@@ -449,6 +564,10 @@ class AdminInspectionMetricsTest extends TestCase
 
         $this->actingAs($approval)
             ->delete(route('admin.commissioning.submissions.destroy', $submission))
+            ->assertForbidden();
+
+        $this->actingAs($approval)
+            ->patch(route('admin.commissioning.submissions.restore-draft', $submission))
             ->assertForbidden();
 
         $this->assertDatabaseHas('commissioning_form_submissions', ['id' => $submission->id]);

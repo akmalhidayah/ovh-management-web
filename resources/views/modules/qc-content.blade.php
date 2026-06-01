@@ -251,7 +251,7 @@
                                     </button>
                                 @endif
 
-                                @if ($submission->model?->approvalFlow)
+                                @if ($submission->status && $submission->status !== 'draft' && $submission->model?->approvalFlow)
                                     <button type="button" class="btn btn-sm btn-outline-primary admin-inspection-icon-btn" data-bs-toggle="modal" data-bs-target="#adminApprovalProgressModal{{ $submission->type }}{{ $submission->model->id }}" title="Detail Approval" aria-label="Detail Approval">
                                         <i class="bi bi-list-check"></i>
                                     </button>
@@ -270,10 +270,13 @@
                                           action="{{ $submission->type === 'qc' ? route('admin.qc.submissions.destroy', $submission->model) : route('admin.commissioning.submissions.destroy', $submission->model) }}"
                                           class="d-inline"
                                           data-admin-delete-submission-form
-                                          data-delete-label="{{ $submission->form_number ?: $submission->equipment }}">
+                                          data-delete-label="{{ $submission->form_number ?: $submission->equipment }}"
+                                          data-restore-url="{{ $submission->type === 'qc' ? route('admin.qc.submissions.restore-draft', $submission->model) : route('admin.commissioning.submissions.restore-draft', $submission->model) }}"
+                                          data-can-restore="{{ $submission->status && $submission->status !== 'draft' ? 'true' : 'false' }}"
+                                          data-submission-kind="{{ $submission->type_label }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger admin-inspection-icon-btn" title="Hapus Permanen" aria-label="Hapus Permanen">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger admin-inspection-icon-btn" title="Kelola Submission" aria-label="Kelola Submission">
                                             <i class="bi bi-trash3"></i>
                                         </button>
                                     </form>
@@ -554,26 +557,71 @@
 @if ($canDeleteInspectionSubmission)
     @push('scripts')
         <script>
+            function submitAdminSubmissionRestore(form) {
+                const restoreUrl = form.dataset.restoreUrl;
+
+                if (!restoreUrl) {
+                    return;
+                }
+
+                const restoreForm = document.createElement('form');
+                restoreForm.method = 'POST';
+                restoreForm.action = restoreUrl;
+                restoreForm.className = 'd-none';
+
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = '_token';
+                csrf.value = form.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                const method = document.createElement('input');
+                method.type = 'hidden';
+                method.name = '_method';
+                method.value = 'PATCH';
+
+                restoreForm.appendChild(csrf);
+                restoreForm.appendChild(method);
+                document.body.appendChild(restoreForm);
+                restoreForm.submit();
+            }
+
             document.querySelectorAll('[data-admin-delete-submission-form]').forEach(function (form) {
                 form.addEventListener('submit', async function (event) {
                     event.preventDefault();
 
                     const label = form.dataset.deleteLabel || 'submission ini';
+                    const kind = form.dataset.submissionKind || 'submission';
+                    const canRestore = form.dataset.canRestore === 'true';
                     let confirmed = false;
 
                     if (window.Swal) {
                         const result = await window.Swal.fire({
-                            title: 'Hapus submission?',
-                            text: `Submission ${label} akan dihapus permanen beserta attachment dan data approval terkait.`,
+                            title: canRestore ? 'Kelola submission?' : 'Hapus submission?',
+                            text: canRestore
+                                ? `${kind} ${label} bisa dihapus permanen atau dikembalikan ke draft agar user bisa edit ulang.`
+                                : `Submission ${label} akan dihapus permanen beserta attachment dan data approval terkait.`,
                             icon: 'warning',
                             showCancelButton: true,
+                            showDenyButton: canRestore,
                             confirmButtonText: 'Ya, hapus permanen',
+                            denyButtonText: 'Kembalikan ke draft',
                             cancelButtonText: 'Batal',
                             confirmButtonColor: '#dc3545',
+                            denyButtonColor: '#2563eb',
                         });
 
                         confirmed = result.isConfirmed;
+
+                        if (result.isDenied) {
+                            submitAdminSubmissionRestore(form);
+                            return;
+                        }
                     } else {
+                        if (canRestore && window.confirm(`Kembalikan ${kind} ${label} ke draft? Tekan Cancel untuk lanjut ke pilihan hapus.`)) {
+                            submitAdminSubmissionRestore(form);
+                            return;
+                        }
+
                         confirmed = window.confirm(`Hapus permanen submission ${label}?`);
                     }
 
