@@ -650,10 +650,17 @@
     const setOrganizationValue = (value) => {
         if (!organizationSection) return;
 
+        const requestedValue = String(value || '');
+        const selectedOption = requestedValue
+            ? Array.from(organizationSection.options).find((option) => option.dataset.id === requestedValue)
+                || Array.from(organizationSection.options).find((option) => option.value === requestedValue)
+            : null;
+        const optionValue = selectedOption?.value || '';
+
         if (organizationTomSelect) {
-            organizationTomSelect.setValue(value || '', true);
+            organizationTomSelect.setValue(optionValue, true);
         } else {
-            organizationSection.value = value || '';
+            organizationSection.value = optionValue;
         }
 
         syncOrganizationSection();
