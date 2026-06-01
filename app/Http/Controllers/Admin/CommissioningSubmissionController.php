@@ -30,10 +30,15 @@ class CommissioningSubmissionController extends Controller
         try {
             DB::transaction(function () use ($submission): void {
                 app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission restored to draft by admin');
+                $headerData = $submission->header_data ?? [];
+                $headerData['admin_restored_to_draft_at'] = now()->toISOString();
+                $headerData['admin_restored_to_draft_by'] = auth()->id();
+                $headerData['admin_restored_to_draft_by_name'] = auth()->user()?->name;
 
                 $submission->forceFill([
                     'status' => 'draft',
                     'submitted_at' => null,
+                    'header_data' => $headerData,
                 ])->save();
 
                 $this->syncMasterInspectionStatus($submission);

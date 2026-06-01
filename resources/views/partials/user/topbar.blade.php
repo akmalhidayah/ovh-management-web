@@ -52,7 +52,7 @@
                         <div class="user-notification-head">
                             <div>
                                 <strong>Notifikasi</strong>
-                                <span>{{ $notificationCount }} belum dibaca dari {{ $notificationTotal }} equipment aktif</span>
+                                <span>{{ $notificationCount }} belum dibaca dari {{ $notificationTotal }} notifikasi</span>
                             </div>
                             @if ($notificationCount > 0)
                                 <form method="POST" action="{{ route('user.'.$roleUi['role'].'.notifications.read-all') }}">
@@ -76,7 +76,7 @@
                                 <span class="user-notification-state">{{ ! empty($item['is_read']) ? 'Dibaca' : 'Baru' }}</span>
                             </a>
                         @empty
-                            <div class="user-notification-empty">Belum ada equipment aktif baru.</div>
+                            <div class="user-notification-empty">Belum ada notifikasi baru.</div>
                         @endforelse
                     </div>
                 </div>

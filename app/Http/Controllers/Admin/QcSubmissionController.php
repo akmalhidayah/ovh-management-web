@@ -66,10 +66,15 @@ class QcSubmissionController extends Controller
         try {
             DB::transaction(function () use ($submission): void {
                 app(ApprovalFlowService::class)->cancelFlow($submission, 'Submission restored to draft by admin');
+                $generalInfo = $submission->general_info ?? [];
+                $generalInfo['admin_restored_to_draft_at'] = now()->toISOString();
+                $generalInfo['admin_restored_to_draft_by'] = auth()->id();
+                $generalInfo['admin_restored_to_draft_by_name'] = auth()->user()?->name;
 
                 $submission->forceFill([
                     'status' => 'draft',
                     'submitted_at' => null,
+                    'general_info' => $generalInfo,
                 ])->save();
 
                 $this->syncMasterInspectionStatus($submission);
