@@ -119,6 +119,8 @@ class AdminInspectionSubmissionPageData
                 $generalInfo['equipment'] ?? null
             ),
             'user_name' => $submission->user?->name,
+            'user_photo_url' => $submission->user?->profilePhotoUrl(),
+            'user_initials' => self::userInitials($submission->user?->name),
             'status' => $submission->status,
             'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
@@ -161,6 +163,8 @@ class AdminInspectionSubmissionPageData
                 $header['equipment'] ?? null
             ),
             'user_name' => $submission->user?->name,
+            'user_photo_url' => $submission->user?->profilePhotoUrl(),
+            'user_initials' => self::userInitials($submission->user?->name),
             'status' => $submission->status,
             'work_status' => self::workStatus($submission->status),
             'submitted_at' => $submission->submitted_at,
@@ -239,6 +243,8 @@ class AdminInspectionSubmissionPageData
             'equipment_key' => self::firstFilled($record->equipment_no, $record->func_location, $record->id),
             'equipment' => $record->description,
             'user_name' => $submissionRow?->user_name,
+            'user_photo_url' => $submissionRow?->user_photo_url,
+            'user_initials' => $submissionRow?->user_initials,
             'status' => $submissionRow?->status,
             'work_status' => self::effectiveWorkStatus($record, $submissionRow?->work_status),
             'submitted_at' => $submissionRow?->submitted_at,
@@ -278,6 +284,16 @@ class AdminInspectionSubmissionPageData
         }
 
         return null;
+    }
+
+    private static function userInitials(?string $name): string
+    {
+        $words = collect(preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY))
+            ->take(2)
+            ->map(fn (string $word) => mb_strtoupper(mb_substr($word, 0, 1)))
+            ->implode('');
+
+        return $words !== '' ? $words : 'U';
     }
 
     private static function matchesFilters(object $row, array $filters): bool

@@ -178,9 +178,21 @@
                     <tr>
                         <td>{{ $submissions->firstItem() + $loop->index }}</td>
                         <td>
-                            <span class="badge {{ $submission->type === 'qc' ? 'text-bg-info' : 'text-bg-success' }}">
-                                {{ $submission->type_label }}
-                            </span>
+                            <div class="admin-submission-actor">
+                                <span class="admin-submission-avatar" aria-hidden="true">
+                                    @if (! empty($submission->user_photo_url))
+                                        <img src="{{ $submission->user_photo_url }}" alt="">
+                                    @else
+                                        {{ $submission->user_initials ?? 'U' }}
+                                    @endif
+                                </span>
+                                <span class="admin-submission-actor-text">
+                                    <span class="badge {{ $submission->type === 'qc' ? 'text-bg-info' : 'text-bg-success' }}">
+                                        {{ $submission->type_label }}
+                                    </span>
+                                    <span class="admin-submission-actor-name">{{ $submission->user_name ?: 'Belum ada submitter' }}</span>
+                                </span>
+                            </div>
                         </td>
                         <td>{{ $submission->year ?: '-' }}</td>
                         <td>
@@ -788,7 +800,7 @@
         }
 
         .admin-submission-col-no { width: 42px; }
-        .admin-submission-col-type { width: 112px; }
+        .admin-submission-col-type { width: 156px; }
         .admin-submission-col-year { width: 62px; }
         .admin-submission-col-plant { width: 104px; }
         .admin-submission-col-area { width: 112px; }
@@ -802,6 +814,53 @@
             font-size: .68rem;
             font-weight: 750;
             letter-spacing: 0;
+        }
+
+        .admin-submission-actor {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            min-width: 0;
+        }
+
+        .admin-submission-avatar {
+            width: 2.1rem;
+            height: 2.1rem;
+            flex: 0 0 2.1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: .56rem;
+            color: #ffffff;
+            background: #1d4ed8;
+            font-size: .72rem;
+            font-weight: 850;
+            line-height: 1;
+        }
+
+        .admin-submission-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .admin-submission-actor-text {
+            min-width: 0;
+            display: grid;
+            gap: .18rem;
+        }
+
+        .admin-submission-actor-name {
+            max-width: 6.9rem;
+            color: #64748b;
+            font-size: .68rem;
+            font-weight: 650;
+            line-height: 1.15;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .admin-submission-equipment {
@@ -1018,6 +1077,7 @@
             .admin-submission-col-plant { width: 96px; }
             .admin-submission-col-area { width: 96px; }
             .admin-submission-col-location { width: 124px; }
+            .admin-submission-col-type { width: 148px; }
             .admin-submission-col-status { width: 126px; }
             .admin-submission-col-action { width: 118px; }
         }

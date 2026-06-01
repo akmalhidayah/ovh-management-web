@@ -23,7 +23,7 @@ class RegisterTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee('Buku Panduan')
-            ->assertSee(asset('assets/docs/buku-panduan.pdf'), false)
+            ->assertSee(route('guide.book'), false)
             ->assertSee('Belum punya akun?')
             ->assertSee(route('register'), false);
     }
