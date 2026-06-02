@@ -71,19 +71,9 @@
                             </td>
                             <td class="text-end">
                                 <div class="commissioning-actions">
-                                    <a href="{{ route('user.qc.submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary commissioning-icon-btn" title="Preview" aria-label="Preview">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
                                     <a href="{{ route('user.qc.submissions.edit', $submission) }}" class="btn btn-sm btn-primary commissioning-icon-btn" title="Lanjutkan" aria-label="Lanjutkan">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
-                                    <form method="POST" action="{{ route('user.qc.submissions.destroy', $submission) }}" onsubmit="return confirm('Hapus draft ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger commissioning-icon-btn" title="Hapus" aria-label="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
                                 </div>
                             </td>
                         </tr>
