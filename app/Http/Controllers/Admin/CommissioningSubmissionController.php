@@ -8,7 +8,6 @@ use App\Models\MasterDataRecord;
 use App\Services\ApprovalFlowService;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
-use App\Support\AdminMenuPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +20,7 @@ class CommissioningSubmissionController extends Controller
 
     public function restoreDraft(CommissioningFormSubmission $submission): RedirectResponse
     {
-        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+        abort_if(auth()->user()?->isAdminApproval(), 403);
 
         if ($submission->status === 'draft') {
             return back()->with('success', 'Submission Commissioning sudah berstatus draft.');
@@ -68,7 +67,7 @@ class CommissioningSubmissionController extends Controller
         CommissioningFormSubmission $submission,
         InspectionSubmissionDeletionService $deletionService
     ): RedirectResponse {
-        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+        abort_if(auth()->user()?->isAdminApproval(), 403);
 
         $submissionId = $submission->id;
 

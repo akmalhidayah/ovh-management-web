@@ -837,7 +837,9 @@ class FormController extends Controller
 
     private function authorizeSubmission(CommissioningFormSubmission $submission): void
     {
-        abort_unless((int) $submission->user_id === (int) auth()->id() || auth()->user()?->isAdmin(), 403);
+        $adminPanelRequest = request()->routeIs('admin.*') && auth()->user()?->hasAdminPanelAccess();
+
+        abort_unless((int) $submission->user_id === (int) auth()->id() || auth()->user()?->isAdmin() || $adminPanelRequest, 403);
     }
 
     private function attachmentStoragePath(CommissioningFormSubmissionAttachment $attachment): ?string

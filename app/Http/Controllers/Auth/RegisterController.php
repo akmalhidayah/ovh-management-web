@@ -59,6 +59,7 @@ class RegisterController extends Controller
         Auth::login($user);
 
         $request->session()->regenerate();
+        $request->session()->put('active_access_mode', 'user');
 
         return redirect()->route($user->dashboardRouteName());
     }

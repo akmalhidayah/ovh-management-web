@@ -17,7 +17,9 @@
     $formatPercentage = fn ($value) => rtrim(rtrim(number_format((float) $value, 1, ',', '.'), '0'), ',');
     $metricsLabel = $inspectionMetrics['label'] ?? ($filters['type'] === 'commissioning' ? 'Commissioning' : 'QC');
     $supportsRemarks = in_array(($filters['type'] ?? null), ['qc', 'commissioning'], true);
-    $canDeleteInspectionSubmission = auth()->user()?->role !== \App\Support\AdminMenuPermissions::ROLE_APPROVAL;
+    $isAdminApproval = auth()->user()?->isAdminApproval();
+    $canDeleteInspectionSubmission = ! $isAdminApproval;
+    $canUpdateInspectionStatus = ! $isAdminApproval;
 @endphp
 
 <form method="GET" action="{{ route($filterRoute) }}">
@@ -202,7 +204,7 @@
                         <td>
                             <div class="admin-submission-equipment-row">
                                 <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
-                                @if ($submission->inspection_status_update_url ?? null)
+                                @if (($submission->inspection_status_update_url ?? null) && $canUpdateInspectionStatus)
                                     <select class="admin-work-status-select @if (($submission->work_status ?? null) === 'close') admin-work-status-close @elseif (($submission->work_status ?? null) === 'ongoing') admin-work-status-ongoing @endif"
                                             data-inspection-status-select
                                             data-update-url="{{ $submission->inspection_status_update_url }}"
@@ -510,46 +512,48 @@
                 });
             });
 
-            document.querySelectorAll('[data-inspection-status-select]').forEach(function (select) {
-                select.addEventListener('change', async function () {
-                    const previousValue = select.dataset.previousValue ?? '';
+            @if ($canUpdateInspectionStatus)
+                document.querySelectorAll('[data-inspection-status-select]').forEach(function (select) {
+                    select.addEventListener('change', async function () {
+                        const previousValue = select.dataset.previousValue ?? '';
 
-                    if (select.value === 'close' && select.dataset.hasDigitalForm !== 'true') {
-                        const confirmed = confirm('Belum ada form commissioning digital untuk equipment ini. Jika dilanjutkan, status akan Close dan tersimpan ke riwayat. Lanjutkan?');
+                        if (select.value === 'close' && select.dataset.hasDigitalForm !== 'true') {
+                            const confirmed = confirm('Belum ada form commissioning digital untuk equipment ini. Jika dilanjutkan, status akan Close dan tersimpan ke riwayat. Lanjutkan?');
 
-                        if (!confirmed) {
+                            if (!confirmed) {
+                                select.value = previousValue;
+                                return;
+                            }
+                        }
+
+                        select.disabled = true;
+
+                        try {
+                            const response = await fetch(select.dataset.updateUrl, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                                },
+                                body: JSON.stringify({ inspection_status: select.value }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Gagal memperbarui status.');
+                            }
+
+                            window.location.reload();
+                        } catch (error) {
                             select.value = previousValue;
-                            return;
+                            select.disabled = false;
+                            alert(error.message || 'Gagal memperbarui status.');
                         }
-                    }
+                    });
 
-                    select.disabled = true;
-
-                    try {
-                        const response = await fetch(select.dataset.updateUrl, {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                            },
-                            body: JSON.stringify({ inspection_status: select.value }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error('Gagal memperbarui status.');
-                        }
-
-                        window.location.reload();
-                    } catch (error) {
-                        select.value = previousValue;
-                        select.disabled = false;
-                        alert(error.message || 'Gagal memperbarui status.');
-                    }
+                    select.dataset.previousValue = select.value;
                 });
-
-                select.dataset.previousValue = select.value;
-            });
+            @endif
         </script>
     @endpush
 @endif

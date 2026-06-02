@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class LoginController extends Controller
@@ -31,6 +32,23 @@ class LoginController extends Controller
         }
 
         $request->session()->regenerate();
+
+        $user = Auth::user();
+        $request->session()->forget('active_access_mode');
+
+        if ($user->hasMultipleAccessModes()) {
+            Log::info('login_multi_access_choice_required', [
+                'actor_id' => $user->id,
+                'user_role' => $user->role,
+                'admin_role' => $user->effectiveAdminRole(),
+                'controller' => self::class,
+                'status_code' => 302,
+            ]);
+
+            return redirect()->route('access.choose');
+        }
+
+        $request->session()->put('active_access_mode', $user->hasAdminPanelAccess() ? 'admin' : 'user');
 
         return redirect()->intended(route(Auth::user()->dashboardRouteName()));
     }

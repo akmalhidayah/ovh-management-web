@@ -1,5 +1,6 @@
 @php
-    $adminNotifications = auth()->user()?->isAdmin()
+    $currentUser = auth()->user();
+    $adminNotifications = $currentUser?->hasAdminPanelAccess()
         ? \App\Support\AdminTopbarNotifications::make()
         : ['count' => 0, 'items' => collect()];
     $notificationCount = (int) ($adminNotifications['count'] ?? 0);
@@ -55,12 +56,23 @@
         </div>
         <div class="dropdown">
             <button class="btn btn-light user-menu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</span>
-                <span class="d-none d-md-inline text-truncate">{{ auth()->user()->name }}</span>
+                <span class="avatar">{{ strtoupper(substr($currentUser->name ?? 'U', 0, 1)) }}</span>
+                <span class="d-none d-md-inline text-truncate">{{ $currentUser->name }}</span>
                 <i class="bi bi-chevron-down small"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><span class="dropdown-item-text small text-muted">{{ auth()->user()->email }}</span></li>
+                <li><span class="dropdown-item-text small text-muted">{{ $currentUser->email }}</span></li>
+                @if ($currentUser?->hasMultipleAccessModes())
+                    <li>
+                        <form method="POST" action="{{ route('access.switch') }}">
+                            @csrf
+                            <input type="hidden" name="mode" value="user">
+                            <button class="dropdown-item" type="submit">
+                                <i class="bi bi-person-workspace me-2"></i>Kembali ke User
+                            </button>
+                        </form>
+                    </li>
+                @endif
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <form method="POST" action="{{ route('logout') }}">

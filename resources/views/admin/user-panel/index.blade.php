@@ -147,6 +147,7 @@
                         <th>Kontak</th>
                         <th>Tipe</th>
                         <th>Role</th>
+                        <th>Akses Admin</th>
                         <th>Dibuat</th>
                         <th class="text-end">Aksi</th>
                     </tr>
@@ -182,6 +183,13 @@
                             <td><span class="badge {{ $typeBadge[$user->usertype] ?? 'text-bg-secondary' }}">{{ $usertypeOptions[$user->usertype] ?? $user->usertype }}</span></td>
                             <td><span class="badge {{ $roleBadge[$user->role] ?? 'text-bg-secondary' }}">{{ $roleOptions[$user->role] ?? Str::headline($user->role) }}</span></td>
                             <td>
+                                @if ($user->admin_role)
+                                    <span class="badge text-bg-secondary">{{ $adminAccessRoleOptions[$user->admin_role] ?? Str::headline($user->admin_role) }}</span>
+                                @else
+                                    <span class="text-muted small">-</span>
+                                @endif
+                            </td>
+                            <td>
                                 <div>{{ $user->created_at?->format('d M Y') ?: '-' }}</div>
                                 <div class="text-muted small">{{ $user->updated_at?->format('H:i') ?: '-' }}</div>
                             </td>
@@ -197,6 +205,7 @@
                                             data-phone="{{ $user->phone }}"
                                             data-usertype="{{ $user->usertype }}"
                                             data-role="{{ $user->role }}"
+                                            data-admin-role="{{ $user->admin_role }}"
                                             data-profile-areas='@json($user->profile_areas ?? [])'
                                             data-profile-photo-url="{{ $profilePhotoUrl }}"
                                             title="Edit user"
@@ -223,7 +232,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Belum ada user sesuai filter.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Belum ada user sesuai filter.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -242,6 +251,7 @@
         'method' => null,
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
+        'adminAccessRoleOptions' => $adminAccessRoleOptions,
         'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => $defaultPassword,
     ])
@@ -253,6 +263,7 @@
         'method' => 'PUT',
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
+        'adminAccessRoleOptions' => $adminAccessRoleOptions,
         'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => null,
     ])
@@ -314,6 +325,19 @@
 
                 if (!currentOptionIsAvailable) {
                     role.value = fallback;
+                }
+
+                const adminAccessGroup = form.querySelector('[data-userpanel-admin-access-group]');
+                const adminRole = form.querySelector('[name="admin_role"]');
+                const allowAdminAccess = type === 'user';
+
+                if (adminAccessGroup && adminRole) {
+                    adminAccessGroup.classList.toggle('d-none', !allowAdminAccess);
+                    adminRole.disabled = !allowAdminAccess;
+
+                    if (!allowAdminAccess) {
+                        adminRole.value = '';
+                    }
                 }
 
                 syncAreaField(form);
@@ -461,6 +485,11 @@
                     const input = form.querySelector(`[name="${name}"]`);
                     if (input) input.value = button.dataset[name] || '';
                 });
+
+                const adminRole = form.querySelector('[name="admin_role"]');
+                if (adminRole) {
+                    adminRole.value = button.dataset.adminRole || '';
+                }
 
                 const photoInput = form.querySelector('[data-userpanel-photo-input]');
                 if (photoInput) {

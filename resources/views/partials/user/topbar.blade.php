@@ -98,6 +98,17 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 inspector-dropdown">
                         <li><span class="dropdown-item-text small text-muted">{{ $currentUser->email }}</span></li>
                         <li><a class="dropdown-item" href="{{ route('user.'.$roleUi['role'].'.profile') }}"><i class="bi bi-person-circle me-2"></i>Profil</a></li>
+                        @if ($currentUser?->hasAdminPanelAccess())
+                            <li>
+                                <form method="POST" action="{{ route('access.switch') }}">
+                                    @csrf
+                                    <input type="hidden" name="mode" value="admin">
+                                    <button class="dropdown-item" type="submit">
+                                        <i class="bi bi-display me-2"></i>Masuk Admin Monitoring
+                                    </button>
+                                </form>
+                            </li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">

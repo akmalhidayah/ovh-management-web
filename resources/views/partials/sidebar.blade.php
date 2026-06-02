@@ -1,8 +1,9 @@
 @php
     $currentUser = auth()->user();
-    $role = ($currentUser->usertype ?? 'inspector') === 'admin' ? 'admin' : 'inspector';
+    $isAdminShell = request()->routeIs('admin.*') && (bool) $currentUser?->hasAdminPanelAccess();
+    $role = $isAdminShell ? 'admin' : 'inspector';
     $brandRoleLabel = $role === 'admin'
-        ? (\App\Support\AdminMenuPermissions::adminRoles()[$currentUser->role ?? ''] ?? 'Admin')
+        ? (\App\Support\AdminMenuPermissions::adminRoles()[$currentUser->effectiveAdminRole() ?? ''] ?? 'Admin')
         : strtoupper($role);
     $canSeeAdminMenu = fn (?string $key): bool => $role !== 'admin'
         || $key === null

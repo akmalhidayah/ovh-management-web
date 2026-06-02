@@ -1,4 +1,4 @@
-@php($roleLabel = auth()->user()->usertype === 'admin' ? 'Admin' : 'User')
+@php($roleLabel = request()->routeIs('admin.*') && auth()->user()?->hasAdminPanelAccess() ? 'Admin' : 'User')
 
 <x-page-header title="Dashboard {{ $roleLabel }}" subtitle="Ringkasan dummy performa overhaul dan kesiapan pekerjaan."></x-page-header>
 

@@ -9,7 +9,6 @@ use App\Models\QcFormSubmission;
 use App\Services\ApprovalFlowService;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
-use App\Support\AdminMenuPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +56,7 @@ class QcSubmissionController extends Controller
 
     public function restoreDraft(QcFormSubmission $submission): RedirectResponse
     {
-        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+        abort_if(auth()->user()?->isAdminApproval(), 403);
 
         if ($submission->status === 'draft') {
             return back()->with('success', 'Submission QC sudah berstatus draft.');
@@ -102,7 +101,7 @@ class QcSubmissionController extends Controller
 
     public function destroy(QcFormSubmission $submission, InspectionSubmissionDeletionService $deletionService): RedirectResponse
     {
-        abort_if(auth()->user()?->role === AdminMenuPermissions::ROLE_APPROVAL, 403);
+        abort_if(auth()->user()?->isAdminApproval(), 403);
 
         $submissionId = $submission->id;
 

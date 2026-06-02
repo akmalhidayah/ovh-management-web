@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionContro
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
 use App\Http\Controllers\Admin\UserPanelController;
+use App\Http\Controllers\Auth\AccessModeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -45,7 +46,13 @@ Route::get('/', function () {
         return redirect()->route('login');
     }
 
-    return redirect()->route(auth()->user()->dashboardRouteName());
+    $user = auth()->user();
+
+    if ($user->hasMultipleAccessModes() && ! session()->has('active_access_mode')) {
+        return redirect()->route('access.choose');
+    }
+
+    return redirect()->route($user->dashboardRouteName());
 });
 
 Route::get('/buku-panduan', function () {
@@ -76,6 +83,12 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/choose-access', [AccessModeController::class, 'show'])->name('access.choose');
+    Route::post('/choose-access', [AccessModeController::class, 'choose'])->name('access.choose.store');
+    Route::post('/switch-access', [AccessModeController::class, 'switchMode'])->name('access.switch');
+});
 
 Route::get('/profile-photo/{user}', function (User $user) {
     abort_unless($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path), 404);

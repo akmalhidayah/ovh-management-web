@@ -148,14 +148,16 @@ class AdminMenuPermissions
 
     public static function canSee(?User $user, string $menuKey): bool
     {
-        if (! $user || $user->usertype !== 'admin') {
+        if (! $user || ! $user->hasAdminPanelAccess()) {
             return false;
         }
 
-        if ($user->role === self::ROLE_SUPER_ADMIN) {
+        $role = $user->effectiveAdminRole();
+
+        if ($role === self::ROLE_SUPER_ADMIN) {
             return true;
         }
 
-        return in_array($menuKey, self::permissions()[$user->role] ?? [], true);
+        return in_array($menuKey, self::permissions()[$role] ?? [], true);
     }
 }

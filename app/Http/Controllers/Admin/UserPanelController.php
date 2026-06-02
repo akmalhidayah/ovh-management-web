@@ -35,7 +35,12 @@ class UserPanelController extends Controller
 
         $users = User::query()
             ->when($filters['usertype'] !== 'all', fn ($query) => $query->where('usertype', $filters['usertype']))
-            ->when($filters['role'] !== 'all', fn ($query) => $query->where('role', $filters['role']))
+            ->when($filters['role'] !== 'all', function ($query) use ($filters) {
+                $query->where(function ($query) use ($filters) {
+                    $query->where('role', $filters['role'])
+                        ->orWhere('admin_role', $filters['role']);
+                });
+            })
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
 
@@ -43,7 +48,8 @@ class UserPanelController extends Controller
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%");
+                        ->orWhere('role', 'like', "%{$search}%")
+                        ->orWhere('admin_role', 'like', "%{$search}%");
                 });
             })
             ->orderByRaw("CASE WHEN usertype = 'admin' THEN 0 ELSE 1 END")
@@ -57,6 +63,7 @@ class UserPanelController extends Controller
             'filters' => $filters,
             'usertypeOptions' => self::usertypeOptions(),
             'roleOptions' => self::roleOptions(),
+            'adminAccessRoleOptions' => self::adminAccessRoleOptions(),
             'summary' => $this->summary(),
             'defaultPassword' => self::DEFAULT_PASSWORD,
             'publicRegistrationEnabled' => PublicRegistrationAccess::enabled(),
@@ -129,6 +136,7 @@ class UserPanelController extends Controller
             'target_user_id' => $user->id,
             'target_usertype' => $user->usertype,
             'target_role' => $user->role,
+            'target_admin_role' => $user->admin_role,
             'status_code' => 201,
         ]);
 
@@ -167,6 +175,7 @@ class UserPanelController extends Controller
             'target_user_id' => $user->id,
             'target_usertype' => $user->usertype,
             'target_role' => $user->role,
+            'target_admin_role' => $user->admin_role,
             'status_code' => 200,
         ]);
 
@@ -233,6 +242,7 @@ class UserPanelController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'usertype' => ['required', Rule::in(array_keys(self::usertypeOptions()))],
             'role' => ['required', Rule::in(array_keys(self::roleOptions()))],
+            'admin_role' => ['nullable', Rule::in(array_keys(self::adminAccessRoleOptions()))],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'profile_areas' => ['nullable', 'array'],
             'profile_areas.*' => ['string', Rule::in($this->allWorkAreaOptions())],
@@ -247,6 +257,10 @@ class UserPanelController extends Controller
         } elseif ($validated['usertype'] === 'user' && ! array_key_exists($validated['role'], self::operationalRoleOptions())) {
             $validated['role'] = 'qc';
         }
+
+        $validated['admin_role'] = $validated['usertype'] === 'user'
+            ? ($validated['admin_role'] ?? null)
+            : null;
 
         if (in_array($validated['role'], ['qc', 'commissioning'], true)) {
             $areas = collect($validated['profile_areas'] ?? [])
@@ -305,13 +319,22 @@ class UserPanelController extends Controller
         ];
     }
 
+    private static function adminAccessRoleOptions(): array
+    {
+        return [
+            AdminMenuPermissions::ROLE_APPROVAL => 'Approval / Monitoring',
+        ];
+    }
+
     private function summary(): array
     {
         return [
             'total' => User::count(),
             'admin' => User::where('usertype', 'admin')->count(),
             'user' => User::where('usertype', 'user')->count(),
-            'approval' => User::where('role', 'approval')->count(),
+            'approval' => User::where('role', 'approval')
+                ->orWhere('admin_role', AdminMenuPermissions::ROLE_APPROVAL)
+                ->count(),
         ];
     }
 

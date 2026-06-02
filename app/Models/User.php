@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'usertype',
         'role',
+        'admin_role',
         'profile_photo_path',
         'profile_plants',
         'profile_areas',
@@ -68,13 +69,42 @@ class User extends Authenticatable
         return $this->isAdmin() && $this->role === AdminMenuPermissions::ROLE_SUPER_ADMIN;
     }
 
+    public function hasAdminPanelAccess(): bool
+    {
+        return $this->isAdmin()
+            || in_array($this->admin_role, array_keys(AdminMenuPermissions::adminRoles()), true);
+    }
+
+    public function effectiveAdminRole(): ?string
+    {
+        if ($this->isAdmin()) {
+            return $this->role;
+        }
+
+        return $this->admin_role;
+    }
+
+    public function isAdminApproval(): bool
+    {
+        return $this->effectiveAdminRole() === AdminMenuPermissions::ROLE_APPROVAL;
+    }
+
     public function isOperationalUser(): bool
     {
         return $this->usertype === 'user';
     }
 
+    public function hasMultipleAccessModes(): bool
+    {
+        return $this->isOperationalUser() && $this->hasAdminPanelAccess();
+    }
+
     public function dashboardRouteName(): string
     {
+        if ($this->hasAdminPanelAccess() && session('active_access_mode') === 'admin') {
+            return 'admin.dashboard';
+        }
+
         if ($this->isAdmin()) {
             return 'admin.dashboard';
         }
@@ -85,6 +115,21 @@ class User extends Authenticatable
             'pgo' => 'user.pgo.dashboard',
             'approval' => 'user.approval.dashboard',
             default => 'login',
+        };
+    }
+
+    public function dashboardRouteNameForMode(string $mode): string
+    {
+        if ($mode === 'admin' && $this->hasAdminPanelAccess()) {
+            return 'admin.dashboard';
+        }
+
+        return match ($this->role) {
+            'qc' => 'user.qc.dashboard',
+            'commissioning' => 'user.commissioning.dashboard',
+            'pgo' => 'user.pgo.dashboard',
+            'approval' => 'user.approval.dashboard',
+            default => $this->isAdmin() ? 'admin.dashboard' : 'login',
         };
     }
 

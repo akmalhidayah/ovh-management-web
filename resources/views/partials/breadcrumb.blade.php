@@ -1,5 +1,5 @@
 <div class="page-breadcrumb">
-    <span>{{ auth()->user()->usertype === 'admin' ? 'Admin' : 'Inspector' }}</span>
+    <span>{{ request()->routeIs('admin.*') && auth()->user()?->hasAdminPanelAccess() ? 'Admin' : 'Inspector' }}</span>
     <i class="bi bi-chevron-right"></i>
     <strong>@yield('page_title', 'Dashboard')</strong>
 </div>
