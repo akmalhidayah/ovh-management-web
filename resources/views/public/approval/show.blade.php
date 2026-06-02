@@ -98,8 +98,8 @@
                             <div class="col-12">
                                 <label class="form-label">Tanda Tangan</label>
                                 <canvas width="900" height="280" class="signature-canvas" data-signature-canvas></canvas>
-                                <input type="file" name="signature_file" accept="image/png,image/jpeg" class="d-none" data-signature-input>
-                                <div class="form-text">Gunakan mouse, sentuhan layar, atau upload gambar TTD PNG/JPG.</div>
+                                <input type="file" name="signature_file" accept="image/png,.png" class="d-none" data-signature-input>
+                                <div class="form-text">Gunakan mouse/sentuhan layar, atau upload TTD format PNG transparan.</div>
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-2 mt-4">
@@ -194,6 +194,7 @@
         let minY = height;
         let maxX = -1;
         let maxY = -1;
+        let hasTransparentPixel = false;
 
         for (let y = 0; y < height; y += 1) {
             for (let x = 0; x < width; x += 1) {
@@ -202,6 +203,10 @@
                 const red = data[offset];
                 const green = data[offset + 1];
                 const blue = data[offset + 2];
+
+                if (alpha < 250) {
+                    hasTransparentPixel = true;
+                }
 
                 if (alpha <= 20 || (red > 245 && green > 245 && blue > 245)) {
                     continue;
@@ -215,7 +220,7 @@
         }
 
         if (maxX < minX || maxY < minY) {
-            return { x: 0, y: 0, width, height };
+            return { x: 0, y: 0, width, height, transparent: hasTransparentPixel };
         }
 
         const padding = Math.max(4, Math.round(Math.max(width, height) * 0.02));
@@ -225,12 +230,13 @@
             y: Math.max(0, minY - padding),
             width: Math.min(width - 1, maxX + padding) - Math.max(0, minX - padding) + 1,
             height: Math.min(height - 1, maxY + padding) - Math.max(0, minY - padding) + 1,
+            transparent: hasTransparentPixel,
         };
     };
 
     const drawUploadedSignature = (file) => {
-        if (!['image/png', 'image/jpeg'].includes(file.type)) {
-            alert('File TTD harus PNG atau JPG.');
+        if (file.type !== 'image/png') {
+            alert('File TTD upload harus PNG transparan.');
             input.value = '';
             return;
         }
@@ -247,6 +253,13 @@
             reset();
 
             const bounds = signatureBounds(image);
+            if (!bounds.transparent) {
+                input.value = '';
+                alert('File TTD harus PNG transparan, bukan PNG dengan background penuh.');
+                URL.revokeObjectURL(objectUrl);
+                return;
+            }
+
             const padding = 18;
             const maxWidth = canvas.width - (padding * 2);
             const maxHeight = canvas.height - (padding * 2);

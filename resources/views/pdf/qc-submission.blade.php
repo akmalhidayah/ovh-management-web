@@ -299,7 +299,7 @@
             padding: 1mm;
             font-size: 9.5px;
             font-weight: 700;
-            overflow: visible;
+            overflow: hidden;
             vertical-align: middle;
         }
         .approval-date-row td {
@@ -315,11 +315,9 @@
         .sig-img {
             display: block;
             width: auto;
-            height: 23mm;
-            max-width: none;
-            margin: -4mm auto -2mm;
-            position: relative;
-            z-index: 2;
+            height: 16mm;
+            max-width: 95%;
+            margin: 0 auto 0.7mm;
         }
         .sig-name {
             display: block;
@@ -649,7 +647,6 @@
         .castable-approval-sign td {
             height: 18mm;
             font-weight: 700;
-            overflow: visible;
             vertical-align: middle;
         }
         .castable-approval-mark {
@@ -660,11 +657,9 @@
         .castable-approval-img {
             display: block;
             width: auto;
-            height: 16mm;
-            max-width: none;
-            margin: -3mm auto -1mm;
-            position: relative;
-            z-index: 2;
+            height: 12mm;
+            max-width: 95%;
+            margin: 0 auto;
         }
         .castable-approval-name {
             display: block;
