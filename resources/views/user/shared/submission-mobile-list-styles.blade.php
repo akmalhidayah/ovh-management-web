@@ -25,38 +25,42 @@
             border: 1px solid #dbe3ef;
             border-radius: .75rem;
             background: #fff;
-            padding: .9rem;
+            padding: .75rem;
             box-shadow: 0 .65rem 1.5rem rgba(15, 23, 42, .07);
         }
         .submission-mobile-head {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            gap: .75rem;
-            padding-bottom: .7rem;
+            gap: .6rem;
+            padding-bottom: .55rem;
             border-bottom: 1px solid #e5e7eb;
         }
         .submission-mobile-form {
             color: #172033;
-            font-size: .95rem;
+            font-size: .9rem;
             font-weight: 800;
             line-height: 1.25;
             overflow-wrap: anywhere;
         }
         .submission-mobile-template {
             color: #64748b;
-            font-size: .78rem;
-            margin-top: .2rem;
+            font-size: .74rem;
+            margin-top: .15rem;
         }
         .submission-mobile-main {
             display: grid;
-            gap: .65rem;
-            padding: .75rem 0;
+            gap: .5rem .6rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            padding: .6rem 0;
+        }
+        .submission-mobile-main > div {
+            min-width: 0;
         }
         .submission-mobile-main span {
             color: #64748b;
             display: block;
-            font-size: .72rem;
+            font-size: .68rem;
             font-weight: 800;
             letter-spacing: .04em;
             text-transform: uppercase;
@@ -64,14 +68,14 @@
         .submission-mobile-main strong {
             color: #172033;
             display: block;
-            font-size: .9rem;
+            font-size: .82rem;
             margin-top: .1rem;
             overflow-wrap: anywhere;
         }
         .submission-mobile-main small {
             color: #64748b;
             display: block;
-            font-size: .78rem;
+            font-size: .72rem;
             margin-top: .05rem;
             overflow-wrap: anywhere;
         }
@@ -85,8 +89,8 @@
             gap: .5rem;
             font-size: .8rem;
             line-height: 1.35;
-            margin-bottom: .75rem;
-            padding: .55rem .65rem;
+            margin-bottom: .6rem;
+            padding: .5rem .6rem;
         }
         .submission-mobile-active-step {
             display: block;
@@ -96,7 +100,7 @@
         .submission-mobile-actions {
             display: flex;
             flex-wrap: wrap;
-            gap: .45rem;
+            gap: .4rem;
         }
         .submission-mobile-actions .btn,
         .submission-mobile-actions form {
