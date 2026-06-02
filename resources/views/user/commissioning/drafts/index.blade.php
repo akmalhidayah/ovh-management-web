@@ -34,7 +34,7 @@
                 </a>
             @endif
         </form>
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table align-middle commissioning-list-table">
                 <thead><tr><th>Form</th><th>Template</th><th>Equipment</th><th>Lokasi</th><th>Update</th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
@@ -74,6 +74,11 @@
                 </tbody>
             </table>
         </div>
+        @include('user.shared.submission-mobile-list', [
+            'submissionRole' => 'commissioning',
+            'submissionMode' => 'draft',
+            'emptyMessage' => 'Belum ada draft commissioning.',
+        ])
         <div class="mt-3">{{ $submissions->links() }}</div>
     </section>
 @endsection
@@ -102,3 +107,5 @@
     @media (max-width: 767.98px) { .commissioning-list-toolbar { align-items: flex-start; flex-direction: column; } .commissioning-filter-bar { justify-content: flex-start; flex-wrap: wrap; } }
 </style>
 @endpush
+
+@include('user.shared.submission-mobile-list-styles')

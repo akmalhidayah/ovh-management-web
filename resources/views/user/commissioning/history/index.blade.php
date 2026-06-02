@@ -34,7 +34,7 @@
                 </a>
             @endif
         </form>
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table align-middle commissioning-list-table">
                 <thead><tr><th>Form</th><th>Template</th><th>Equipment</th><th>Lokasi</th><th>Submit</th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
@@ -106,6 +106,11 @@
                 </tbody>
             </table>
         </div>
+        @include('user.shared.submission-mobile-list', [
+            'submissionRole' => 'commissioning',
+            'submissionMode' => 'history',
+            'emptyMessage' => 'Belum ada riwayat commissioning.',
+        ])
         <div class="mt-3">{{ $submissions->links() }}</div>
     </section>
 
@@ -139,4 +144,5 @@
 </style>
 @endpush
 
+@include('user.shared.submission-mobile-list-styles')
 @include('approvals._copy-link-script')

@@ -29,7 +29,7 @@
                 </a>
             @endif
         </form>
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table align-middle commissioning-list-table">
                 <thead>
                     <tr>
@@ -113,6 +113,12 @@
             </table>
         </div>
 
+        @include('user.shared.submission-mobile-list', [
+            'submissionRole' => 'qc',
+            'submissionMode' => 'history',
+            'emptyMessage' => 'Belum ada form QC yang disubmit.',
+        ])
+
         <div class="mt-3">
             {{ $submissions->links() }}
         </div>
@@ -147,4 +153,5 @@
 </style>
 @endpush
 
+@include('user.shared.submission-mobile-list-styles')
 @include('approvals._copy-link-script')
