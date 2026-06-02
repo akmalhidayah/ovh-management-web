@@ -315,8 +315,8 @@
         .sig-img {
             display: block;
             width: auto;
-            height: 9mm;
-            max-width: 28mm;
+            height: 12mm;
+            max-width: 42mm;
             margin: 0 auto 0.7mm;
         }
         .sig-name {
@@ -442,8 +442,8 @@
         }
         .castable-monitor-sign-img {
             display: block;
-            max-width: 24mm;
-            max-height: 10mm;
+            max-width: 30mm;
+            max-height: 12mm;
             margin: 1mm auto;
             object-fit: contain;
         }
@@ -645,20 +645,20 @@
             line-height: 1.05;
         }
         .castable-approval-sign td {
-            height: 13mm;
+            height: 15mm;
             font-weight: 700;
             vertical-align: middle;
         }
         .castable-approval-mark {
             display: block;
-            height: 8mm;
+            height: 10mm;
             text-align: center;
         }
         .castable-approval-img {
             display: block;
             width: auto;
-            height: 6mm;
-            max-width: 15mm;
+            height: 8mm;
+            max-width: 22mm;
             margin: 0 auto;
         }
         .castable-approval-name {

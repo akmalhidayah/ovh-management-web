@@ -202,7 +202,7 @@
             const padding = 18;
             const maxWidth = canvas.width - (padding * 2);
             const maxHeight = canvas.height - (padding * 2);
-            const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+            const ratio = Math.min(maxWidth / image.width, maxHeight / image.height);
             const width = image.width * ratio;
             const height = image.height * ratio;
             const x = (canvas.width - width) / 2;

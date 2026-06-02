@@ -174,8 +174,8 @@
         .sig-img {
             display: block;
             width: auto;
-            height: 9mm;
-            max-width: 28mm;
+            height: 12mm;
+            max-width: 42mm;
             margin: 0 auto .7mm;
         }
         .sig-name {
