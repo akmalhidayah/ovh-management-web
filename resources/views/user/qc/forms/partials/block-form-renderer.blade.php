@@ -148,7 +148,7 @@
                             <div class="qc-upload-box-head">
                                 <div>
                                     <strong>{{ $label }}</strong>
-                                    <span>Hanya JPG atau PNG. {{ $multiple ? 'Bisa memilih beberapa file' : 'Pilih satu file' }}{{ $maxFiles ? ' - maks. '.$maxFiles.' file' : '' }}</span>
+                                    <span>Hanya JPG atau PNG. Format HEIC/HEIF belum didukung. {{ $multiple ? 'Bisa memilih beberapa file' : 'Pilih satu file' }}{{ $maxFiles ? ' - maks. '.$maxFiles.' file' : '' }}</span>
                                 </div>
                                 <i class="bi {{ $type === 'image' ? 'bi-images' : 'bi-paperclip' }}"></i>
                             </div>

@@ -127,6 +127,103 @@ document.getElementById('template-select')?.addEventListener('change', function 
     }
 
     let selectedFiles = [];
+    const maxImageDimension = 1600;
+    const imageQuality = 0.78;
+    const minCompressSize = 1024 * 1024;
+
+    const imageMimePattern = /^image\/(jpeg|png)$/;
+    const unsupportedHeicPattern = /\.(heic|heif)$/i;
+
+    const isUnsupportedHeic = (file) => {
+        const type = (file.type || '').toLowerCase();
+
+        return type === 'image/heic'
+            || type === 'image/heif'
+            || unsupportedHeicPattern.test(file.name || '');
+    };
+
+    const showUnsupportedFilesMessage = (files) => {
+        if (files.length === 0) {
+            return;
+        }
+
+        const names = files.map((file) => file.name || 'foto HEIC').join(', ');
+        window.alert(`Format HEIC/HEIF belum didukung: ${names}. Ubah pengaturan kamera ke Most Compatible/JPG atau pilih foto JPG/PNG.`);
+    };
+
+    const loadImage = (file) => new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(image);
+        };
+        image.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Gambar tidak bisa dibaca.'));
+        };
+        image.src = url;
+    });
+
+    const canvasToBlob = (canvas) => new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+                return;
+            }
+
+            reject(new Error('Gambar tidak bisa dikompres.'));
+        }, 'image/jpeg', imageQuality);
+    });
+
+    const compressedFileName = (name) => {
+        const cleanName = name.replace(/\.[^.]+$/, '');
+
+        return `${cleanName || 'dokumentasi'}.jpg`;
+    };
+
+    const compressImageFile = async (file) => {
+        if (!imageMimePattern.test(file.type)) {
+            return file;
+        }
+
+        const image = await loadImage(file);
+        const ratio = Math.min(1, maxImageDimension / Math.max(image.width, image.height));
+
+        if (ratio === 1 && file.size <= minCompressSize) {
+            return file;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * ratio));
+        canvas.height = Math.max(1, Math.round(image.height * ratio));
+
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        const blob = await canvasToBlob(canvas);
+
+        if (blob.size >= file.size) {
+            return file;
+        }
+
+        return new File([blob], compressedFileName(file.name), {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+        });
+    };
+
+    const compressFiles = async (files) => Promise.all(files.map(async (file) => {
+        try {
+            return await compressImageFile(file);
+        } catch (error) {
+            console.warn(error);
+            return file;
+        }
+    }));
 
     const syncInputFiles = () => {
         const transfer = new DataTransfer();
@@ -170,12 +267,27 @@ document.getElementById('template-select')?.addEventListener('change', function 
         });
     };
 
-    const addFiles = (files, sourceInput) => {
+    const addFiles = async (files, sourceInput) => {
         if (files.length === 0) {
             return;
         }
 
-        selectedFiles = selectedFiles.concat(files);
+        const unsupportedFiles = files.filter(isUnsupportedHeic);
+        const supportedFiles = files.filter((file) => !isUnsupportedHeic(file));
+
+        showUnsupportedFilesMessage(unsupportedFiles);
+
+        if (supportedFiles.length === 0) {
+            if (sourceInput !== input) {
+                sourceInput.value = '';
+            }
+
+            return;
+        }
+
+        const compressedFiles = await compressFiles(supportedFiles);
+
+        selectedFiles = selectedFiles.concat(compressedFiles);
         syncInputFiles();
         renderPreview();
         if (sourceInput !== input) {

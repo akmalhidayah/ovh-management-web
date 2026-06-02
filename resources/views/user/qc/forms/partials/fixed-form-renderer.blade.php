@@ -247,7 +247,7 @@
                     <div class="qc-upload-box-head">
                         <div>
                             <strong>{{ $attachmentLabel }} @if ($isRequiredAttachment)<span class="text-danger">*</span>@endif</strong>
-                            <span>Hanya JPG atau PNG. Bisa memilih beberapa file gambar. {{ $isRequiredAttachment ? 'Wajib diisi saat submit.' : 'Opsional.' }}</span>
+                            <span>Hanya JPG atau PNG. Format HEIC/HEIF belum didukung. {{ $isRequiredAttachment ? 'Wajib diisi saat submit.' : 'Opsional.' }}</span>
                         </div>
                         <i class="bi bi-images"></i>
                     </div>
@@ -266,7 +266,7 @@
                             type="file"
                             class="visually-hidden"
                             data-camera-input
-                            accept="image/*"
+                            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                             capture="environment"
                         >
                     @endif

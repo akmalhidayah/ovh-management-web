@@ -370,6 +370,12 @@ class FormController extends Controller
             'temporary_attachments' => ['nullable', 'array'],
             'temporary_attachments.*' => ['nullable', 'array'],
             'temporary_attachments.*.*' => ['string'],
+        ], [
+            'attachments.*.*.uploaded' => 'Foto dokumentasi gagal diupload. Ukuran file kemungkinan terlalu besar atau koneksi terputus. Coba ambil ulang foto atau pilih foto yang lebih kecil.',
+            'attachments.*.*.file' => 'Dokumentasi harus berupa file gambar.',
+            'attachments.*.*.max' => 'Foto dokumentasi maksimal 10 MB per file.',
+            'attachments.*.*.mimes' => 'Foto dokumentasi harus berupa JPG atau PNG.',
+            'attachments.*.*.mimetypes' => 'Foto dokumentasi harus berupa JPG atau PNG.',
         ]);
     }
 

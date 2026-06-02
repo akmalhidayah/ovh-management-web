@@ -348,7 +348,7 @@
                         id="commissioning-camera-dokumentasi"
                         type="file"
                         class="visually-hidden"
-                        accept="image/*"
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                         capture="environment"
                         data-commissioning-camera-input
                     >
@@ -368,7 +368,7 @@
                         </div>
                     </div>
                     <div class="qc-upload-preview mt-2" data-commissioning-upload-preview></div>
-                    <small class="text-muted d-block mt-2">Hanya JPG atau PNG. Bisa upload lebih dari satu gambar sekaligus.</small>
+                    <small class="text-muted d-block mt-2">Hanya JPG atau PNG. Format HEIC/HEIF belum didukung.</small>
                     @if (! $hasTemporaryDocumentation && ! $hasExistingDocumentation)
                         <small class="text-muted d-block">Wajib diisi saat submit.</small>
                     @endif

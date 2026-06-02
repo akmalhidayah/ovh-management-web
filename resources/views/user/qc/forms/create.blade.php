@@ -418,6 +418,8 @@
             const MAX_IMAGE_BYTES = 1.4 * 1024 * 1024;
             const MAX_TOTAL_UPLOAD_BYTES = 6 * 1024 * 1024;
             const MAX_IMAGE_DIMENSION = 1800;
+            const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png)$/;
+            const UNSUPPORTED_HEIC_EXTENSION = /\.(heic|heif)$/i;
 
             const showUploadWarning = (message) => {
                 if (window.Swal) {
@@ -432,6 +434,14 @@
                 }
 
                 window.alert(message);
+            };
+
+            const isUnsupportedHeic = (file) => {
+                const type = (file.type || '').toLowerCase();
+
+                return type === 'image/heic'
+                    || type === 'image/heif'
+                    || UNSUPPORTED_HEIC_EXTENSION.test(file.name || '');
             };
 
             const fileExtension = (name) => {
@@ -466,7 +476,7 @@
             });
 
             const compressImageFile = async (file) => {
-                if (!file.type.startsWith('image/') || file.size <= MAX_IMAGE_BYTES) {
+                if (!SUPPORTED_IMAGE_MIME.test(file.type) || file.size <= MAX_IMAGE_BYTES) {
                     return file;
                 }
 
@@ -556,20 +566,38 @@
                         return;
                     }
 
+                    const unsupportedFiles = files.filter(isUnsupportedHeic);
+                    const supportedFiles = files.filter((file) => !isUnsupportedHeic(file));
+
+                    if (unsupportedFiles.length > 0) {
+                        const names = unsupportedFiles.map((file) => file.name || 'foto HEIC').join(', ');
+                        showUploadWarning(`Format HEIC/HEIF belum didukung: ${names}. Ubah pengaturan kamera ke Most Compatible/JPG atau pilih foto JPG/PNG.`);
+                    }
+
+                    if (supportedFiles.length === 0) {
+                        if (sourceInput === input) {
+                            syncInputFiles();
+                        } else {
+                            sourceInput.value = '';
+                        }
+
+                        return;
+                    }
+
                     sourceInput.dataset.uploadProcessing = '1';
                     if (input) {
                         input.dataset.uploadProcessing = '1';
                     }
 
                     if (message) {
-                        message.textContent = files.some((file) => file.type.startsWith('image/') && file.size > MAX_IMAGE_BYTES)
+                        message.textContent = supportedFiles.some((file) => SUPPORTED_IMAGE_MIME.test(file.type) && file.size > MAX_IMAGE_BYTES)
                             ? 'Mengompres foto agar ukuran upload aman...'
                             : '';
                     }
 
                     const compressedFiles = [];
 
-                    for (const file of files) {
+                    for (const file of supportedFiles) {
                         try {
                             compressedFiles.push(await compressImageFile(file));
                         } catch (error) {
@@ -582,7 +610,7 @@
                         input.dataset.uploadProcessing = '0';
                     }
 
-                    const reducedCount = compressedFiles.filter((file, index) => file.size < files[index].size).length;
+                    const reducedCount = compressedFiles.filter((file, index) => file.size < supportedFiles[index].size).length;
                     let statusMessage = '';
                     if (reducedCount > 0) {
                         statusMessage = `${reducedCount} foto dikompres otomatis sebelum upload.`;
