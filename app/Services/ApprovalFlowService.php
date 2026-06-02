@@ -118,7 +118,7 @@ class ApprovalFlowService
             if ($configured->isNotEmpty()) {
                 $approvalColumns = $type === 'qc'
                     ? $this->qcApprovalColumnsForSubmission($submission)
-                    : [];
+                    : $this->commissioningApprovalColumnsForSubmission($submission);
 
                 return $configured
                     ->values()
@@ -140,7 +140,7 @@ class ApprovalFlowService
         }
 
         return $type === 'commissioning'
-            ? $this->defaultCommissioningSteps()
+            ? $this->defaultCommissioningSteps($submission)
             : $this->defaultQcSteps($submission);
     }
 
@@ -434,9 +434,9 @@ class ApprovalFlowService
         );
     }
 
-    private function defaultCommissioningSteps(): array
+    private function defaultCommissioningSteps(Model $submission): array
     {
-        return collect(FixedCommissioningTemplate::approvalColumns())
+        return collect($this->commissioningApprovalColumnsForSubmission($submission))
             ->values()
             ->map(fn (array $column, int $index) => [
                 'step_order' => $index + 1,
@@ -445,6 +445,26 @@ class ApprovalFlowService
                 'requires_magic_link' => true,
                 'is_required' => true,
             ])
+            ->all();
+    }
+
+    private function commissioningApprovalColumnsForSubmission(Model $submission): array
+    {
+        $approvalData = $submission->approval_data ?? [];
+        $unitKerjaLabel = trim((string) data_get($approvalData, 'unit_kerja.label', ''));
+
+        if ($unitKerjaLabel === '') {
+            $unitKerjaLabel = trim((string) data_get($submission, 'header_data.unit_kerja', ''));
+        }
+
+        return collect(FixedCommissioningTemplate::approvalColumns())
+            ->map(function (array $column) use ($unitKerjaLabel) {
+                if (($column['key'] ?? null) === 'unit_kerja' && $unitKerjaLabel !== '') {
+                    $column['label'] = $unitKerjaLabel;
+                }
+
+                return $column;
+            })
             ->all();
     }
 

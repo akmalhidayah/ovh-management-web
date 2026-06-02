@@ -239,8 +239,15 @@
                                 $approvalTotalSteps = $approvalSteps->count();
                                 $approvalModalId = $submission->model ? 'adminApprovalProgressModal'.$submission->type.$submission->model->id : null;
                                 $approvalStatusLabel = $statusLabels[$submission->status] ?? $submission->status;
+                                $activeApprovalStepLabel = $activeApprovalStep?->label;
+                                $unitKerjaApprovalLabel = trim((string) data_get($submission->model, 'approval_data.unit_kerja.label', ''));
+
+                                if ($activeApprovalStepLabel && Str::upper(trim((string) $activeApprovalStepLabel)) === 'UNIT KERJA' && $unitKerjaApprovalLabel !== '') {
+                                    $activeApprovalStepLabel = $unitKerjaApprovalLabel;
+                                }
+
                                 $approvalStatusTitle = $activeApprovalStep
-                                    ? 'Aktif: '.$activeApprovalStep->label
+                                    ? 'Aktif: '.$activeApprovalStepLabel
                                     : ($approvalFlow ? $approvalStatusLabel : null);
                             @endphp
 
@@ -254,7 +261,7 @@
                                     aria-label="Detail Approval {{ $approvalStatusTitle }}"
                                 >
                                     <span class="admin-approval-status-main">
-                                        {{ $activeApprovalStep ? 'Aktif: '.$activeApprovalStep->label : $approvalStatusLabel }}
+                                        {{ $activeApprovalStep ? 'Aktif: '.$activeApprovalStepLabel : $approvalStatusLabel }}
                                     </span>
                                     @if ($approvalTotalSteps > 0)
                                         <span class="admin-approval-status-meta">TTD {{ $approvedApprovalSteps }}/{{ $approvalTotalSteps }}</span>

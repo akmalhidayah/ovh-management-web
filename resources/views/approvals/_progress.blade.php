@@ -17,6 +17,7 @@
                     <div class="modal-body">
                         @include('approvals._progress-list', [
                             'flow' => $flow,
+                            'submission' => $submission,
                             'activeApprovalLinkUrl' => $copyApprovalLinkUrl,
                         ])
                     </div>
@@ -34,7 +35,7 @@
     @else
         <section class="inspector-panel qc-form-card">
             <div class="qc-form-section-title"><h3>Progress Approval</h3></div>
-            @include('approvals._progress-list', ['flow' => $flow])
+            @include('approvals._progress-list', ['flow' => $flow, 'submission' => $submission])
         </section>
     @endif
 @endif

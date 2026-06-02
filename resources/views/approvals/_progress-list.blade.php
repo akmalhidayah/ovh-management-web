@@ -1,11 +1,19 @@
 <div class="approval-progress-list">
     @foreach ($flow->steps as $step)
+        @php
+            $stepLabel = trim((string) $step->label);
+            $unitKerjaLabel = trim((string) data_get($submission ?? null, 'approval_data.unit_kerja.label', ''));
+
+            if (Str::upper($stepLabel) === 'UNIT KERJA' && $unitKerjaLabel !== '') {
+                $stepLabel = $unitKerjaLabel;
+            }
+        @endphp
         <div class="approval-progress-item is-{{ $step->status }}">
             <div class="approval-progress-index">{{ $loop->iteration }}</div>
             <div class="approval-progress-main">
                 <div class="approval-progress-head">
                     <div class="approval-progress-title">
-                        <strong>{{ $step->label }}</strong>
+                        <strong>{{ $stepLabel }}</strong>
                         @if (($activeApprovalLinkUrl ?? null) && $step->status === 'active')
                             <button type="button" class="approval-open-link-btn" data-open-approval-link-url="{{ $activeApprovalLinkUrl }}">
                                 <i class="bi bi-box-arrow-up-right"></i>Buka TTD
