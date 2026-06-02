@@ -9,7 +9,9 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class User extends Authenticatable
 {
@@ -209,6 +211,28 @@ class User extends Authenticatable
 
     public function sendPasswordResetNotification($token): void
     {
-        $this->notify(new ResetPasswordNotification($token));
+        Log::info('password_reset_notification_dispatching', [
+            'user_id' => $this->id,
+            'email' => $this->email,
+            'mailer' => config('mail.default'),
+        ]);
+
+        try {
+            $this->notify(new ResetPasswordNotification($token));
+        } catch (Throwable $exception) {
+            Log::error('password_reset_notification_failed', [
+                'user_id' => $this->id,
+                'email' => $this->email,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+
+        Log::info('password_reset_notification_dispatched', [
+            'user_id' => $this->id,
+            'email' => $this->email,
+        ]);
     }
 }
