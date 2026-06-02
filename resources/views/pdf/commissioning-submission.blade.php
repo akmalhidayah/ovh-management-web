@@ -150,27 +150,30 @@
         .notes-table td { text-align: left; vertical-align: top; }
         .notes-table td { height: 108px; }
         .doc-image-grid {
-            width: auto;
+            width: 100%;
             margin-top: 4mm;
             table-layout: fixed;
             border-collapse: separate;
             border-spacing: 2mm;
         }
         .doc-image-grid td {
-            width: 28mm;
             height: 28mm;
             padding: 1mm;
             border: 1px solid #bbb;
             text-align: center;
             vertical-align: middle;
         }
+        .doc-image-grid.images-1 td { height: 42mm; }
+        .doc-image-grid.images-2 td { height: 34mm; }
         .doc-image {
             display: block;
-            max-width: 26mm;
+            max-width: 100%;
             max-height: 26mm;
             margin: 0 auto;
             object-fit: contain;
         }
+        .doc-image-grid.images-1 .doc-image { max-height: 40mm; }
+        .doc-image-grid.images-2 .doc-image { max-height: 32mm; }
         .motor-table { table-layout: fixed; }
         .pdf-table-gap { height: 4mm; }
         .gearbox-rating-table { width: 100%; margin-bottom: 5mm; table-layout: fixed; }
@@ -364,15 +367,16 @@
                         ->values();
                 @endphp
                 @if ($documentationImages->isNotEmpty())
-                    <table class="doc-image-grid">
-                        @foreach ($documentationImages->chunk(3) as $row)
+                    @php
+                        $imageCount = $documentationImages->count();
+                        $chunkSize = $imageCount <= 3 ? $imageCount : 3;
+                    @endphp
+                    <table class="doc-image-grid images-{{ min($imageCount, 3) }}">
+                        @foreach ($documentationImages->chunk($chunkSize) as $row)
                             <tr>
                                 @foreach ($row as $image)
                                     <td><img src="{{ $image['path'] }}" class="doc-image" alt="{{ $image['name'] }}"></td>
                                 @endforeach
-                                @for ($empty = $row->count(); $empty < 3; $empty++)
-                                    <td></td>
-                                @endfor
                             </tr>
                         @endforeach
                     </table>
