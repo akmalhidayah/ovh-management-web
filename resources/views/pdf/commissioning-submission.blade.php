@@ -143,6 +143,8 @@
         .top-table { margin-bottom: 12px; }
         .section-table { margin-bottom: 16px; }
         .header-table td { text-align: left; padding: 1.2mm 1.5mm; }
+        .equipment-check-table td.item-cell,
+        .equipment-check-table td.remark-cell { text-align: left; }
         .info-label { font-weight: 700; }
         .info-value { font-style: italic; }
         .notes-table td { text-align: left; vertical-align: top; }
@@ -337,10 +339,10 @@
     </table>
 
     <div class="section">{{ $labels['equipment_check_title'] }}</div>
-    <table class="section-table">
+    <table class="section-table equipment-check-table">
         <tr><th>No.</th><th>Item</th><th>Check</th><th>YES</th><th>NO</th><th>NA</th><th>Remark</th></tr>
         @foreach (($body['equipment_check_rows'] ?? []) as $row)
-            <tr><td>{{ $row['no'] ?? $loop->iteration }}</td><td>{{ $row['item'] ?? '' }}</td><td>{!! $check(! empty($row['check'])) !!}</td><td>{!! $check(($row['result'] ?? '') === 'YES') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NO') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NA') !!}</td><td>{{ $row['remark'] ?? '' }}</td></tr>
+            <tr><td>{{ $row['no'] ?? $loop->iteration }}</td><td class="item-cell">{{ $row['item'] ?? '' }}</td><td>{!! $check(! empty($row['check'])) !!}</td><td>{!! $check(($row['result'] ?? '') === 'YES') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NO') !!}</td><td>{!! $check(($row['result'] ?? '') === 'NA') !!}</td><td class="remark-cell">{{ $row['remark'] ?? '' }}</td></tr>
         @endforeach
     </table>
 
