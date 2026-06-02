@@ -16,7 +16,11 @@
                         <strong>{{ $stepLabel }}</strong>
                         @if (($activeApprovalLinkUrl ?? null) && $step->status === 'active')
                             <button type="button" class="approval-open-link-btn" data-open-approval-link-url="{{ $activeApprovalLinkUrl }}">
-                                <i class="bi bi-box-arrow-up-right"></i>Buka TTD
+                                <span class="approval-open-link-icon"><i class="bi bi-box-arrow-up-right"></i></span>
+                                <span class="approval-open-link-text">
+                                    <span>Buka TTD</span>
+                                    <small>langsung</small>
+                                </span>
                             </button>
                         @endif
                     </div>

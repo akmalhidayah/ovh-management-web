@@ -55,6 +55,38 @@
                 return { message: await response.text() };
             };
 
+            const showApprovalRedirectOverlay = () => {
+                const existing = document.querySelector('[data-approval-redirect-overlay]');
+
+                if (existing) {
+                    existing.classList.add('is-visible');
+                    return existing;
+                }
+
+                const overlay = document.createElement('div');
+                overlay.dataset.approvalRedirectOverlay = '1';
+                overlay.className = 'approval-redirect-overlay is-visible';
+                overlay.innerHTML = `
+                    <div class="approval-redirect-panel" role="status" aria-live="polite">
+                        <div class="approval-redirect-mark" aria-hidden="true">
+                            <i class="bi bi-pen"></i>
+                        </div>
+                        <div class="approval-redirect-copy">
+                            <strong>Mengalihkan ke halaman TTD</strong>
+                            <span>Link approval sedang disiapkan. Mohon tunggu sebentar.</span>
+                        </div>
+                        <div class="approval-redirect-bar" aria-hidden="true"><span></span></div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                return overlay;
+            };
+
+            const hideApprovalRedirectOverlay = () => {
+                document.querySelector('[data-approval-redirect-overlay]')?.classList.remove('is-visible');
+            };
+
             document.querySelectorAll('[data-copy-approval-link-url]').forEach((button) => {
                 if (button.dataset.copyApprovalBound === '1') return;
                 button.dataset.copyApprovalBound = '1';
@@ -106,10 +138,16 @@
 
                 button.addEventListener('click', async () => {
                     const original = button.innerHTML;
-                    const openedWindow = window.open('', '_blank', 'noopener');
+                    showApprovalRedirectOverlay();
 
                     button.disabled = true;
-                    button.innerHTML = '<i class="bi bi-hourglass-split"></i>Membuka';
+                    button.innerHTML = `
+                        <span class="approval-open-link-icon"><i class="bi bi-hourglass-split"></i></span>
+                        <span class="approval-open-link-text">
+                            <span>Membuka</span>
+                            <small>mengalihkan</small>
+                        </span>
+                    `;
 
                     try {
                         const response = await fetch(button.dataset.openApprovalLinkUrl, {
@@ -126,16 +164,9 @@
                             throw new Error(payload.message || 'Link approval gagal dibuat.');
                         }
 
-                        if (openedWindow) {
-                            openedWindow.location.href = payload.url;
-                        } else {
-                            window.location.href = payload.url;
-                        }
+                        window.location.assign(payload.url);
                     } catch (error) {
-                        if (openedWindow) {
-                            openedWindow.close();
-                        }
-
+                        hideApprovalRedirectOverlay();
                         notify('error', 'Gagal buka link TTD', error.message || 'Silakan coba lagi.');
                     } finally {
                         setTimeout(() => {
