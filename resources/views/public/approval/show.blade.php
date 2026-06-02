@@ -13,10 +13,26 @@
         .approval-head { padding: 24px; border-bottom: 1px solid #e5e7eb; }
         .approval-head h1 { margin: 0; font-size: 24px; font-weight: 800; }
         .approval-body { padding: 24px; }
+        .doc-hero { display: grid; gap: 12px; margin-bottom: 18px; }
+        .doc-title-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #fbfdff; }
+        .doc-title-card span { display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+        .doc-title-card h2 { margin: 4px 0 6px; color: #172033; font-size: 24px; font-weight: 850; line-height: 1.2; }
+        .doc-title-card p { margin: 0; color: #475569; }
         .doc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
         .doc-item { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fbfdff; }
         .doc-item span { display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; }
         .doc-item strong { display: block; margin-top: 4px; }
+        .attachment-preview { margin-bottom: 24px; border: 1px solid #d9e0e8; border-radius: 8px; overflow: hidden; background: #fff; }
+        .attachment-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #e5e7eb; background: #f8fafc; }
+        .attachment-preview-head strong { color: #172033; font-size: 15px; }
+        .attachment-preview-head span { color: #64748b; font-size: 12px; }
+        .attachment-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .attachment-table th { padding: 10px; border-bottom: 1px solid #e5e7eb; background: #f1f5f9; color: #475569; font-size: 12px; text-transform: uppercase; }
+        .attachment-table td { height: 180px; padding: 10px; border: 1px solid #e5e7eb; text-align: center; vertical-align: middle; }
+        .attachment-table td:first-child { border-left: 0; }
+        .attachment-table td:last-child { border-right: 0; }
+        .attachment-table img { max-width: 100%; max-height: 164px; margin: 0 auto; object-fit: contain; }
+        .attachment-empty-cell { color: #94a3b8; font-size: 13px; }
         .pdf-panel { border: 1px solid #d9e0e8; border-radius: 8px; overflow: hidden; background: #eef2f6; }
         .pdf-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #d9e0e8; background: #fff; }
         .pdf-toolbar strong { font-size: 15px; }
@@ -27,6 +43,16 @@
         .reject-box { display: none; }
         @media (max-width: 900px) {
             .doc-grid { grid-template-columns: 1fr; }
+            .doc-title-card h2 { font-size: 20px; }
+            .attachment-preview-head { align-items: flex-start; flex-direction: column; }
+            .attachment-table,
+            .attachment-table tbody,
+            .attachment-table tr,
+            .attachment-table th,
+            .attachment-table td { display: block; width: 100%; }
+            .attachment-table thead { display: none; }
+            .attachment-table td { height: auto; min-height: 170px; border-left: 0; border-right: 0; }
+            .attachment-table td::before { content: attr(data-label); display: block; margin-bottom: 8px; color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; text-align: left; }
             .pdf-toolbar { align-items: flex-start; flex-direction: column; }
             .pdf-frame { height: 64vh; }
         }
@@ -57,11 +83,83 @@
             @if ($step->status !== \App\Models\ApprovalStep::STATUS_ACTIVE)
                 <div class="alert alert-warning">Link ini sudah tidak aktif.</div>
             @else
-                <div class="doc-grid mb-4">
-                    <div class="doc-item"><span>Nomor Dokumen</span><strong>{{ $document['number'] }}</strong></div>
-                    <div class="doc-item"><span>Dokumen</span><strong>{{ $document['template'] ?: '-' }}</strong></div>
-                    <div class="doc-item"><span>Step Approval</span><strong>{{ $step->label }}</strong></div>
+                <div class="doc-hero">
+                    <div class="doc-title-card">
+                        <span>Nama Equipment</span>
+                        <h2>{{ $document['equipment'] ?: '-' }}</h2>
+                        <p>{{ $document['work_description'] ?: '-' }}</p>
+                    </div>
+                    <div class="doc-grid">
+                        <div class="doc-item"><span>Nomor Dokumen</span><strong>{{ $document['number'] }}</strong></div>
+                        <div class="doc-item"><span>Section No.</span><strong>{{ $document['section_no'] ?: '-' }}</strong></div>
+                        <div class="doc-item"><span>Functional Location</span><strong>{{ $document['functional_location'] ?: '-' }}</strong></div>
+                        <div class="doc-item"><span>Plant / Area</span><strong>{{ $document['plant'] ?: '-' }} / {{ $document['area'] ?: '-' }}</strong></div>
+                        <div class="doc-item"><span>Step Approval</span><strong>{{ $step->label }}</strong></div>
+                        <div class="doc-item"><span>Jenis Dokumen</span><strong>{{ $document['type'] }}</strong></div>
+                    </div>
                 </div>
+
+                @php
+                    $previewType = $attachmentPreview['type'] ?? null;
+                    $beforeImages = $attachmentPreview['before'] ?? collect();
+                    $afterImages = $attachmentPreview['after'] ?? collect();
+                    $commissioningImages = $attachmentPreview['items'] ?? collect();
+                    $beforeAfterRows = max($beforeImages->count(), $afterImages->count());
+                @endphp
+
+                @if (($previewType === 'qc' && $beforeAfterRows > 0) || ($previewType === 'commissioning' && $commissioningImages->isNotEmpty()))
+                    <div class="attachment-preview">
+                        <div class="attachment-preview-head">
+                            <strong>{{ $previewType === 'qc' ? 'Lampiran Foto Before / After' : 'Lampiran Dokumentasi' }}</strong>
+                            <span>Maksimal 6 gambar ditampilkan untuk ringkasan approval.</span>
+                        </div>
+
+                        @if ($previewType === 'qc')
+                            <table class="attachment-table">
+                                <thead>
+                                    <tr>
+                                        <th>Foto Before</th>
+                                        <th>Foto After</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for ($index = 0; $index < $beforeAfterRows; $index++)
+                                        <tr>
+                                            <td data-label="Foto Before">
+                                                @if ($item = $beforeImages->get($index))
+                                                    <img src="{{ $item['source'] }}" alt="{{ $item['name'] }}">
+                                                @else
+                                                    <span class="attachment-empty-cell">Tidak ada foto.</span>
+                                                @endif
+                                            </td>
+                                            <td data-label="Foto After">
+                                                @if ($item = $afterImages->get($index))
+                                                    <img src="{{ $item['source'] }}" alt="{{ $item['name'] }}">
+                                                @else
+                                                    <span class="attachment-empty-cell">Tidak ada foto.</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endfor
+                                </tbody>
+                            </table>
+                        @else
+                            <table class="attachment-table">
+                                <tbody>
+                                    @foreach ($commissioningImages->chunk(min($commissioningImages->count(), 3)) as $row)
+                                        <tr>
+                                            @foreach ($row as $item)
+                                                <td data-label="Dokumentasi">
+                                                    <img src="{{ $item['source'] }}" alt="{{ $item['name'] }}">
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="pdf-panel">
                     <div class="pdf-toolbar">

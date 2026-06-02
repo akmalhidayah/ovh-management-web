@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -36,11 +37,16 @@ class PublicApprovalController extends Controller
             abort(404);
         }
 
+        $step->load('flow.approvable');
+        $submission = $step->flow->approvable;
+        $submission?->loadMissing('attachments');
+
         return view('public.approval.show', [
             'token' => $token,
-            'step' => $step->load('flow.approvable'),
-            'submission' => $step->flow->approvable,
+            'step' => $step,
+            'submission' => $submission,
             'document' => $this->documentSummary($step),
+            'attachmentPreview' => $this->attachmentPreview($submission),
             'suggestedApproverName' => $this->suggestedApproverName($step),
             'suggestedApproverPosition' => $this->suggestedApproverPosition($step),
         ]);
@@ -151,6 +157,9 @@ class PublicApprovalController extends Controller
                 'number' => $submission->form_number,
                 'template' => $submission->template_name ?: $submission->template?->name,
                 'equipment' => $submission->equipment ?: ($generalInfo['name_equipment'] ?? '-'),
+                'work_description' => $submission->pekerjaan ?: ($generalInfo['pekerjaan'] ?? ($submission->template_name ?: $submission->template?->name ?: '-')),
+                'section_no' => $submission->tag_num ?: ($generalInfo['tag_num'] ?? '-'),
+                'functional_location' => $generalInfo['functional_location'] ?? '-',
                 'plant' => $submission->plant ?: ($generalInfo['plant'] ?? '-'),
                 'area' => $submission->area ?: ($generalInfo['area'] ?? '-'),
                 'status' => $submission->status,
@@ -165,6 +174,9 @@ class PublicApprovalController extends Controller
                 'number' => $submission->form_number,
                 'template' => $submission->template_name ?: $submission->template?->name,
                 'equipment' => $submission->equipment ?: ($header['name_equipment'] ?? '-'),
+                'work_description' => $submission->template_name ?: $submission->template?->name ?: '-',
+                'section_no' => $submission->tag_num ?: ($header['tag_num'] ?? '-'),
+                'functional_location' => $submission->functional_location ?: ($header['functional_location'] ?? '-'),
                 'plant' => $header['plant'] ?? '-',
                 'area' => $submission->area ?: ($header['area'] ?? '-'),
                 'status' => $submission->status,
@@ -176,10 +188,83 @@ class PublicApprovalController extends Controller
             'number' => '-',
             'template' => '-',
             'equipment' => '-',
+            'work_description' => '-',
+            'section_no' => '-',
+            'functional_location' => '-',
             'plant' => '-',
             'area' => '-',
             'status' => '-',
         ];
+    }
+
+    private function attachmentPreview(mixed $submission): array
+    {
+        if ($submission instanceof QcFormSubmission) {
+            $attachments = $submission->attachments->groupBy('field_key');
+
+            return [
+                'type' => 'qc',
+                'before' => $this->imageAttachmentItems($attachments->get('foto_before', collect())),
+                'after' => $this->imageAttachmentItems($attachments->get('foto_after', collect())),
+            ];
+        }
+
+        if ($submission instanceof CommissioningFormSubmission) {
+            return [
+                'type' => 'commissioning',
+                'items' => $this->imageAttachmentItems($submission->attachments),
+            ];
+        }
+
+        return ['type' => null];
+    }
+
+    private function imageAttachmentItems(iterable $attachments, int $limit = 6): \Illuminate\Support\Collection
+    {
+        return collect($attachments)
+            ->filter(fn ($attachment) => ($attachment->type ?? null) === 'image')
+            ->take($limit)
+            ->map(function ($attachment) {
+                $source = $this->attachmentDataUri($attachment);
+
+                if (! $source) {
+                    return null;
+                }
+
+                return [
+                    'name' => $attachment->original_name ?: ($attachment->label ?: 'Lampiran'),
+                    'label' => $attachment->label ?: 'Lampiran',
+                    'source' => $source,
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function attachmentDataUri(mixed $attachment): ?string
+    {
+        $path = $attachment->file_path ?? null;
+
+        if (! $path || ! str_starts_with((string) ($attachment->mime_type ?? ''), 'image/')) {
+            return null;
+        }
+
+        $absolutePath = null;
+
+        if (Storage::disk('local')->exists($path)) {
+            $absolutePath = Storage::disk('local')->path($path);
+        } elseif (Storage::disk('public')->exists($path)) {
+            $absolutePath = Storage::disk('public')->path($path);
+        } else {
+            $candidate = storage_path('app/public/'.$path);
+            $absolutePath = file_exists($candidate) ? $candidate : null;
+        }
+
+        if (! $absolutePath || ! file_exists($absolutePath)) {
+            return null;
+        }
+
+        return 'data:'.$attachment->mime_type.';base64,'.base64_encode((string) file_get_contents($absolutePath));
     }
 
     private function suggestedApproverName(ApprovalStep $step): string
