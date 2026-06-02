@@ -40,6 +40,7 @@ class LoginController extends Controller
             Log::info('login_multi_access_choice_required', [
                 'actor_id' => $user->id,
                 'user_role' => $user->role,
+                'secondary_role' => $user->secondary_role,
                 'admin_role' => $user->effectiveAdminRole(),
                 'controller' => self::class,
                 'status_code' => 302,
@@ -49,6 +50,9 @@ class LoginController extends Controller
         }
 
         $request->session()->put('active_access_mode', $user->hasAdminPanelAccess() ? 'admin' : 'user');
+        if ($user->isOperationalUser()) {
+            $request->session()->put('active_user_role', $user->role);
+        }
 
         return redirect()->intended(route(Auth::user()->dashboardRouteName()));
     }

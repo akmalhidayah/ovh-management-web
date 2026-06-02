@@ -28,7 +28,7 @@ class User extends Authenticatable
         'password',
         'usertype',
         'role',
-        'admin_role',
+        'secondary_role',
         'profile_photo_path',
         'profile_plants',
         'profile_areas',
@@ -72,7 +72,7 @@ class User extends Authenticatable
     public function hasAdminPanelAccess(): bool
     {
         return $this->isAdmin()
-            || in_array($this->admin_role, array_keys(AdminMenuPermissions::adminRoles()), true);
+            || in_array($this->secondary_role, array_keys(AdminMenuPermissions::adminRoles()), true);
     }
 
     public function effectiveAdminRole(): ?string
@@ -81,7 +81,9 @@ class User extends Authenticatable
             return $this->role;
         }
 
-        return $this->admin_role;
+        return in_array($this->secondary_role, array_keys(AdminMenuPermissions::adminRoles()), true)
+            ? $this->secondary_role
+            : null;
     }
 
     public function isAdminApproval(): bool
@@ -96,7 +98,46 @@ class User extends Authenticatable
 
     public function hasMultipleAccessModes(): bool
     {
-        return $this->isOperationalUser() && $this->hasAdminPanelAccess();
+        return count($this->availableAccessModes()) > 1;
+    }
+
+    public function hasUserRole(string $role): bool
+    {
+        return $this->isOperationalUser() && in_array($role, $this->userRoles(), true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function userRoles(): array
+    {
+        if (! $this->isOperationalUser()) {
+            return [];
+        }
+
+        $roles = [$this->role];
+
+        if (in_array($this->secondary_role, ['qc', 'commissioning', 'pgo'], true)) {
+            $roles[] = $this->secondary_role;
+        }
+
+        return array_values(array_unique(array_filter($roles)));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function availableAccessModes(): array
+    {
+        $modes = collect($this->userRoles())
+            ->map(fn (string $role): string => "user:{$role}")
+            ->all();
+
+        if ($this->hasAdminPanelAccess()) {
+            $modes[] = 'admin';
+        }
+
+        return $modes;
     }
 
     public function dashboardRouteName(): string
@@ -109,7 +150,9 @@ class User extends Authenticatable
             return 'admin.dashboard';
         }
 
-        return match ($this->role) {
+        $role = $this->activeUserRole();
+
+        return match ($role) {
             'qc' => 'user.qc.dashboard',
             'commissioning' => 'user.commissioning.dashboard',
             'pgo' => 'user.pgo.dashboard',
@@ -124,13 +167,28 @@ class User extends Authenticatable
             return 'admin.dashboard';
         }
 
-        return match ($this->role) {
+        $role = str_starts_with($mode, 'user:')
+            ? str($mode)->after('user:')->toString()
+            : $this->activeUserRole();
+
+        if (! $this->hasUserRole($role)) {
+            $role = $this->role;
+        }
+
+        return match ($role) {
             'qc' => 'user.qc.dashboard',
             'commissioning' => 'user.commissioning.dashboard',
             'pgo' => 'user.pgo.dashboard',
             'approval' => 'user.approval.dashboard',
             default => $this->isAdmin() ? 'admin.dashboard' : 'login',
         };
+    }
+
+    public function activeUserRole(): string
+    {
+        $role = (string) session('active_user_role');
+
+        return $this->hasUserRole($role) ? $role : $this->role;
     }
 
     public function profilePhotoUrl(): ?string

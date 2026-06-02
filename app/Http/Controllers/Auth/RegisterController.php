@@ -60,6 +60,7 @@ class RegisterController extends Controller
 
         $request->session()->regenerate();
         $request->session()->put('active_access_mode', 'user');
+        $request->session()->put('active_user_role', $user->role);
 
         return redirect()->route($user->dashboardRouteName());
     }

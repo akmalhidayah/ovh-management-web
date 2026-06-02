@@ -22,7 +22,7 @@ class MultiAccessModeTest extends TestCase
             'password' => Hash::make('secret123'),
             'usertype' => 'user',
             'role' => 'commissioning',
-            'admin_role' => 'approval',
+            'secondary_role' => 'approval',
         ]);
 
         $this->post(route('login.attempt'), [
@@ -39,9 +39,10 @@ class MultiAccessModeTest extends TestCase
             ->assertSee('Admin Monitoring');
 
         $this->actingAs($user)
-            ->post(route('access.choose.store'), ['mode' => 'user'])
+            ->post(route('access.choose.store'), ['mode' => 'user:commissioning'])
             ->assertRedirect(route('user.commissioning.dashboard'))
-            ->assertSessionHas('active_access_mode', 'user');
+            ->assertSessionHas('active_access_mode', 'user')
+            ->assertSessionHas('active_user_role', 'commissioning');
 
         $this->actingAs($user)
             ->post(route('access.switch'), ['mode' => 'admin'])
@@ -57,7 +58,7 @@ class MultiAccessModeTest extends TestCase
             'email' => 'qc.multi@ovh.test',
             'usertype' => 'user',
             'role' => 'qc',
-            'admin_role' => null,
+            'secondary_role' => null,
         ]);
 
         $this->actingAs($admin)
@@ -67,7 +68,7 @@ class MultiAccessModeTest extends TestCase
                 'phone' => '0800000002',
                 'usertype' => 'user',
                 'role' => 'qc',
-                'admin_role' => 'approval',
+                'secondary_role' => 'approval',
             ])
             ->assertRedirect()
             ->assertSessionHas('success');
@@ -76,7 +77,40 @@ class MultiAccessModeTest extends TestCase
 
         $this->assertSame('user', $user->usertype);
         $this->assertSame('qc', $user->role);
-        $this->assertSame('approval', $user->admin_role);
+        $this->assertSame('approval', $user->secondary_role);
+    }
+
+    public function test_user_can_have_qc_and_commissioning_access_with_secondary_role(): void
+    {
+        $user = User::factory()->create([
+            'usertype' => 'user',
+            'role' => 'qc',
+            'secondary_role' => 'commissioning',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('access.choose'))
+            ->assertOk()
+            ->assertSee('User Quality Control')
+            ->assertSee('User Commissioning')
+            ->assertDontSee('Admin Monitoring');
+
+        $this->actingAs($user)
+            ->post(route('access.choose.store'), ['mode' => 'user:commissioning'])
+            ->assertRedirect(route('user.commissioning.dashboard'))
+            ->assertSessionHas('active_access_mode', 'user')
+            ->assertSessionHas('active_user_role', 'commissioning');
+
+        $this->actingAs($user)
+            ->withSession(['active_access_mode' => 'user', 'active_user_role' => 'commissioning'])
+            ->get(route('user.commissioning.dashboard'))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->withSession(['active_access_mode' => 'user', 'active_user_role' => 'commissioning'])
+            ->get(route('user.qc.dashboard'))
+            ->assertOk()
+            ->assertSessionHas('active_user_role', 'qc');
     }
 
     public function test_multi_access_approval_can_monitor_admin_qc_but_cannot_restore_or_delete(): void
@@ -84,7 +118,7 @@ class MultiAccessModeTest extends TestCase
         $approvalUser = User::factory()->create([
             'usertype' => 'user',
             'role' => 'qc',
-            'admin_role' => 'approval',
+            'secondary_role' => 'approval',
         ]);
         $submission = $this->pendingQcSubmission();
 
@@ -112,7 +146,7 @@ class MultiAccessModeTest extends TestCase
         $approvalUser = User::factory()->create([
             'usertype' => 'user',
             'role' => 'commissioning',
-            'admin_role' => 'approval',
+            'secondary_role' => 'approval',
         ]);
         $submission = $this->pendingQcSubmission();
         $flow = $submission->approvalFlow()->create([

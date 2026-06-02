@@ -66,7 +66,7 @@
                     <li>
                         <form method="POST" action="{{ route('access.switch') }}">
                             @csrf
-                            <input type="hidden" name="mode" value="user">
+                            <input type="hidden" name="mode" value="user:{{ $currentUser->activeUserRole() }}">
                             <button class="dropdown-item" type="submit">
                                 <i class="bi bi-person-workspace me-2"></i>Kembali ke User
                             </button>

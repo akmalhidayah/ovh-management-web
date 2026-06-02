@@ -53,11 +53,17 @@ class AccessModeController extends Controller
             abort(403);
         }
 
-        $request->session()->put('active_access_mode', $mode);
+        if (str_starts_with($mode, 'user:')) {
+            $request->session()->put('active_access_mode', 'user');
+            $request->session()->put('active_user_role', str($mode)->after('user:')->toString());
+        } else {
+            $request->session()->put('active_access_mode', $mode);
+        }
 
         Log::info($event, [
             'actor_id' => $user->id,
             'mode' => $mode,
+            'secondary_role' => $user->secondary_role,
             'admin_role' => $user->effectiveAdminRole(),
             'user_role' => $user->role,
             'controller' => self::class,
@@ -74,10 +80,10 @@ class AccessModeController extends Controller
     {
         $modes = [];
 
-        if ($user->isOperationalUser()) {
-            $modes['user'] = [
-                'label' => $this->userModeLabel($user),
-                'description' => 'Buat form, lihat draft, dan riwayat pekerjaan sendiri.',
+        foreach ($user->userRoles() as $role) {
+            $modes["user:{$role}"] = [
+                'label' => $this->userModeLabel($role),
+                'description' => $this->userModeDescription($role),
                 'icon' => 'bi-person-workspace',
             ];
         }
@@ -95,14 +101,24 @@ class AccessModeController extends Controller
         return $modes;
     }
 
-    private function userModeLabel(User $user): string
+    private function userModeLabel(string $role): string
     {
-        return match ($user->role) {
+        return match ($role) {
             'qc' => 'User Quality Control',
             'commissioning' => 'User Commissioning',
             'pgo' => 'User PGO',
             'approval' => 'User Approval',
             default => 'User',
+        };
+    }
+
+    private function userModeDescription(string $role): string
+    {
+        return match ($role) {
+            'qc' => 'Buat form QC, lihat draft QC, dan riwayat QC.',
+            'commissioning' => 'Buat form Commissioning, lihat draft, dan riwayat Commissioning.',
+            'pgo' => 'Buka dashboard, tugas, monitoring, dan dokumen PGO.',
+            default => 'Buka dashboard dan pekerjaan sesuai role user.',
         };
     }
 }

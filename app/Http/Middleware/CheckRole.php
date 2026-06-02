@@ -12,13 +12,16 @@ class CheckRole
     {
         $user = $request->user();
 
-        if (! $user || $user->role !== $role) {
+        if (! $user || ! $user->hasUserRole($role)) {
             if ($user) {
                 return redirect()->route($user->dashboardRouteName());
             }
 
             abort(403);
         }
+
+        $request->session()->put('active_access_mode', 'user');
+        $request->session()->put('active_user_role', $role);
 
         return $next($request);
     }

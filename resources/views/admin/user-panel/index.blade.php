@@ -147,7 +147,7 @@
                         <th>Kontak</th>
                         <th>Tipe</th>
                         <th>Role</th>
-                        <th>Akses Admin</th>
+                        <th>Akses Tambahan</th>
                         <th>Dibuat</th>
                         <th class="text-end">Aksi</th>
                     </tr>
@@ -183,8 +183,8 @@
                             <td><span class="badge {{ $typeBadge[$user->usertype] ?? 'text-bg-secondary' }}">{{ $usertypeOptions[$user->usertype] ?? $user->usertype }}</span></td>
                             <td><span class="badge {{ $roleBadge[$user->role] ?? 'text-bg-secondary' }}">{{ $roleOptions[$user->role] ?? Str::headline($user->role) }}</span></td>
                             <td>
-                                @if ($user->admin_role)
-                                    <span class="badge text-bg-secondary">{{ $adminAccessRoleOptions[$user->admin_role] ?? Str::headline($user->admin_role) }}</span>
+                                @if ($user->secondary_role)
+                                    <span class="badge text-bg-secondary">{{ $secondaryRoleOptions[$user->secondary_role] ?? Str::headline($user->secondary_role) }}</span>
                                 @else
                                     <span class="text-muted small">-</span>
                                 @endif
@@ -205,7 +205,7 @@
                                             data-phone="{{ $user->phone }}"
                                             data-usertype="{{ $user->usertype }}"
                                             data-role="{{ $user->role }}"
-                                            data-admin-role="{{ $user->admin_role }}"
+                                            data-secondary-role="{{ $user->secondary_role }}"
                                             data-profile-areas='@json($user->profile_areas ?? [])'
                                             data-profile-photo-url="{{ $profilePhotoUrl }}"
                                             title="Edit user"
@@ -251,7 +251,7 @@
         'method' => null,
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
-        'adminAccessRoleOptions' => $adminAccessRoleOptions,
+        'secondaryRoleOptions' => $secondaryRoleOptions,
         'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => $defaultPassword,
     ])
@@ -263,7 +263,7 @@
         'method' => 'PUT',
         'usertypeOptions' => $usertypeOptions,
         'roleOptions' => $roleOptions,
-        'adminAccessRoleOptions' => $adminAccessRoleOptions,
+        'secondaryRoleOptions' => $secondaryRoleOptions,
         'workAreaOptions' => $workAreaOptions,
         'defaultPassword' => null,
     ])
@@ -327,16 +327,21 @@
                     role.value = fallback;
                 }
 
-                const adminAccessGroup = form.querySelector('[data-userpanel-admin-access-group]');
-                const adminRole = form.querySelector('[name="admin_role"]');
-                const allowAdminAccess = type === 'user';
+                const secondaryRoleGroup = form.querySelector('[data-userpanel-secondary-role-group]');
+                const secondaryRole = form.querySelector('[name="secondary_role"]');
+                const allowSecondaryRole = type === 'user';
 
-                if (adminAccessGroup && adminRole) {
-                    adminAccessGroup.classList.toggle('d-none', !allowAdminAccess);
-                    adminRole.disabled = !allowAdminAccess;
+                if (secondaryRoleGroup && secondaryRole) {
+                    secondaryRoleGroup.classList.toggle('d-none', !allowSecondaryRole);
+                    secondaryRole.disabled = !allowSecondaryRole;
 
-                    if (!allowAdminAccess) {
-                        adminRole.value = '';
+                    secondaryRole.querySelectorAll('option').forEach((option) => {
+                        option.hidden = allowSecondaryRole && option.value === role.value;
+                        option.disabled = allowSecondaryRole && option.value === role.value;
+                    });
+
+                    if (!allowSecondaryRole || secondaryRole.value === role.value) {
+                        secondaryRole.value = '';
                     }
                 }
 
@@ -486,9 +491,9 @@
                     if (input) input.value = button.dataset[name] || '';
                 });
 
-                const adminRole = form.querySelector('[name="admin_role"]');
-                if (adminRole) {
-                    adminRole.value = button.dataset.adminRole || '';
+                const secondaryRole = form.querySelector('[name="secondary_role"]');
+                if (secondaryRole) {
+                    secondaryRole.value = button.dataset.secondaryRole || '';
                 }
 
                 const photoInput = form.querySelector('[data-userpanel-photo-input]');

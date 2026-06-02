@@ -68,15 +68,15 @@
                             </select>
                             <div class="form-text">Admin dapat memakai role Super Admin, Admin, atau Approval. User operasional memakai role QC, Commissioning, PGO, atau Approval.</div>
                         </div>
-                        <div class="col-12" data-userpanel-admin-access-group>
-                            <label class="form-label">Akses Admin Tambahan</label>
-                            <select name="admin_role" class="form-select">
+                        <div class="col-12" data-userpanel-secondary-role-group>
+                            <label class="form-label">Akses Tambahan</label>
+                            <select name="secondary_role" class="form-select">
                                 <option value="">Tidak ada</option>
-                                @foreach ($adminAccessRoleOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('admin_role') === $value)>{{ $label }}</option>
+                                @foreach ($secondaryRoleOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('secondary_role') === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <div class="form-text">Untuk akun user yang perlu ikut pantau dari panel admin tanpa mengubah role utama.</div>
+                            <div class="form-text">Untuk akun user yang perlu akses role user lain atau ikut pantau dari panel admin.</div>
                         </div>
                         <div class="col-12" data-userpanel-area-group>
                             <label class="form-label">Area Terkait</label>
