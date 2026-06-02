@@ -282,12 +282,6 @@
                                     </button>
                                 @endif
 
-                                @if ($submission->status && $submission->status !== 'draft' && $submission->model?->approvalFlow)
-                                    <button type="button" class="btn btn-sm btn-outline-primary admin-inspection-icon-btn" data-bs-toggle="modal" data-bs-target="#adminApprovalProgressModal{{ $submission->type }}{{ $submission->model->id }}" title="Detail Approval" aria-label="Detail Approval">
-                                        <i class="bi bi-list-check"></i>
-                                    </button>
-                                @endif
-
                                 @if ($submission->pdf_route)
                                     <a href="{{ $submission->pdf_route }}" target="_blank" class="btn btn-sm btn-primary admin-inspection-icon-btn" title="PDF" aria-label="PDF">
                                         <i class="bi bi-filetype-pdf"></i>
