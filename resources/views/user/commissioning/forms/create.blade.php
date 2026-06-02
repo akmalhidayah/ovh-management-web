@@ -278,7 +278,9 @@ document.getElementById('template-select')?.addEventListener('change', function 
         showUnsupportedFilesMessage(unsupportedFiles);
 
         if (supportedFiles.length === 0) {
-            if (sourceInput !== input) {
+            if (sourceInput === input) {
+                syncInputFiles();
+            } else {
                 sourceInput.value = '';
             }
 

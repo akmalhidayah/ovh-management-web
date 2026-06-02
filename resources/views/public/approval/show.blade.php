@@ -181,6 +181,53 @@
     document.querySelector('[data-signature-clear]')?.addEventListener('click', reset);
     document.querySelector('[data-signature-upload]')?.addEventListener('click', () => input.click());
 
+    const signatureBounds = (image) => {
+        const scratch = document.createElement('canvas');
+        scratch.width = image.naturalWidth || image.width;
+        scratch.height = image.naturalHeight || image.height;
+
+        const scratchContext = scratch.getContext('2d');
+        scratchContext.drawImage(image, 0, 0);
+
+        const { data, width, height } = scratchContext.getImageData(0, 0, scratch.width, scratch.height);
+        let minX = width;
+        let minY = height;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+                const offset = (y * width + x) * 4;
+                const alpha = data[offset + 3];
+                const red = data[offset];
+                const green = data[offset + 1];
+                const blue = data[offset + 2];
+
+                if (alpha <= 20 || (red > 245 && green > 245 && blue > 245)) {
+                    continue;
+                }
+
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            return { x: 0, y: 0, width, height };
+        }
+
+        const padding = Math.max(4, Math.round(Math.max(width, height) * 0.02));
+
+        return {
+            x: Math.max(0, minX - padding),
+            y: Math.max(0, minY - padding),
+            width: Math.min(width - 1, maxX + padding) - Math.max(0, minX - padding) + 1,
+            height: Math.min(height - 1, maxY + padding) - Math.max(0, minY - padding) + 1,
+        };
+    };
+
     const drawUploadedSignature = (file) => {
         if (!['image/png', 'image/jpeg'].includes(file.type)) {
             alert('File TTD harus PNG atau JPG.');
@@ -199,16 +246,17 @@
         image.onload = () => {
             reset();
 
+            const bounds = signatureBounds(image);
             const padding = 18;
             const maxWidth = canvas.width - (padding * 2);
             const maxHeight = canvas.height - (padding * 2);
-            const ratio = Math.min(maxWidth / image.width, maxHeight / image.height);
-            const width = image.width * ratio;
-            const height = image.height * ratio;
+            const ratio = Math.min(maxWidth / bounds.width, maxHeight / bounds.height);
+            const width = bounds.width * ratio;
+            const height = bounds.height * ratio;
             const x = (canvas.width - width) / 2;
             const y = (canvas.height - height) / 2;
 
-            context.drawImage(image, x, y, width, height);
+            context.drawImage(image, bounds.x, bounds.y, bounds.width, bounds.height, x, y, width, height);
             hasDrawing = true;
             signaturePrepared = false;
             URL.revokeObjectURL(objectUrl);
