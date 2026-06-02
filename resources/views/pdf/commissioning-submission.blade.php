@@ -27,22 +27,31 @@
 
         return $step?->signature_data;
     };
+    $approvalColumns = array_values(FixedCommissioningTemplate::approvalColumns());
     $flowSteps = $submission->approvalFlow?->steps ?? collect();
-    $approvalData = $flowSteps->isNotEmpty() ? [] : $legacyApprovalData;
+    $approvalData = $legacyApprovalData;
     if ($flowSteps->isNotEmpty()) {
-        foreach (array_values(FixedCommissioningTemplate::approvalColumns()) as $index => $column) {
+        $approvalData = collect($approvalColumns)
+            ->mapWithKeys(fn (array $column) => [
+                $column['key'] => [
+                    'label' => $legacyApprovalData[$column['key']]['label'] ?? $column['label'],
+                ],
+            ])
+            ->all();
+
+        foreach ($approvalColumns as $index => $column) {
             $step = $flowSteps->firstWhere('step_order', $index + 1);
             if (! $step || $step->status !== ApprovalStep::STATUS_APPROVED) {
                 continue;
             }
 
-            $approvalData[$column['key']] = [
+            $approvalData[$column['key']] = array_merge($approvalData[$column['key']] ?? [], [
                 'name' => $step->approver_name ?? '',
                 'role' => $step->approver_position ?? $column['label'],
                 'label' => $legacyApprovalData[$column['key']]['label'] ?? $column['label'],
                 'signature' => $approvalSignatureSource($step),
                 'date' => $step->acted_at?->format('Y-m-d') ?? '',
-            ];
+            ]);
         }
     }
     $imageAttachments = $submission->attachments
@@ -380,13 +389,13 @@
                 <td>Known by / Diketahui Oleh :</td>
             </tr>
             <tr class="approval-role">
-                @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
+                @foreach ($approvalColumns as $column)
                     @php($data = $approvalData[$column['key']] ?? [])
                     <th>{{ $data['label'] ?? $column['label'] }}</th>
                 @endforeach
             </tr>
             <tr class="approval-sign">
-                @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
+                @foreach ($approvalColumns as $column)
                     @php($data = $approvalData[$column['key']] ?? [])
                     <td>
                         @if (! empty($data['signature']))
@@ -397,7 +406,7 @@
                 @endforeach
             </tr>
             <tr class="approval-date">
-                @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
+                @foreach ($approvalColumns as $column)
                     @php($data = $approvalData[$column['key']] ?? [])
                     <td>Date : {{ $data['date'] ?? '' }}</td>
                 @endforeach

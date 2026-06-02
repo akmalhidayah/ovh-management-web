@@ -187,6 +187,23 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame(1, $steps[0]->links->whereNull('used_at')->whereNull('revoked_at')->count());
     }
 
+    public function test_commissioning_pdf_uses_selected_unit_kerja_label_before_unit_kerja_step_is_approved(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with(['template', 'attachments', 'user', 'approvalFlow.steps'])
+            ->firstOrFail();
+
+        $html = view('pdf.commissioning-submission', ['submission' => $submission])->render();
+
+        $this->assertStringContainsString('Line 2/3 FM Operation', $html);
+        $this->assertStringNotContainsString('>UNIT KERJA<', $html);
+    }
+
     public function test_commissioning_dashboard_lists_global_master_equipment_with_create_action(): void
     {
         Storage::fake('local');
