@@ -231,9 +231,38 @@
                             </div>
                         </td>
                         <td>
-                            @if ($submission->status && $submission->status !== 'draft')
+                            @php
+                                $approvalFlow = $submission->model?->approvalFlow;
+                                $approvalSteps = $approvalFlow?->steps ?? collect();
+                                $activeApprovalStep = $approvalSteps->firstWhere('status', 'active');
+                                $approvedApprovalSteps = $approvalSteps->where('status', 'approved')->count();
+                                $approvalTotalSteps = $approvalSteps->count();
+                                $approvalModalId = $submission->model ? 'adminApprovalProgressModal'.$submission->type.$submission->model->id : null;
+                                $approvalStatusLabel = $statusLabels[$submission->status] ?? $submission->status;
+                                $approvalStatusTitle = $activeApprovalStep
+                                    ? 'Aktif: '.$activeApprovalStep->label
+                                    : ($approvalFlow ? $approvalStatusLabel : null);
+                            @endphp
+
+                            @if ($submission->status && $submission->status !== 'draft' && $approvalFlow && $approvalModalId)
+                                <button
+                                    type="button"
+                                    class="admin-approval-status-trigger {{ $activeApprovalStep ? 'is-active' : 'is-'.$submission->status }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#{{ $approvalModalId }}"
+                                    title="Detail Approval: {{ $approvalStatusTitle }}"
+                                    aria-label="Detail Approval {{ $approvalStatusTitle }}"
+                                >
+                                    <span class="admin-approval-status-main">
+                                        {{ $activeApprovalStep ? 'Aktif: '.$activeApprovalStep->label : $approvalStatusLabel }}
+                                    </span>
+                                    @if ($approvalTotalSteps > 0)
+                                        <span class="admin-approval-status-meta">TTD {{ $approvedApprovalSteps }}/{{ $approvalTotalSteps }}</span>
+                                    @endif
+                                </button>
+                            @elseif ($submission->status && $submission->status !== 'draft')
                                 <span class="badge {{ $statusClasses[$submission->status] ?? 'text-bg-secondary' }}">
-                                    {{ $statusLabels[$submission->status] ?? $submission->status }}
+                                    {{ $approvalStatusLabel }}
                                 </span>
                             @else
                                 <span class="text-muted small">Belum submit</span>
@@ -857,7 +886,7 @@
         .admin-submission-col-plant { width: 104px; }
         .admin-submission-col-area { width: 112px; }
         .admin-submission-col-location { width: 132px; }
-        .admin-submission-col-status { width: 138px; }
+        .admin-submission-col-status { width: 152px; }
         .admin-submission-col-action { width: 124px; }
 
         .admin-submission-table .badge {
@@ -866,6 +895,72 @@
             font-size: .68rem;
             font-weight: 750;
             letter-spacing: 0;
+        }
+
+        .admin-approval-status-trigger {
+            max-width: 9.2rem;
+            display: inline-grid;
+            gap: .12rem;
+            justify-items: start;
+            padding: .32rem .58rem;
+            border: 0;
+            border-radius: .55rem;
+            color: #075985;
+            background: #cffafe;
+            font-size: .68rem;
+            font-weight: 800;
+            line-height: 1.15;
+            text-align: left;
+            white-space: normal;
+            cursor: pointer;
+            transition: background-color .18s ease, color .18s ease;
+        }
+
+        .admin-approval-status-trigger:hover,
+        .admin-approval-status-trigger:focus {
+            color: #0c4a6e;
+            background: #a5f3fc;
+        }
+
+        .admin-approval-status-trigger.is-active {
+            color: #1d4ed8;
+            background: #dbeafe;
+        }
+
+        .admin-approval-status-trigger.is-active:hover,
+        .admin-approval-status-trigger.is-active:focus {
+            background: #bfdbfe;
+        }
+
+        .admin-approval-status-trigger.is-approved {
+            color: #166534;
+            background: #dcfce7;
+        }
+
+        .admin-approval-status-trigger.is-revision,
+        .admin-approval-status-trigger.is-revision_required {
+            color: #92400e;
+            background: #fef3c7;
+        }
+
+        .admin-approval-status-trigger.is-rejected,
+        .admin-approval-status-trigger.is-cancelled {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        .admin-approval-status-main {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .admin-approval-status-meta {
+            color: currentColor;
+            font-size: .62rem;
+            font-weight: 700;
+            opacity: .78;
         }
 
         .admin-submission-actor {
@@ -1130,7 +1225,7 @@
             .admin-submission-col-area { width: 96px; }
             .admin-submission-col-location { width: 124px; }
             .admin-submission-col-type { width: 148px; }
-            .admin-submission-col-status { width: 126px; }
+            .admin-submission-col-status { width: 140px; }
             .admin-submission-col-action { width: 118px; }
         }
 
