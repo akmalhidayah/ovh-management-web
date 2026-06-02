@@ -372,7 +372,7 @@
                         <input type="date" class="form-control mb-2" name="approval[{{ $column['key'] }}][date]" value="{{ $oldApproval[$column['key']]['date'] ?? '' }}" disabled>
                     @endif
                     <input type="hidden" name="approval[{{ $column['key'] }}][signature]" value="{{ $oldApproval[$column['key']]['signature'] ?? '' }}" data-signature-input>
-                    <input type="file" name="approval_signature_files[{{ $column['key'] }}]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
+                    <input type="file" name="approval_signature_files[{{ $column['key'] }}]" accept="image/png,.png" class="d-none" data-signature-file-input>
                     <input type="hidden" name="approval[{{ $column['key'] }}][role]" value="{{ $column['role'] ?? $column['label'] }}">
                     <input type="hidden" name="approval[{{ $column['key'] }}][signed_at]" value="{{ $oldApproval[$column['key']]['signed_at'] ?? '' }}" data-signature-time-input>
                     @if ($isInspector)
@@ -391,6 +391,9 @@
                         <div class="qc-signature-actions mt-2">
                             <button type="button" class="btn btn-outline-primary" data-signature-open data-signature-label="{{ $column['label'] }}" data-inspector-approval-control>
                                 <i class="bi bi-pen me-1"></i><span data-signature-button-label>Tanda Tangan</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary qc-signature-icon-button" data-signature-upload title="Upload TTD PNG transparan" aria-label="Upload TTD PNG transparan" data-inspector-approval-control>
+                                <i class="bi bi-upload"></i>
                             </button>
                             <button type="button" class="btn btn-outline-danger d-none" data-signature-remove>Hapus</button>
                         </div>

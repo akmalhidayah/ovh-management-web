@@ -209,7 +209,7 @@
                                 <button type="button" class="btn btn-outline-secondary" disabled>Tanda tangan</button>
                             @else
                                 <input type="hidden" name="approval[{{ $key }}][signature]" data-signature-input>
-                                <input type="file" name="approval_signature_files[{{ $key }}]" accept="image/png,image/jpeg" class="d-none" data-signature-file-input>
+                                <input type="file" name="approval_signature_files[{{ $key }}]" accept="image/png,.png" class="d-none" data-signature-file-input>
                                 <input type="hidden" name="approval[{{ $key }}][name]" value="{{ $signerName }}">
                                 <input type="hidden" name="approval[{{ $key }}][role]" value="{{ $signerPosition }}">
                                 <input type="hidden" name="approval[{{ $key }}][signed_at]" data-signature-time-input>
@@ -234,6 +234,15 @@
                                         data-signature-label="{{ $label }}"
                                     >
                                         <i class="bi bi-pen me-1"></i><span data-signature-button-label>Tanda Tangan</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary qc-signature-icon-button"
+                                        data-signature-upload
+                                        title="Upload TTD PNG transparan"
+                                        aria-label="Upload TTD PNG transparan"
+                                    >
+                                        <i class="bi bi-upload"></i>
                                     </button>
                                     <button type="button" class="btn btn-outline-danger d-none" data-signature-remove>Hapus</button>
                                 </div>

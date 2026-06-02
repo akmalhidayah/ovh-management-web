@@ -1422,6 +1422,11 @@ body.inspector-body {
     gap: 0.4rem;
 }
 
+.qc-signature-icon-button {
+    width: 42px;
+    padding-inline: 0;
+}
+
 .qc-signature-help {
     margin-top: 0.5rem;
     color: var(--inspector-muted);

@@ -273,6 +273,88 @@
                 input.files = transfer.files;
             };
 
+            const revokeSignatureObjectUrl = (card) => {
+                if (card?.dataset.signatureObjectUrl) {
+                    URL.revokeObjectURL(card.dataset.signatureObjectUrl);
+                    delete card.dataset.signatureObjectUrl;
+                }
+            };
+
+            const applySignatureToCard = (card, previewSource, options = {}) => {
+                if (!card) {
+                    return;
+                }
+
+                const signedAt = new Date();
+                const signedText = signedAt.toLocaleString('id-ID', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                });
+                const signatureInput = card.querySelector('[data-signature-input]');
+                const fileInput = card.querySelector('[data-signature-file-input]');
+
+                revokeSignatureObjectUrl(card);
+
+                if (options.file) {
+                    setFileInput(fileInput, options.file);
+                }
+
+                if (options.objectUrl) {
+                    card.dataset.signatureObjectUrl = options.objectUrl;
+                }
+
+                if (signatureInput) {
+                    signatureInput.value = options.hiddenValue || '';
+                }
+
+                card.querySelector('[data-signature-time-input]').value = signedAt.toISOString();
+                card.querySelector('[data-signature-preview]').src = previewSource;
+                card.querySelector('[data-signature-time]').textContent = signedText;
+                card.querySelector('[data-signature-empty]').classList.add('d-none');
+                card.querySelector('[data-signature-result]').classList.remove('d-none');
+                card.querySelector('[data-signature-remove]').classList.remove('d-none');
+                card.querySelector('[data-signature-button-label]').textContent = 'Ubah';
+            };
+
+            const uploadedSignatureHasTransparency = (file) => new Promise((resolve) => {
+                const image = new Image();
+                const objectUrl = URL.createObjectURL(file);
+
+                image.onload = () => {
+                    const scratch = document.createElement('canvas');
+                    scratch.width = image.naturalWidth || image.width;
+                    scratch.height = image.naturalHeight || image.height;
+
+                    try {
+                        const scratchContext = scratch.getContext('2d');
+                        scratchContext.drawImage(image, 0, 0);
+                        const pixels = scratchContext.getImageData(0, 0, scratch.width, scratch.height).data;
+
+                        for (let index = 3; index < pixels.length; index += 4) {
+                            if (pixels[index] < 250) {
+                                URL.revokeObjectURL(objectUrl);
+                                resolve(true);
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(false);
+                        return;
+                    }
+
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(false);
+                };
+
+                image.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(false);
+                };
+
+                image.src = objectUrl;
+            });
+
             const showWarning = (message, callback = null) => {
                 if (!window.Swal) {
                     window.alert(message);
@@ -305,6 +387,45 @@
                 });
             });
 
+            document.querySelectorAll('[data-signature-upload]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    button.closest('[data-signature-card]')?.querySelector('[data-signature-file-input]')?.click();
+                });
+            });
+
+            document.querySelectorAll('[data-signature-file-input]').forEach((input) => {
+                input.addEventListener('change', async () => {
+                    const file = input.files?.[0];
+                    const card = input.closest('[data-signature-card]');
+
+                    if (!file || !card) {
+                        return;
+                    }
+
+                    if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
+                        input.value = '';
+                        showWarning('File TTD upload harus PNG transparan.');
+                        return;
+                    }
+
+                    if (file.size > 1024 * 1024) {
+                        input.value = '';
+                        showWarning('Ukuran file TTD maksimal 1 MB.');
+                        return;
+                    }
+
+                    const hasTransparency = await uploadedSignatureHasTransparency(file);
+                    if (!hasTransparency) {
+                        input.value = '';
+                        showWarning('File TTD harus PNG transparan, bukan PNG dengan background penuh.');
+                        return;
+                    }
+
+                    const objectUrl = URL.createObjectURL(file);
+                    applySignatureToCard(card, objectUrl, { objectUrl });
+                });
+            });
+
             modalElement.querySelector('[data-signature-clear]')?.addEventListener('click', resetCanvas);
 
             modalElement.querySelector('[data-signature-save]')?.addEventListener('click', () => {
@@ -314,29 +435,17 @@
                 }
 
                 const dataUrl = signatureDataUrl();
-                const signatureInput = activeCard.querySelector('[data-signature-input]');
-                const fileInput = activeCard.querySelector('[data-signature-file-input]');
-                const signedAt = new Date();
-                const signedText = signedAt.toLocaleString('id-ID', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
+                applySignatureToCard(activeCard, dataUrl, {
+                    file: dataUrlToFile(dataUrl, `signature-${Date.now()}.png`),
+                    hiddenValue: dataUrl,
                 });
-
-                setFileInput(fileInput, dataUrlToFile(dataUrl, `signature-${Date.now()}.png`));
-                signatureInput.value = dataUrl;
-                activeCard.querySelector('[data-signature-time-input]').value = signedAt.toISOString();
-                activeCard.querySelector('[data-signature-preview]').src = dataUrl;
-                activeCard.querySelector('[data-signature-time]').textContent = signedText;
-                activeCard.querySelector('[data-signature-empty]').classList.add('d-none');
-                activeCard.querySelector('[data-signature-result]').classList.remove('d-none');
-                activeCard.querySelector('[data-signature-remove]').classList.remove('d-none');
-                activeCard.querySelector('[data-signature-button-label]').textContent = 'Ubah';
                 modal.hide();
             });
 
             document.querySelectorAll('[data-signature-remove]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const card = button.closest('[data-signature-card]');
+                    revokeSignatureObjectUrl(card);
                     card.querySelector('[data-signature-input]').value = '';
                     const fileInput = card.querySelector('[data-signature-file-input]');
                     if (fileInput) fileInput.value = '';
