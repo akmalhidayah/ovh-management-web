@@ -82,8 +82,20 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
     padding: .55rem .65rem .7rem; border-bottom: 1px solid #e5e7eb;
 }
+.topbar-notification-head strong,
+.topbar-notification-head span { display: block; }
 .topbar-notification-head span,
 .topbar-notification-item time { color: #64748b; font-size: .78rem; }
+.topbar-notification-read-all {
+    border: 0;
+    background: transparent;
+    color: #0f62fe;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .2rem 0;
+    white-space: nowrap;
+}
+.topbar-notification-read-all:hover { color: #084cdf; text-decoration: underline; }
 .topbar-notification-item {
     display: grid;
     grid-template-columns: auto 1fr;

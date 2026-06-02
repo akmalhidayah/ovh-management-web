@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\CommissioningSubmissionController as AdminCommissioningSubmissionController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OrganizationSectionController;
 use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionController;
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
@@ -117,6 +118,9 @@ Route::post('/approval/{token}/reject', [PublicApprovalController::class, 'rejec
 
 Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::post('/notifications/read-all', [AdminNotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::get('/notifications/qc/{submission}/open', [AdminNotificationController::class, 'openQc'])->name('notifications.qc.open');
+    Route::get('/notifications/commissioning/{submission}/open', [AdminNotificationController::class, 'openCommissioning'])->name('notifications.commissioning.open');
     Route::get('/overview', [AdminDashboardController::class, 'overview'])->name('overview');
     Route::get('/procurement', [AdminDashboardController::class, 'procurement'])->name('procurement');
     Route::get('/kalender-overhaul', [AdminDashboardController::class, 'kalenderOverhaul'])->name('kalender-overhaul');

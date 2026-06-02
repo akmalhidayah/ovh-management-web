@@ -32,8 +32,16 @@
             </button>
             <div class="dropdown-menu dropdown-menu-end topbar-notification-menu">
                 <div class="topbar-notification-head">
-                    <strong>Notifikasi</strong>
-                    <span>{{ $notificationCount }} baru</span>
+                    <div>
+                        <strong>Notifikasi</strong>
+                        <span>{{ $notificationCount }} baru</span>
+                    </div>
+                    @if ($notificationCount > 0)
+                        <form method="POST" action="{{ route('admin.notifications.read-all') }}">
+                            @csrf
+                            <button type="submit" class="topbar-notification-read-all">Tandai dibaca</button>
+                        </form>
+                    @endif
                 </div>
                 @forelse ($notificationItems as $item)
                     <a class="topbar-notification-item" href="{{ $item['url'] }}" target="_blank">
