@@ -129,8 +129,7 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame($submission->form_number, $history->snapshot['submission']['form_number']);
 
         $pdfUrl = route('user.commissioning.submissions.pdf', $submission);
-        $this->assertStringContainsString(CommissioningFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);
-        $this->assertStringNotContainsString("/submissions/{$submission->id}/pdf", $pdfUrl);
+        $this->assertStringContainsString("/submissions/{$submission->id}/pdf", $pdfUrl);
 
         $this->actingAs($user)
             ->get(route('user.commissioning.history.index'))
@@ -142,9 +141,11 @@ class CommissioningFormFlowTest extends TestCase
             ->get($pdfUrl)
             ->assertOk();
 
+        $legacyPdfUrl = route('user.commissioning.submissions.pdf', CommissioningFormSubmission::routeKeyFromFormNumber($submission->form_number));
+
         $this->actingAs($user)
-            ->get("/user/commissioning/submissions/{$submission->id}/pdf")
-            ->assertNotFound();
+            ->get($legacyPdfUrl)
+            ->assertOk();
 
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
 
@@ -399,6 +400,47 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('GEARBOX MOTOR')
             ->assertSee('SEC-COM-002')
             ->assertSee($availableMaster->description);
+    }
+
+    public function test_user_editing_commissioning_submission_that_is_no_longer_draft_is_redirected_with_error(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'draft'))
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $submission->forceFill([
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.submissions.edit', $submission->fresh()))
+            ->assertRedirect(route('user.commissioning.submissions.show', $submission->fresh()))
+            ->assertSessionHasErrors(['submission']);
+    }
+
+    public function test_user_saving_stale_commissioning_draft_is_redirected_with_error_instead_of_forbidden(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $payload = $this->payload($template, $master, 'draft');
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $submission->forceFill([
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->patch(route('user.commissioning.submissions.update', $submission->fresh()), $payload)
+            ->assertRedirect(route('user.commissioning.submissions.show', $submission->fresh()))
+            ->assertSessionHasErrors(['submission']);
     }
 
     public function test_commissioning_rejected_or_cancelled_submission_does_not_hide_master_data_from_new_forms(): void

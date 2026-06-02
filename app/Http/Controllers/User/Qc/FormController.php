@@ -37,6 +37,8 @@ class FormController extends Controller
     private const ERROR_PDF = 'QC-SUB-PDF-FAILED';
     private const ERROR_DESTROY = 'QC-SUB-DESTROY-FAILED';
     private const ERROR_APPROVAL_LINK = 'QC-APPROVAL-LINK-FAILED';
+    private const ERROR_FORBIDDEN = 'QC-SUB-FORBIDDEN';
+    private const ERROR_NOT_EDITABLE = 'QC-SUB-NOT-EDITABLE';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
     private const SIGNATURE_MAX_BYTES = 1048576;
     private const TEMP_ATTACHMENT_SESSION_KEY = 'qc_temporary_attachments';
@@ -182,11 +184,13 @@ class FormController extends Controller
             ->with('success', 'Draft QC berhasil disimpan.');
     }
 
-    public function edit(QcFormSubmission $submission): View
+    public function edit(QcFormSubmission $submission): View|RedirectResponse
     {
         $this->authorizeSubmission($submission);
 
-        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
+        if ($redirect = $this->redirectIfSubmissionNotEditable($submission, 'edit')) {
+            return $redirect;
+        }
 
         $submission->load(['template.blocks.fields', 'template.blocks.tableRows', 'template.fields', 'template.tableRows', 'rows', 'attachments']);
 
@@ -209,7 +213,9 @@ class FormController extends Controller
     {
         $this->authorizeSubmission($submission);
 
-        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
+        if ($redirect = $this->redirectIfSubmissionNotEditable($submission, 'update')) {
+            return $redirect;
+        }
 
         $validated = $this->validateSubmissionRequest($request);
         abort_unless((int) $validated['template_id'] === (int) $submission->qc_form_template_id, 422);
@@ -1420,8 +1426,46 @@ class FormController extends Controller
     private function authorizeSubmission(QcFormSubmission $submission): void
     {
         $adminPanelRequest = request()->routeIs('admin.*') && auth()->user()?->hasAdminPanelAccess();
+        $allowed = (int) $submission->user_id === (int) auth()->id()
+            || auth()->user()?->isAdmin()
+            || $adminPanelRequest;
 
-        abort_unless((int) $submission->user_id === (int) auth()->id() || auth()->user()?->isAdmin() || $adminPanelRequest, 403);
+        if (! $allowed) {
+            $this->logStatus('qc_submission_access_denied', [
+                'error_code' => self::ERROR_FORBIDDEN,
+                'submission_id' => $submission->id,
+                'submission_user_id' => $submission->user_id,
+                'status' => $submission->status,
+                'route' => request()->route()?->getName(),
+                'status_code' => 403,
+            ]);
+
+            abort(403);
+        }
+    }
+
+    private function redirectIfSubmissionNotEditable(QcFormSubmission $submission, string $action): ?RedirectResponse
+    {
+        if (in_array($submission->status, ['draft', 'revision_required'], true)) {
+            return null;
+        }
+
+        $this->logStatus('qc_submission_edit_blocked', [
+            'error_code' => self::ERROR_NOT_EDITABLE,
+            'submission_id' => $submission->id,
+            'status' => $submission->status,
+            'action' => $action,
+            'route' => request()->route()?->getName(),
+            'status_code' => 409,
+        ]);
+
+        $statusLabel = self::statusLabels()[$submission->status] ?? $submission->status;
+
+        return redirect()
+            ->route('user.qc.submissions.show', $submission)
+            ->withErrors([
+                'submission' => "Draft QC tidak bisa diedit karena statusnya sudah {$statusLabel}. Kode error: ".self::ERROR_NOT_EDITABLE,
+            ]);
     }
 
     private function attachmentStoragePath(QcFormSubmissionAttachment $attachment): ?string

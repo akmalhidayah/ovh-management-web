@@ -37,6 +37,8 @@ class FormController extends Controller
     private const ERROR_PDF = 'COM-SUB-PDF-FAILED';
     private const ERROR_APPROVAL_LINK = 'COM-APPROVAL-LINK-FAILED';
     private const ERROR_DESTROY = 'COM-SUB-DESTROY-FAILED';
+    private const ERROR_FORBIDDEN = 'COM-SUB-FORBIDDEN';
+    private const ERROR_NOT_EDITABLE = 'COM-SUB-NOT-EDITABLE';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
     private const TEMP_ATTACHMENT_SESSION_KEY = 'commissioning_temporary_attachments';
     private const MASTER_DATA_BLOCKING_STATUSES = [
@@ -152,10 +154,13 @@ class FormController extends Controller
             ->with('success', $submission->status !== 'draft' ? 'Form Commissioning berhasil disubmit.' : 'Draft Commissioning berhasil disimpan.');
     }
 
-    public function edit(CommissioningFormSubmission $submission): View
+    public function edit(CommissioningFormSubmission $submission): View|RedirectResponse
     {
         $this->authorizeSubmission($submission);
-        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
+
+        if ($redirect = $this->redirectIfSubmissionNotEditable($submission, 'edit')) {
+            return $redirect;
+        }
 
         return view('user.commissioning.forms.create', array_merge(UserRoleUiData::commissioningForm(), [
             'templates' => CommissioningFormTemplate::where('status', 'active')->orderBy('name')->get(),
@@ -170,7 +175,10 @@ class FormController extends Controller
     public function update(Request $request, CommissioningFormSubmission $submission): RedirectResponse
     {
         $this->authorizeSubmission($submission);
-        abort_unless(in_array($submission->status, ['draft', 'revision_required'], true), 403);
+
+        if ($redirect = $this->redirectIfSubmissionNotEditable($submission, 'update')) {
+            return $redirect;
+        }
 
         $validated = $this->validateRequest($request);
         abort_unless((int) $validated['template_id'] === (int) $submission->commissioning_form_template_id, 422);
@@ -838,8 +846,60 @@ class FormController extends Controller
     private function authorizeSubmission(CommissioningFormSubmission $submission): void
     {
         $adminPanelRequest = request()->routeIs('admin.*') && auth()->user()?->hasAdminPanelAccess();
+        $allowed = (int) $submission->user_id === (int) auth()->id()
+            || auth()->user()?->isAdmin()
+            || $adminPanelRequest;
 
-        abort_unless((int) $submission->user_id === (int) auth()->id() || auth()->user()?->isAdmin() || $adminPanelRequest, 403);
+        if (! $allowed) {
+            $this->logStatus('commissioning_submission_access_denied', [
+                'error_code' => self::ERROR_FORBIDDEN,
+                'submission_id' => $submission->id,
+                'submission_user_id' => $submission->user_id,
+                'status' => $submission->status,
+                'route' => request()->route()?->getName(),
+                'status_code' => 403,
+            ]);
+
+            abort(403);
+        }
+    }
+
+    private function redirectIfSubmissionNotEditable(CommissioningFormSubmission $submission, string $action): ?RedirectResponse
+    {
+        if (in_array($submission->status, ['draft', 'revision_required'], true)) {
+            return null;
+        }
+
+        $this->logStatus('commissioning_submission_edit_blocked', [
+            'error_code' => self::ERROR_NOT_EDITABLE,
+            'submission_id' => $submission->id,
+            'status' => $submission->status,
+            'action' => $action,
+            'route' => request()->route()?->getName(),
+            'status_code' => 409,
+        ]);
+
+        $statusLabel = $this->statusLabels()[$submission->status] ?? $submission->status;
+
+        return redirect()
+            ->route('user.commissioning.submissions.show', $submission)
+            ->withErrors([
+                'submission' => "Draft Commissioning tidak bisa diedit karena statusnya sudah {$statusLabel}. Kode error: ".self::ERROR_NOT_EDITABLE,
+            ]);
+    }
+
+    private function statusLabels(): array
+    {
+        return [
+            'draft' => 'Draft',
+            'submitted' => 'Menunggu Review',
+            'pending_approval' => 'Menunggu Approval',
+            'approved' => 'Disetujui',
+            'revision' => 'Perlu Revisi',
+            'revision_required' => 'Perlu Revisi',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
+        ];
     }
 
     private function attachmentStoragePath(CommissioningFormSubmissionAttachment $attachment): ?string

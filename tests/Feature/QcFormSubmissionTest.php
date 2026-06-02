@@ -772,6 +772,50 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(1, $submission->rows()->count());
     }
 
+    public function test_user_editing_qc_submission_that_is_no_longer_draft_is_redirected_with_error(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $submission->forceFill([
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.edit', $submission->fresh()))
+            ->assertRedirect(route('user.qc.submissions.show', $submission->fresh()))
+            ->assertSessionHasErrors(['submission']);
+    }
+
+    public function test_user_saving_stale_qc_draft_is_redirected_with_error_instead_of_forbidden(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $submission->forceFill([
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission->fresh()), $payload)
+            ->assertRedirect(route('user.qc.submissions.show', $submission->fresh()))
+            ->assertSessionHasErrors(['submission']);
+    }
+
     public function test_user_cannot_submit_fixed_qc_without_final_check(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();
@@ -822,16 +866,17 @@ class QcFormSubmissionTest extends TestCase
         Storage::disk('public')->assertExists($submitterStep->signature_path);
 
         $pdfUrl = route('user.qc.submissions.pdf', $submission);
-        $this->assertStringContainsString(QcFormSubmission::routeKeyFromFormNumber($submission->form_number), $pdfUrl);
-        $this->assertStringNotContainsString("/submissions/{$submission->id}/pdf", $pdfUrl);
+        $this->assertStringContainsString("/submissions/{$submission->id}/pdf", $pdfUrl);
 
         $this->actingAs($user)
             ->get($pdfUrl)
             ->assertOk();
 
+        $legacyPdfUrl = route('user.qc.submissions.pdf', QcFormSubmission::routeKeyFromFormNumber($submission->form_number));
+
         $this->actingAs($user)
-            ->get("/user/qc/submissions/{$submission->id}/pdf")
-            ->assertNotFound();
+            ->get($legacyPdfUrl)
+            ->assertOk();
     }
 
     public function test_qc_submitter_signature_storage_url_with_subpath_is_available_for_pdf(): void

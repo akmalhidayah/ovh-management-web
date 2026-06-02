@@ -44,11 +44,7 @@ class CommissioningFormSubmission extends Model
 
     public function getRouteKey(): mixed
     {
-        $formNumber = (string) $this->getAttribute('form_number');
-
-        return $formNumber !== ''
-            ? self::routeKeyFromFormNumber($formNumber)
-            : parent::getRouteKey();
+        return $this->getKey();
     }
 
     public function resolveRouteBinding($value, $field = null): ?self
@@ -57,9 +53,26 @@ class CommissioningFormSubmission extends Model
             return $this->newQuery()->where($field, $value)->first();
         }
 
-        return $this->newQuery()
-            ->where('form_number', self::formNumberFromRouteKey((string) $value))
-            ->first();
+        $routeKey = trim((string) $value);
+
+        if (ctype_digit($routeKey)) {
+            return $this->newQuery()->whereKey((int) $routeKey)->first();
+        }
+
+        $formNumber = self::formNumberFromRouteKey($routeKey);
+        $query = $this->newQuery()->where('form_number', $formNumber);
+
+        if (request()->routeIs('user.commissioning.*') && auth()->check()) {
+            $ownSubmission = (clone $query)
+                ->where('user_id', auth()->id())
+                ->first();
+
+            if ($ownSubmission) {
+                return $ownSubmission;
+            }
+        }
+
+        return $query->first();
     }
 
     public static function routeKeyFromFormNumber(string $formNumber): string
