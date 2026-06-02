@@ -117,7 +117,7 @@
         .approval td { text-align: center; vertical-align: top; }
         .approval .approval-group td { height: 18px; padding: 2px 3px; background: #e5e2d8; }
         .approval .approval-role th { height: 18px; padding: 3px; }
-        .approval .approval-sign td { height: 28mm; padding: 1mm; font-size: 9px; font-weight: 700; overflow: hidden; vertical-align: middle; }
+        .approval .approval-sign td { height: 28mm; padding: 1mm; font-size: 9px; font-weight: 700; overflow: visible; vertical-align: middle; }
         .approval .approval-date td { height: 16px; text-align: left; }
         .approval-block {
             page-break-inside: avoid;
@@ -174,9 +174,11 @@
         .sig-img {
             display: block;
             width: auto;
-            height: 16mm;
-            max-width: 95%;
-            margin: 0 auto .7mm;
+            height: 23mm;
+            max-width: none;
+            margin: -4mm auto -2mm;
+            position: relative;
+            z-index: 2;
         }
         .sig-name {
             display: block;
