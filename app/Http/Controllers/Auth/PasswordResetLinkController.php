@@ -29,8 +29,21 @@ class PasswordResetLinkController extends Controller
         ]);
 
         $throttleKey = self::throttleKey($request);
+        $email = Str::lower((string) $request->input('email'));
+
+        Log::info('password_reset_link_requested', [
+            'email' => $email,
+            'ip' => $request->ip(),
+            'mailer' => config('mail.default'),
+        ]);
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_RESET_LINK_ATTEMPTS)) {
+            Log::warning('password_reset_link_throttled', [
+                'email' => $email,
+                'ip' => $request->ip(),
+                'available_in' => RateLimiter::availableIn($throttleKey),
+            ]);
+
             return back()
                 ->withInput($request->only('email'))
                 ->withErrors(['email' => self::tooManyAttemptsMessage(RateLimiter::availableIn($throttleKey))]);
@@ -41,8 +54,10 @@ class PasswordResetLinkController extends Controller
         try {
             $status = Password::sendResetLink($request->only('email'));
         } catch (Throwable $exception) {
-            Log::error('Password reset email failed to send.', [
-                'email' => $request->input('email'),
+            Log::error('password_reset_email_failed_to_send', [
+                'email' => $email,
+                'ip' => $request->ip(),
+                'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
 
@@ -50,6 +65,12 @@ class PasswordResetLinkController extends Controller
                 ->withInput($request->only('email'))
                 ->withErrors(['email' => 'Email reset belum bisa dikirim. Periksa konfigurasi SMTP.']);
         }
+
+        Log::info('password_reset_link_result', [
+            'email' => $email,
+            'ip' => $request->ip(),
+            'status' => $status,
+        ]);
 
         if ($status === Password::RESET_LINK_SENT) {
             return back()->with('status', self::message($status));
