@@ -100,6 +100,52 @@
                 });
             });
 
+            document.querySelectorAll('[data-open-approval-link-url]').forEach((button) => {
+                if (button.dataset.openApprovalBound === '1') return;
+                button.dataset.openApprovalBound = '1';
+
+                button.addEventListener('click', async () => {
+                    const original = button.innerHTML;
+                    const openedWindow = window.open('', '_blank', 'noopener');
+
+                    button.disabled = true;
+                    button.innerHTML = '<i class="bi bi-hourglass-split"></i>Membuka';
+
+                    try {
+                        const response = await fetch(button.dataset.openApprovalLinkUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const payload = await parseResponse(response);
+
+                        if (!response.ok || !payload.url) {
+                            throw new Error(payload.message || 'Link approval gagal dibuat.');
+                        }
+
+                        if (openedWindow) {
+                            openedWindow.location.href = payload.url;
+                        } else {
+                            window.location.href = payload.url;
+                        }
+                    } catch (error) {
+                        if (openedWindow) {
+                            openedWindow.close();
+                        }
+
+                        notify('error', 'Gagal buka link TTD', error.message || 'Silakan coba lagi.');
+                    } finally {
+                        setTimeout(() => {
+                            button.innerHTML = original;
+                            button.disabled = false;
+                        }, 600);
+                    }
+                });
+            });
+
             document.querySelectorAll('[data-delete-submission-form]').forEach((form) => {
                 if (form.dataset.deleteBound === '1') return;
                 form.dataset.deleteBound = '1';

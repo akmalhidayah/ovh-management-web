@@ -4,7 +4,14 @@
             <div class="approval-progress-index">{{ $loop->iteration }}</div>
             <div class="approval-progress-main">
                 <div class="approval-progress-head">
-                    <strong>{{ $step->label }}</strong>
+                    <div class="approval-progress-title">
+                        <strong>{{ $step->label }}</strong>
+                        @if (($activeApprovalLinkUrl ?? null) && $step->status === 'active')
+                            <button type="button" class="approval-open-link-btn" data-open-approval-link-url="{{ $activeApprovalLinkUrl }}">
+                                <i class="bi bi-box-arrow-up-right"></i>Buka TTD
+                            </button>
+                        @endif
+                    </div>
                     <span>{{ Str::headline(str_replace('_', ' ', $step->status)) }}</span>
                 </div>
 

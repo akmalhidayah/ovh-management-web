@@ -15,7 +15,10 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
-                        @include('approvals._progress-list', ['flow' => $flow])
+                        @include('approvals._progress-list', [
+                            'flow' => $flow,
+                            'activeApprovalLinkUrl' => $copyApprovalLinkUrl,
+                        ])
                     </div>
                     @if ($copyApprovalLinkUrl)
                         <div class="modal-footer">
@@ -50,11 +53,16 @@
             .approval-copy-link-btn:hover { border-color: #d97706; background: #d97706; color: #fff; }
             .approval-copy-link-btn.is-copy-success { border-color: #15803d; background: #15803d; }
             .approval-copy-link-btn.is-copy-error { border-color: #b91c1c; background: #b91c1c; }
+            .approval-open-link-btn { display: inline-flex; align-items: center; gap: .38rem; flex: 0 0 auto; padding: .32rem .62rem; border: 1px solid #2563eb; border-radius: .48rem; background: #2563eb; color: #fff; font-size: .74rem; font-weight: 800; line-height: 1.1; text-decoration: none; }
+            .approval-open-link-btn:hover,
+            .approval-open-link-btn:focus { border-color: #1d4ed8; background: #1d4ed8; color: #fff; }
+            .approval-open-link-btn:disabled { opacity: .72; cursor: wait; }
             .approval-progress-list { display: grid; gap: .75rem; }
             .approval-progress-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: .8rem; align-items: start; border: 1px solid #e2e8f0; border-radius: .7rem; padding: .85rem; background: #fff; }
             .approval-progress-index { width: 34px; height: 34px; display: grid; place-items: center; border-radius: .55rem; background: #f1f5f9; color: #475569; font-size: .82rem; font-weight: 800; }
             .approval-progress-main { min-width: 0; display: grid; gap: .45rem; }
             .approval-progress-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+            .approval-progress-title { min-width: 0; display: flex; align-items: center; gap: .55rem; }
             .approval-progress-head strong { color: #172033; font-size: .95rem; }
             .approval-progress-head span { flex: 0 0 auto; border-radius: 999px; padding: .22rem .58rem; background: #f1f5f9; color: #475569; font-size: .72rem; font-weight: 800; }
             .approval-progress-meta { display: flex; flex-wrap: wrap; gap: .35rem .8rem; color: #64748b; }
@@ -71,6 +79,7 @@
             @media (max-width: 640px) {
                 .approval-progress-modal .modal-footer { align-items: stretch; flex-direction: column; }
                 .approval-progress-head { align-items: flex-start; flex-direction: column; }
+                .approval-progress-title { align-items: flex-start; flex-direction: column; gap: .45rem; }
             }
         </style>
     @endpush
