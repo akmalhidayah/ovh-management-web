@@ -141,13 +141,7 @@
                     showApprovalRedirectOverlay();
 
                     button.disabled = true;
-                    button.innerHTML = `
-                        <span class="approval-open-link-icon"><i class="bi bi-hourglass-split"></i></span>
-                        <span class="approval-open-link-text">
-                            <span>Membuka</span>
-                            <small>mengalihkan</small>
-                        </span>
-                    `;
+                    button.innerHTML = '<i class="bi bi-hourglass-split"></i>Membuka';
 
                     try {
                         const response = await fetch(button.dataset.openApprovalLinkUrl, {

@@ -54,15 +54,10 @@
             .approval-copy-link-btn:hover { border-color: #d97706; background: #d97706; color: #fff; }
             .approval-copy-link-btn.is-copy-success { border-color: #15803d; background: #15803d; }
             .approval-copy-link-btn.is-copy-error { border-color: #b91c1c; background: #b91c1c; }
-            .approval-open-link-btn { display: inline-flex; align-items: center; gap: .48rem; flex: 0 0 auto; min-height: 2.05rem; padding: .26rem .62rem .26rem .36rem; border: 1px solid #1d4ed8; border-radius: .62rem; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; box-shadow: 0 8px 18px rgba(37, 99, 235, .22); font-size: .72rem; font-weight: 800; line-height: 1.1; text-align: left; text-decoration: none; transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease; }
+            .approval-open-link-btn { display: inline-flex; align-items: center; gap: .38rem; flex: 0 0 auto; padding: .32rem .62rem; border: 1px solid #2563eb; border-radius: .48rem; background: #2563eb; color: #fff; font-size: .74rem; font-weight: 800; line-height: 1.1; text-decoration: none; }
             .approval-open-link-btn:hover,
-            .approval-open-link-btn:focus { border-color: #1e40af; background: linear-gradient(135deg, #1d4ed8, #1e40af); color: #fff; box-shadow: 0 10px 22px rgba(37, 99, 235, .28); transform: translateY(-1px); }
-            .approval-open-link-btn:disabled { opacity: .78; cursor: wait; transform: none; }
-            .approval-open-link-icon { width: 1.42rem; height: 1.42rem; display: inline-grid; place-items: center; flex: 0 0 1.42rem; border-radius: .45rem; background: rgba(255, 255, 255, .16); }
-            .approval-open-link-text { display: grid; gap: .08rem; min-width: 0; }
-            .approval-open-link-text span,
-            .approval-open-link-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            .approval-open-link-text small { color: rgba(255, 255, 255, .78); font-size: .58rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0; }
+            .approval-open-link-btn:focus { border-color: #1d4ed8; background: #1d4ed8; color: #fff; }
+            .approval-open-link-btn:disabled { opacity: .72; cursor: wait; }
             .approval-redirect-overlay { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 1.25rem; background: rgba(15, 23, 42, .72); backdrop-filter: blur(12px); opacity: 0; pointer-events: none; transition: opacity .18s ease; }
             .approval-redirect-overlay.is-visible { opacity: 1; pointer-events: auto; }
             .approval-redirect-panel { width: min(25rem, 100%); display: grid; justify-items: center; gap: .95rem; padding: 1.35rem; border: 1px solid rgba(255, 255, 255, .42); border-radius: .85rem; background: #ffffff; box-shadow: 0 24px 70px rgba(15, 23, 42, .28); text-align: center; }
