@@ -54,7 +54,7 @@ class AdminInspectionSubmissionPageData
             'pageTitle' => $pageTitle,
             'submissions' => $submissions,
             'statusLabels' => self::statusLabels(),
-            'inspectionMetrics' => self::inspectionMetrics($filters),
+            'inspectionMetrics' => self::inspectionMetrics(self::withoutSearch($filters)),
             'filterOptions' => self::filterOptions(),
             'filters' => $filters,
         ];
@@ -189,11 +189,14 @@ class AdminInspectionSubmissionPageData
     private static function commissioningIndexRows(array $filters): Collection
     {
         $submissionRows = self::submissionRows('commissioning')
-            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->filter(fn (object $row) => self::matchesFilters($row, self::withoutSearch($filters)))
             ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
             ->values();
+        $searchMatchedSubmissionRows = $submissionRows
+            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->values();
 
-        return self::filteredMasterRows($filters, $submissionRows, MasterDataRecord::CATEGORY_COMMISSIONING)
+        return self::filteredMasterRows($filters, $searchMatchedSubmissionRows, MasterDataRecord::CATEGORY_COMMISSIONING)
             ->map(function (MasterDataRecord $record) use ($submissionRows): object {
                 $submissionRow = $submissionRows->first(
                     fn (object $row) => self::commissioningSubmissionMatchesRecord($row, $record)
@@ -203,6 +206,13 @@ class AdminInspectionSubmissionPageData
             })
             ->filter(fn (object $row) => self::matchesWorkStatusFilter($row, $filters))
             ->values();
+    }
+
+    private static function withoutSearch(array $filters): array
+    {
+        $filters['search'] = '';
+
+        return $filters;
     }
 
     private static function sortIndexRows(Collection $rows, array $filters): Collection
@@ -383,13 +393,35 @@ class AdminInspectionSubmissionPageData
         $haystack = implode(' ', array_filter([
             $row->form_number,
             $row->equipment,
+            $row->functional_location ?? null,
+            $row->equipment_no ?? null,
+            $row->section_no ?? null,
             $row->area,
             $row->plant,
             $row->user_name,
             $row->type_label,
         ]));
 
-        return str_contains(mb_strtolower($haystack), mb_strtolower($filters['search']));
+        return self::matchesSearch($haystack, $filters['search']);
+    }
+
+    private static function matchesSearch(string $haystack, string $search): bool
+    {
+        $haystack = mb_strtolower($haystack);
+        $search = mb_strtolower(trim($search));
+
+        if ($search === '') {
+            return true;
+        }
+
+        if (str_contains($haystack, $search)) {
+            return true;
+        }
+
+        $normalizedHaystack = preg_replace('/[^a-z0-9]+/i', '', $haystack) ?? '';
+        $normalizedSearch = preg_replace('/[^a-z0-9]+/i', '', $search) ?? '';
+
+        return $normalizedSearch !== '' && str_contains(mb_strtolower($normalizedHaystack), mb_strtolower($normalizedSearch));
     }
 
     private static function matchesWorkStatusFilter(object $row, array $filters): bool
@@ -616,7 +648,7 @@ class AdminInspectionSubmissionPageData
                     $record->area,
                 ])));
 
-                return str_contains($haystack, $search) || self::recordMatchesEquipmentKeys($record, $submissionKeys);
+                return self::matchesSearch($haystack, $search) || self::recordMatchesEquipmentKeys($record, $submissionKeys);
             })
             ->values();
     }

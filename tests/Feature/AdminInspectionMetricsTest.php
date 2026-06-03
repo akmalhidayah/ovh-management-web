@@ -497,6 +497,82 @@ class AdminInspectionMetricsTest extends TestCase
         );
     }
 
+    public function test_commissioning_search_by_master_equipment_field_keeps_submission_actions(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-SEARCH-ACTION',
+            'name' => 'Search Action Template',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+            'body_schema' => ['equipment_check_rows' => []],
+        ]);
+        $matchedMaster = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-4302-KL-414-FG01',
+            'equipment_no' => '50006115',
+            'section_no' => 'SEC-COM-SEARCH-ACTION',
+            'description' => 'Flow Gate',
+            'plant' => 'TONASA 4',
+            'area' => 'KILN 4',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-4302-KL-414-FG03',
+            'equipment_no' => '50006117',
+            'section_no' => 'SEC-COM-SEARCH-OTHER',
+            'description' => 'Flow Gate',
+            'plant' => 'TONASA 4',
+            'area' => 'KILN 4',
+            'status' => 'active',
+        ]);
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'form_number' => '030/COM/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'area' => 'KILN 4',
+            'equipment' => 'Flow Gate',
+            'equipment_no' => '50006115',
+            'functional_location' => 'ST-4302-KL-414-FG01',
+            'header_data' => [
+                'master_data_record_id' => $matchedMaster->id,
+                'plant' => 'TONASA 4',
+                'area' => 'KILN 4',
+            ],
+        ]);
+
+        $data = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET', [
+                'search' => '414FG',
+            ]),
+            'commissioning'
+        );
+
+        $row = $data['submissions']->getCollection()->firstWhere('equipment_no', '50006115');
+
+        $this->assertSame(2, $data['inspectionMetrics']['cards']['total']);
+        $this->assertCount(2, $data['submissions']->getCollection());
+        $this->assertSame('030/COM/05-2026', $row->form_number);
+        $this->assertNotNull($row->model);
+        $this->assertNotNull($row->pdf_route);
+
+        $this->actingAs($admin);
+        $html = view('modules.qc-content', $data)->render();
+
+        $this->assertStringContainsString('030/COM/05-2026', $html);
+        $this->assertStringContainsString('data-admin-delete-submission-form', $html);
+        $this->assertStringContainsString('bi-filetype-pdf', $html);
+        $this->assertStringContainsString('Menunggu Approval', $html);
+    }
+
     public function test_admin_can_restore_qc_submission_to_draft(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

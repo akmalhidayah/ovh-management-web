@@ -24,7 +24,9 @@
 
 <form method="GET" action="{{ route($filterRoute) }}">
     <x-filter-card>
-        <div class="col-12 col-md-6 col-xl-2">
+        <input type="hidden" name="search" value="{{ $filters['search'] }}">
+        <input type="hidden" name="sort" value="{{ $filters['sort'] ?? 'default' }}">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Tahun</label>
             <select class="form-select" name="year">
                 <option value="all">Semua Tahun</option>
@@ -33,7 +35,7 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-2">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Plant</label>
             <select class="form-select" name="plant">
                 <option value="all">Semua Plant</option>
@@ -42,7 +44,7 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-2">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Area</label>
             <select class="form-select" name="area">
                 <option value="all">Semua Area</option>
@@ -51,30 +53,13 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-2">
+        <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Status</label>
             <select class="form-select" name="work_status">
                 <option value="all" @selected(($filters['work_status'] ?? 'all') === 'all')>Semua Status</option>
                 <option value="close" @selected(($filters['work_status'] ?? 'all') === 'close')>Close</option>
                 <option value="ongoing" @selected(($filters['work_status'] ?? 'all') === 'ongoing')>On Going</option>
             </select>
-        </div>
-        <div class="col-12 col-md-6 col-xl-2">
-            <label class="form-label">Urutkan</label>
-            <select class="form-select" name="sort">
-                <option value="default" @selected(($filters['sort'] ?? 'default') === 'default')>Default</option>
-                <option value="name_asc" @selected(($filters['sort'] ?? 'default') === 'name_asc')>Nama A-Z</option>
-                <option value="name_desc" @selected(($filters['sort'] ?? 'default') === 'name_desc')>Nama Z-A</option>
-                <option value="area_asc" @selected(($filters['sort'] ?? 'default') === 'area_asc')>Area A-Z</option>
-                <option value="area_desc" @selected(($filters['sort'] ?? 'default') === 'area_desc')>Area Z-A</option>
-            </select>
-        </div>
-        <div class="col-12 col-md-6 col-xl-2">
-            <label class="form-label">Cari</label>
-            <div class="d-flex gap-2">
-                <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="Form / equipment / area">
-                <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i></button>
-            </div>
         </div>
     </x-filter-card>
 </form>
@@ -170,6 +155,32 @@
         </div>
     </div>
 @endif
+
+<form method="GET" action="{{ route($filterRoute) }}" class="mb-3">
+    <x-filter-card>
+        <input type="hidden" name="year" value="{{ $filters['year'] }}">
+        <input type="hidden" name="plant" value="{{ $filters['plant'] }}">
+        <input type="hidden" name="area" value="{{ $filters['area'] ?? 'all' }}">
+        <input type="hidden" name="work_status" value="{{ $filters['work_status'] ?? 'all' }}">
+        <div class="col-12 col-md-4 col-xl-3">
+            <label class="form-label">Urutkan Tabel</label>
+            <select class="form-select" name="sort">
+                <option value="default" @selected(($filters['sort'] ?? 'default') === 'default')>Default</option>
+                <option value="name_asc" @selected(($filters['sort'] ?? 'default') === 'name_asc')>Nama A-Z</option>
+                <option value="name_desc" @selected(($filters['sort'] ?? 'default') === 'name_desc')>Nama Z-A</option>
+                <option value="area_asc" @selected(($filters['sort'] ?? 'default') === 'area_asc')>Area A-Z</option>
+                <option value="area_desc" @selected(($filters['sort'] ?? 'default') === 'area_desc')>Area Z-A</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-8 col-xl-9">
+            <label class="form-label">Cari Tabel</label>
+            <div class="d-flex gap-2">
+                <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="Form / equipment / area">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+        </div>
+    </x-filter-card>
+</form>
 
 <div class="content-card">
     <div class="table-responsive">
