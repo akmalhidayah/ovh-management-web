@@ -251,7 +251,13 @@
                         </td>
                         <td>
                             <div class="admin-submission-equipment-row">
-                                <div class="admin-submission-equipment">{{ $submission->equipment ?: '-' }}</div>
+                                <div class="admin-submission-equipment">
+                                    @if ($submission->section_no ?? null)
+                                        <span>{{ $submission->section_no }}</span>
+                                        <span class="admin-submission-equipment-separator">-</span>
+                                    @endif
+                                    <span>{{ $submission->equipment ?: '-' }}</span>
+                                </div>
                                 @if (($submission->inspection_status_update_url ?? null) && $canUpdateInspectionStatus)
                                     <select class="admin-work-status-select @if (($submission->work_status ?? null) === 'close') admin-work-status-close @elseif (($submission->work_status ?? null) === 'ongoing') admin-work-status-ongoing @endif"
                                             data-inspection-status-select
@@ -1221,10 +1227,20 @@
         }
 
         .admin-submission-equipment {
+            min-width: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: .12rem .34rem;
             color: #172033;
             font-size: .89rem;
             font-weight: 750;
             line-height: 1.2;
+        }
+
+        .admin-submission-equipment-separator {
+            color: #64748b;
+            font-weight: 700;
         }
 
         .admin-submission-equipment-row {

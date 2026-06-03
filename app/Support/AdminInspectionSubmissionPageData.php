@@ -117,6 +117,7 @@ class AdminInspectionSubmissionPageData
             'master_data_record_id' => $generalInfo['master_data_record_id'] ?? null,
             'functional_location' => $generalInfo['functional_location'] ?? null,
             'equipment_no' => self::firstFilled($generalInfo['id_equipment'] ?? null, $generalInfo['equipment_no'] ?? null),
+            'section_no' => self::firstFilled($submission->tag_num, $generalInfo['section_no'] ?? null),
             'equipment_key' => self::firstFilled(
                 $generalInfo['id_equipment'] ?? null,
                 $generalInfo['equipment_no'] ?? null,
@@ -585,6 +586,7 @@ class AdminInspectionSubmissionPageData
 
         if ($record) {
             $row->master_data_record_id = $record->id;
+            $row->section_no = self::firstFilled($row->section_no ?? null, $record->section_no);
             $row->work_status = self::effectiveWorkStatus($record, $row->work_status ?? null);
             $row->inspection_status_update_url = route('admin.master-data.inspection-status', $record);
         }
