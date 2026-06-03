@@ -394,7 +394,7 @@ class AdminInspectionMetricsTest extends TestCase
         ]);
     }
 
-    public function test_admin_table_can_filter_by_approval_progress_and_colors_progress_label(): void
+    public function test_admin_table_can_filter_by_active_approval_step_and_colors_stage_label(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
         $template = QcFormTemplate::create([
@@ -443,21 +443,22 @@ class AdminInspectionMetricsTest extends TestCase
 
         $data = AdminInspectionSubmissionPageData::make(
             Request::create(route('admin.qc'), 'GET', [
-                'approval_progress' => '2/4',
+                'approval_progress' => 'approver-3',
             ]),
             'qc'
         );
 
         $this->assertSame(['022/QC/05-2026'], $data['submissions']->getCollection()->pluck('form_number')->all());
-        $this->assertContains('1/4', $data['filterOptions']['approvalProgress']->all());
-        $this->assertContains('2/4', $data['filterOptions']['approvalProgress']->all());
+        $this->assertContains('Approver 2', $data['filterOptions']['approvalProgress']->pluck('label')->all());
+        $this->assertContains('Approver 3', $data['filterOptions']['approvalProgress']->pluck('label')->all());
 
         $this->actingAs($admin);
         $html = view('modules.qc-content', $data)->render();
 
-        $this->assertStringContainsString('value="2/4" selected', $html);
+        $this->assertStringContainsString('value="approver-3" selected', $html);
+        $this->assertStringContainsString('Approver 3', $html);
         $this->assertStringContainsString('TTD 2/4', $html);
-        $this->assertStringContainsString('admin-approval-progress-2', $html);
+        $this->assertStringContainsString('admin-approval-progress-3', $html);
         $this->assertStringNotContainsString('021/QC/05-2026', $html);
     }
 

@@ -176,7 +176,7 @@
                 <option value="all" @selected(($filters['approval_progress'] ?? 'all') === 'all')>Semua Approval</option>
                 <option value="none" @selected(($filters['approval_progress'] ?? 'all') === 'none')>Belum submit</option>
                 @foreach ($filterOptions['approvalProgress'] as $approvalProgress)
-                    <option value="{{ $approvalProgress }}" @selected(($filters['approval_progress'] ?? 'all') === $approvalProgress)>TTD {{ $approvalProgress }}</option>
+                    <option value="{{ $approvalProgress['key'] }}" @selected(($filters['approval_progress'] ?? 'all') === $approvalProgress['key'])>{{ $approvalProgress['label'] }}</option>
                 @endforeach
             </select>
         </div>
@@ -1125,24 +1125,29 @@
             background: #f1f5f9;
         }
 
-        .admin-approval-status-trigger.admin-approval-progress-0 {
+        .admin-approval-status-trigger.admin-approval-progress-1 {
             color: #1d4ed8;
             background: #dbeafe;
         }
 
-        .admin-approval-status-trigger.admin-approval-progress-1 {
+        .admin-approval-status-trigger.admin-approval-progress-2 {
             color: #6d28d9;
             background: #ede9fe;
         }
 
-        .admin-approval-status-trigger.admin-approval-progress-2 {
+        .admin-approval-status-trigger.admin-approval-progress-3 {
             color: #0f766e;
             background: #ccfbf1;
         }
 
-        .admin-approval-status-trigger.admin-approval-progress-3 {
+        .admin-approval-status-trigger.admin-approval-progress-4 {
             color: #b45309;
             background: #fef3c7;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-5 {
+            color: #be123c;
+            background: #ffe4e6;
         }
 
         .admin-approval-status-trigger.admin-approval-progress-complete {

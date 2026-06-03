@@ -479,18 +479,77 @@ class AdminInspectionSubmissionPageData
         $steps = $submission->approvalFlow?->steps ?? collect();
         $total = $steps->count();
         $approved = $steps->where('status', 'approved')->count();
-        $key = $total > 0 ? "{$approved}/{$total}" : 'none';
+        $activeStep = $steps->firstWhere('status', 'active');
+        $label = self::approvalStageLabel($submission, $activeStep);
+        $key = $label !== null ? self::approvalStageKey($label) : 'none';
 
         return [
             'approval_approved_count' => $approved,
             'approval_total_count' => $total,
             'approval_progress_key' => $key,
-            'approval_progress_label' => $total > 0 ? "TTD {$key}" : 'Belum submit',
-            'approval_progress_class' => self::approvalProgressClass($approved, $total),
+            'approval_progress_label' => $label ?? 'Belum submit',
+            'approval_progress_class' => self::approvalProgressClass($activeStep?->step_order, $approved, $total),
         ];
     }
 
-    private static function approvalProgressClass(int $approved, int $total): string
+    private static function approvalStageLabel($submission, $activeStep): ?string
+    {
+        if ($activeStep) {
+            $label = trim((string) $activeStep->label);
+            $areaOwnerSourceLabel = self::areaOwnerSourceLabel($submission);
+
+            if (
+                $areaOwnerSourceLabel !== ''
+                && (
+                    AreaOwnerLabel::isPlaceholder($label)
+                    || mb_strtoupper($label) === mb_strtoupper($areaOwnerSourceLabel)
+                )
+            ) {
+                return AreaOwnerLabel::approvalLabel($areaOwnerSourceLabel);
+            }
+
+            return $label !== '' ? $label : 'Approval Aktif';
+        }
+
+        $flowStatus = $submission->approvalFlow?->status;
+
+        if ($flowStatus === 'approved') {
+            return 'Selesai';
+        }
+
+        if (in_array($flowStatus, ['revision_required', 'rejected', 'cancelled'], true)) {
+            return self::statusLabels()[$flowStatus] ?? $flowStatus;
+        }
+
+        return null;
+    }
+
+    private static function areaOwnerSourceLabel($submission): string
+    {
+        foreach ([
+            'approval_data.unit_kerja.label',
+            'approval_data.approved_by_unit_kerja.label',
+            'header_data.unit_kerja',
+            'general_info.unit_kerja',
+        ] as $path) {
+            $label = trim((string) data_get($submission, $path, ''));
+
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        return '';
+    }
+
+    private static function approvalStageKey(string $label): string
+    {
+        $key = preg_replace('/[^a-z0-9]+/i', '-', mb_strtolower(trim($label))) ?? '';
+
+        return trim($key, '-') ?: 'approval';
+    }
+
+    private static function approvalProgressClass(?int $activeStepOrder, int $approved, int $total): string
     {
         if ($total <= 0) {
             return 'admin-approval-progress-none';
@@ -500,14 +559,12 @@ class AdminInspectionSubmissionPageData
             return 'admin-approval-progress-complete';
         }
 
-        return 'admin-approval-progress-'.min($approved, 3);
+        return 'admin-approval-progress-'.min(max((int) $activeStepOrder, 1), 5);
     }
 
-    private static function approvalProgressSortRank(string $key): int
+    private static function approvalProgressSortRank(array $option): string
     {
-        [$approved, $total] = array_pad(explode('/', $key, 2), 2, 0);
-
-        return ((int) $total * 100) + (int) $approved;
+        return mb_strtolower($option['label'] ?? '');
     }
 
     private static function workStatus(?string $submissionStatus): string
@@ -566,10 +623,13 @@ class AdminInspectionSubmissionPageData
             'plants' => $rows->pluck('plant')->merge($masterRows->pluck('plant'))->filter()->unique()->sort()->values(),
             'areas' => $rows->pluck('area')->merge($masterRows->pluck('area'))->filter()->unique()->sort()->values(),
             'approvalProgress' => $rows
-                ->pluck('approval_progress_key')
-                ->filter(fn (?string $key) => filled($key) && $key !== 'none')
-                ->unique()
-                ->sortBy(fn (string $key): int => self::approvalProgressSortRank($key))
+                ->map(fn (object $row): array => [
+                    'key' => $row->approval_progress_key ?? 'none',
+                    'label' => $row->approval_progress_label ?? 'Belum submit',
+                ])
+                ->filter(fn (array $option) => filled($option['key'] ?? null) && ($option['key'] ?? null) !== 'none')
+                ->unique('key')
+                ->sortBy(fn (array $option): string => self::approvalProgressSortRank($option))
                 ->values(),
         ];
     }
