@@ -12,6 +12,7 @@ use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
+use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
@@ -21,6 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +39,7 @@ class FormController extends Controller
     private const ERROR_PDF = 'COM-SUB-PDF-FAILED';
     private const ERROR_APPROVAL_LINK = 'COM-APPROVAL-LINK-FAILED';
     private const ERROR_DESTROY = 'COM-SUB-DESTROY-FAILED';
+    private const ERROR_DUPLICATE_NUMBER = 'COM-DOC-NUMBER-DUPLICATE';
     private const ERROR_FORBIDDEN = 'COM-SUB-FORBIDDEN';
     private const ERROR_NOT_EDITABLE = 'COM-SUB-NOT-EDITABLE';
     private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
@@ -133,6 +136,18 @@ class FormController extends Controller
                 return $submission;
             });
         } catch (Throwable $exception) {
+            if ($this->isDuplicateFormNumberException($exception)) {
+                $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
+                    'template_id' => $template->id,
+                    'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
+                ]);
+
+                return $this->backWithDocumentNumberCollision(
+                    $request,
+                    'Nomor form Commissioning sudah dipakai oleh submission lain. Silakan submit ulang agar sistem membuat nomor terbaru. Kode error: '.self::ERROR_DUPLICATE_NUMBER
+                );
+            }
+
             $this->logError(self::ERROR_STORE, $exception, [
                 'template_id' => $template->id,
                 'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
@@ -228,6 +243,19 @@ class FormController extends Controller
                 }
             });
         } catch (Throwable $exception) {
+            if ($this->isDuplicateFormNumberException($exception)) {
+                $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
+                    'submission_id' => $submission->id,
+                    'template_id' => $submission->commissioning_form_template_id,
+                    'requested_status' => $validated['action'] === 'submit' ? 'pending_approval' : 'draft',
+                ]);
+
+                return $this->backWithDocumentNumberCollision(
+                    $request,
+                    'Nomor form Commissioning sudah dipakai oleh submission lain. Silakan submit ulang agar sistem membuat nomor terbaru. Kode error: '.self::ERROR_DUPLICATE_NUMBER
+                );
+            }
+
             $this->logError(self::ERROR_UPDATE, $exception, [
                 'submission_id' => $submission->id,
                 'template_id' => $submission->commissioning_form_template_id,
@@ -477,7 +505,7 @@ class FormController extends Controller
             }
 
             if ($key === 'unit_kerja') {
-                $approvalData[$key]['label'] = trim((string) $unitKerja) ?: $column['label'];
+                $approvalData[$key]['label'] = AreaOwnerLabel::approvalLabel($unitKerja, $column['label']);
             }
         }
 
@@ -545,6 +573,15 @@ class FormController extends Controller
                 'temporary_attachments' => $this->preserveTemporaryAttachments($request),
             ]))
             ->withErrors($exception->errors());
+    }
+
+    private function backWithDocumentNumberCollision(Request $request, string $message): RedirectResponse
+    {
+        return back()
+            ->withInput(array_merge($request->except('attachments', 'temporary_attachments'), [
+                'temporary_attachments' => $this->preserveTemporaryAttachments($request),
+            ]))
+            ->withErrors(['form_number' => $message]);
     }
 
     private function preserveTemporaryAttachments(Request $request): array
@@ -913,6 +950,19 @@ class FormController extends Controller
         }
 
         return null;
+    }
+
+    private function isDuplicateFormNumberException(Throwable $exception): bool
+    {
+        if (! $exception instanceof QueryException) {
+            return false;
+        }
+
+        $sqlState = (string) ($exception->errorInfo[0] ?? $exception->getCode());
+        $message = strtolower($exception->getMessage());
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            && str_contains($message, 'form_number');
     }
 
     private function deleteAttachmentFiles(iterable $attachments): void

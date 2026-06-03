@@ -1,4 +1,5 @@
 @php
+    use App\Support\AreaOwnerLabel;
     use App\Support\Commissioning\FixedCommissioningTemplate;
 
     $draftSubmission = $draftSubmission ?? null;
@@ -127,7 +128,7 @@
                         <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
                         <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
                         <select name="header[unit_kerja]" class="form-select" data-organization-section-select required>
-                            <option value="">Pilih Unit Kerja</option>
+                            <option value="">Pilih Area Owner</option>
                             @foreach ($organizationSectionOptions as $sectionOption)
                                 <option value="{{ $sectionOption['section'] }}"
                                         data-id="{{ $sectionOption['id'] }}"
@@ -394,7 +395,7 @@
                     $approvalName = $approval[$column['key']]['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '');
                     $isUnitKerjaApprover = $column['key'] === 'unit_kerja';
                     $approvalLabel = $isUnitKerjaApprover
-                        ? ($oldHeader['unit_kerja'] ?? ($selectedOrganizationSection ?: $column['label']))
+                        ? AreaOwnerLabel::approvalLabel($oldHeader['unit_kerja'] ?? $selectedOrganizationSection, $column['label'])
                         : $column['label'];
                 @endphp
                 <div class="qc-user-approval-box is-locked">
@@ -540,7 +541,7 @@
             allowEmptyOption: true,
             maxOptions: 1000,
             searchField: ['text'],
-            placeholder: 'Cari Unit Kerja...',
+            placeholder: 'Cari Area Owner...',
             render: {
                 option: function (data, escape) {
                     const option = data.$option;
@@ -553,9 +554,15 @@
                         ${meta ? `<small class="text-muted">${escape(meta)}</small>` : ''}
                     </div>`;
                 },
-                no_results: () => '<div class="no-results">Unit Kerja tidak ditemukan</div>',
+                no_results: () => '<div class="no-results">Area Owner tidak ditemukan</div>',
             },
         });
+    };
+
+    const areaOwnerApprovalLabel = (section) => {
+        const value = (section || '').trim();
+
+        return value ? `Mgr of ${value}` : 'Area Owner';
     };
 
     const syncOrganizationSection = () => {
@@ -565,10 +572,10 @@
         setHeader('department', option?.dataset.department || '');
         setHeader('work_unit', option?.dataset.workUnit || '');
         if (unitKerjaApprovalLabel) {
-            unitKerjaApprovalLabel.textContent = section || 'UNIT KERJA';
+            unitKerjaApprovalLabel.textContent = areaOwnerApprovalLabel(section);
         }
         if (unitKerjaApprovalLabelInput) {
-            unitKerjaApprovalLabelInput.value = section;
+            unitKerjaApprovalLabelInput.value = areaOwnerApprovalLabel(section);
         }
     };
 

@@ -1,4 +1,5 @@
 @php
+    use App\Support\AreaOwnerLabel;
     use App\Support\Commissioning\FixedCommissioningTemplate;
     use App\Support\Pdf\SignatureImage;
     use App\Models\ApprovalStep;
@@ -54,6 +55,20 @@
             ]);
         }
     }
+    $approvalData['unit_kerja']['label'] = AreaOwnerLabel::approvalLabel(
+        data_get($approvalData, 'unit_kerja.label', ''),
+        data_get($header, 'unit_kerja', '')
+    );
+    $approvalColumns = collect($approvalColumns)
+        ->map(function (array $column) use ($approvalData) {
+            if (($column['key'] ?? null) === 'unit_kerja') {
+                $column['label'] = $approvalData['unit_kerja']['label'];
+            }
+
+            return $column;
+        })
+        ->values()
+        ->all();
     $imageAttachments = $submission->attachments
         ->where('type', 'image')
         ->values();

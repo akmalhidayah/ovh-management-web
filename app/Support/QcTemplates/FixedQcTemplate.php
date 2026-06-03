@@ -3,6 +3,7 @@
 namespace App\Support\QcTemplates;
 
 use App\Models\QcFormTemplate;
+use App\Support\AreaOwnerLabel;
 use Illuminate\Support\Arr;
 
 class FixedQcTemplate
@@ -47,7 +48,7 @@ class FixedQcTemplate
                 ['key' => 'name_equipment', 'label' => 'Name Equipment', 'type' => 'text'],
                 ['key' => 'id_equipment', 'label' => 'ID Equipment', 'type' => 'text'],
                 ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
-                ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
+                ['key' => 'unit_kerja', 'label' => AreaOwnerLabel::fieldLabel(), 'type' => 'text'],
                 ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
                 ['key' => 'durasi', 'label' => 'Durasi (Menit)', 'type' => 'text'],
             ];
@@ -64,7 +65,7 @@ class FixedQcTemplate
             ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
             ['key' => 'inspector_qc', 'label' => 'Inspector QC', 'type' => 'text'],
             ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
-            ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
+            ['key' => 'unit_kerja', 'label' => AreaOwnerLabel::fieldLabel(), 'type' => 'text'],
             ['key' => 'durasi', 'label' => 'Durasi (menit)', 'type' => 'text'],
         ];
     }
@@ -148,7 +149,7 @@ class FixedQcTemplate
                     'key' => $key,
                     'group' => $group['heading'],
                     'role' => $role,
-                    'label' => $role,
+                    'label' => $role === 'Unit Kerja' ? AreaOwnerLabel::fieldLabel() : $role,
                 ];
             }
         }
@@ -269,7 +270,7 @@ class FixedQcTemplate
                     && ($column['role'] ?? null) === 'Unit Kerja'
                     && trim((string) ($approval['label'] ?? '')) !== ''
                 ) {
-                    $column['label'] = trim((string) $approval['label']);
+                    $column['label'] = AreaOwnerLabel::approvalLabel($approval['label'], $default['label'] ?? $column['label']);
                 } else {
                     $column['label'] = self::approvalDisplayText(
                         $labelEditable ? ($approval['label'] ?? null) : null,

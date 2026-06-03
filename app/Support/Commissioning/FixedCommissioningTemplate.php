@@ -2,6 +2,7 @@
 
 namespace App\Support\Commissioning;
 
+use App\Support\AreaOwnerLabel;
 use Illuminate\Support\Arr;
 
 class FixedCommissioningTemplate
@@ -18,7 +19,7 @@ class FixedCommissioningTemplate
             ['key' => 'area', 'label' => 'Area', 'type' => 'text'],
             ['key' => 'date_time', 'label' => 'Date & Time', 'type' => 'datetime-local'],
             ['key' => 'inspector_commissioning', 'label' => 'User Commissioning', 'type' => 'text'],
-            ['key' => 'unit_kerja', 'label' => 'Unit Kerja', 'type' => 'text'],
+            ['key' => 'unit_kerja', 'label' => AreaOwnerLabel::fieldLabel(), 'type' => 'text'],
         ];
     }
 
@@ -27,7 +28,7 @@ class FixedCommissioningTemplate
         return [
             ['key' => 'commissioning_leader', 'group' => 'Checked by / Diperiksa Oleh:', 'label' => 'COMMISSIONING Leader'],
             ['key' => 'coordinator_commissioning_qc', 'group' => 'Checked by / Diperiksa Oleh:', 'label' => 'COORDINATOR COMMISSIONING & QC'],
-            ['key' => 'unit_kerja', 'group' => 'Approved by / Disetujui oleh:', 'label' => 'UNIT KERJA'],
+            ['key' => 'unit_kerja', 'group' => 'Approved by / Disetujui oleh:', 'label' => AreaOwnerLabel::fieldLabel()],
             ['key' => 'overhaul_management', 'group' => 'Known by / Diketahui Oleh:', 'label' => 'OVERHAUL MANAGEMENT'],
         ];
     }

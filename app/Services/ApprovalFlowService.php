@@ -8,6 +8,7 @@ use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\QcFormSubmission;
 use App\Models\TemplateApprovalStep;
+use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Database\Eloquent\Model;
@@ -459,8 +460,8 @@ class ApprovalFlowService
 
         return collect(FixedCommissioningTemplate::approvalColumns())
             ->map(function (array $column) use ($unitKerjaLabel) {
-                if (($column['key'] ?? null) === 'unit_kerja' && $unitKerjaLabel !== '') {
-                    $column['label'] = $unitKerjaLabel;
+                if (($column['key'] ?? null) === 'unit_kerja') {
+                    $column['label'] = AreaOwnerLabel::approvalLabel($unitKerjaLabel, $column['label']);
                 }
 
                 return $column;

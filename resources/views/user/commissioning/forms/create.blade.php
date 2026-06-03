@@ -82,6 +82,32 @@
 
 @push('scripts')
 <script>
+@if ($errors->has('form_number'))
+(() => {
+    const duplicateFormNumberMessage = @json($errors->first('form_number'));
+
+    const showDuplicateFormNumberAlert = () => {
+        if (!duplicateFormNumberMessage || !window.Swal) {
+            return;
+        }
+
+        window.Swal.fire({
+            title: 'Nomor Form Bentrok',
+            text: duplicateFormNumberMessage,
+            icon: 'warning',
+            confirmButtonText: 'Submit Ulang',
+            confirmButtonColor: '#2563eb',
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showDuplicateFormNumberAlert, { once: true });
+    } else {
+        showDuplicateFormNumberAlert();
+    }
+})();
+@endif
+
 document.getElementById('template-select')?.addEventListener('change', function () {
     const url = new URL(@json(route('user.commissioning.forms.create')), window.location.origin);
     const selectedArea = document.getElementById('master-area-select')?.value;

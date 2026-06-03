@@ -1,4 +1,5 @@
 @php
+    use App\Support\AreaOwnerLabel;
     use App\Support\QcTemplates\FixedQcTemplate;
     use App\Support\Pdf\SignatureImage;
     use App\Models\ApprovalStep;
@@ -66,6 +67,10 @@
 
         if (blank($approval['name'] ?? null)) {
             $approval['name'] = $approvalDefaults[$column['key']]['name'] ?? '';
+        }
+
+        if (blank($approval['label'] ?? null)) {
+            $approval['label'] = $column['label'];
         }
 
         return [$column['role'] => $approval];
@@ -887,7 +892,10 @@
             @else
                 @php
                     $unitKerjaApproval = $approval('Unit Kerja');
-                    $unitKerjaApprovalLabel = $unitKerjaApproval['label'] ?? 'UNIT KERJA';
+                    $unitKerjaApprovalLabel = AreaOwnerLabel::approvalLabel(
+                        $unitKerjaApproval['label'] ?? '',
+                        $generalInfo['unit_kerja'] ?? ''
+                    );
                 @endphp
                 <table class="approval-table">
                     <tr>

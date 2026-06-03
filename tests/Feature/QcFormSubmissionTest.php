@@ -72,6 +72,62 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk();
     }
 
+    public function test_missing_qc_submission_redirects_to_history_with_warning(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.show', 999999))
+            ->assertRedirect(route('user.qc.history.index'))
+            ->assertSessionHas('warning');
+    }
+
+    public function test_qc_raw_slash_form_number_url_redirects_to_normalized_url(): void
+    {
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $this->fixedGeneralPayload($template))
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $normalizedKey = QcFormSubmission::routeKeyFromFormNumber($submission->form_number);
+
+        $this->actingAs($user)
+            ->get('/user/qc/submissions/'.$submission->form_number)
+            ->assertRedirect(route('user.qc.submissions.show', $normalizedKey));
+    }
+
+    public function test_duplicate_qc_form_number_returns_clear_form_error(): void
+    {
+        [$user, $template, $block, $row] = $this->makeActiveTemplate();
+        $duplicateNumber = '777/QC/'.now()->format('m-Y');
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => $duplicateNumber,
+            'status' => 'draft',
+        ]);
+
+        $payload = $this->payload($template, $block, $row, 'draft');
+        $payload['general_info']['report_no'] = $duplicateNumber;
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors('form_number');
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('Nomor Form Bentrok', false)
+            ->assertSee('showDuplicateFormNumberAlert', false);
+
+        $this->assertSame(1, QcFormSubmission::count());
+    }
+
     public function test_qc_general_submit_creates_auto_inspector_and_four_approver_steps(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();
@@ -166,7 +222,7 @@ class QcFormSubmissionTest extends TestCase
         $submission = QcFormSubmission::firstOrFail();
 
         $this->assertSame('Line 2/3 FM Operation', $submission->general_info['unit_kerja']);
-        $this->assertSame('Line 2/3 FM Operation', $submission->approval_data['approved_by_unit_kerja']['label']);
+        $this->assertSame('Mgr of Line 2/3 FM Operation', $submission->approval_data['approved_by_unit_kerja']['label']);
         $this->assertSame('Tampered Name', $submission->approval_data['approved_by_unit_kerja']['name']);
     }
 
@@ -187,7 +243,7 @@ class QcFormSubmissionTest extends TestCase
         $submission = QcFormSubmission::firstOrFail();
 
         $this->assertSame('Cement Production Coach', $submission->general_info['unit_kerja']);
-        $this->assertSame('Cement Production Coach', $submission->approval_data['approved_by_unit_kerja']['label']);
+        $this->assertSame('Mgr of Cement Production Coach', $submission->approval_data['approved_by_unit_kerja']['label']);
         $this->assertSame('Tampered Name', $submission->approval_data['approved_by_unit_kerja']['name']);
     }
 
@@ -245,6 +301,36 @@ class QcFormSubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('value="Supplier PIC"', false)
             ->assertDontSee('value="Vendor"', false);
+    }
+
+    public function test_public_approval_uses_area_owner_manager_label_for_fixed_qc_unit_kerja_step(): void
+    {
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['unit_kerja'] = 'Line 4 RKC Operation';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::with('approvalFlow.steps')->firstOrFail();
+        $submission->approvalFlow->steps()->whereIn('step_order', [2, 3])->update([
+            'status' => ApprovalStep::STATUS_APPROVED,
+        ]);
+        $submission->approvalFlow->steps()->where('step_order', 4)->update([
+            'status' => ApprovalStep::STATUS_ACTIVE,
+        ]);
+
+        $url = $this->actingAs($user)
+            ->postJson(route('user.qc.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->get(route('public.approval.show', $this->tokenFromUrl($url)))
+            ->assertOk()
+            ->assertSee('value="Mgr of Line 4 RKC Operation"', false)
+            ->assertDontSee('value="Line 4 RKC Operation"', false);
     }
 
     public function test_public_approval_approve_advances_qc_flow_and_invalidates_token(): void

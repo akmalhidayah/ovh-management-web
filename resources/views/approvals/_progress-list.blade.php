@@ -2,10 +2,28 @@
     @foreach ($flow->steps as $step)
         @php
             $stepLabel = trim((string) $step->label);
-            $unitKerjaLabel = trim((string) data_get($submission ?? null, 'approval_data.unit_kerja.label', ''));
+            $areaOwnerSourceLabel = trim((string) data_get($submission ?? null, 'approval_data.unit_kerja.label', ''));
 
-            if (Str::upper($stepLabel) === 'UNIT KERJA' && $unitKerjaLabel !== '') {
-                $stepLabel = $unitKerjaLabel;
+            if ($areaOwnerSourceLabel === '') {
+                $areaOwnerSourceLabel = trim((string) data_get($submission ?? null, 'approval_data.approved_by_unit_kerja.label', ''));
+            }
+
+            if ($areaOwnerSourceLabel === '') {
+                $areaOwnerSourceLabel = trim((string) data_get($submission ?? null, 'header_data.unit_kerja', ''));
+            }
+
+            if ($areaOwnerSourceLabel === '') {
+                $areaOwnerSourceLabel = trim((string) data_get($submission ?? null, 'general_info.unit_kerja', ''));
+            }
+
+            if (
+                $areaOwnerSourceLabel !== ''
+                && (
+                    \App\Support\AreaOwnerLabel::isPlaceholder($stepLabel)
+                    || Str::upper($stepLabel) === Str::upper($areaOwnerSourceLabel)
+                )
+            ) {
+                $stepLabel = \App\Support\AreaOwnerLabel::approvalLabel($areaOwnerSourceLabel);
             }
         @endphp
         <div class="approval-progress-item is-{{ $step->status }}">

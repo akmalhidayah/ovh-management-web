@@ -117,6 +117,22 @@ Route::post('/approval/{token}/reject', [PublicApprovalController::class, 'rejec
     ->name('public.approval.reject');
 
 Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->name('admin.')->group(function () {
+    $missingAdminQcSubmission = function () {
+        $message = 'Submission QC tidak ditemukan atau nomor dokumen sudah berubah. Silakan buka ulang dari daftar QC.';
+
+        return request()->expectsJson()
+            ? response()->json(['message' => $message], 404)
+            : redirect()->route('admin.qc')->with('warning', $message);
+    };
+
+    $missingAdminCommissioningSubmission = function () {
+        $message = 'Submission Commissioning tidak ditemukan atau nomor dokumen sudah berubah. Silakan buka ulang dari daftar Commissioning.';
+
+        return request()->expectsJson()
+            ? response()->json(['message' => $message], 404)
+            : redirect()->route('admin.commissioning')->with('warning', $message);
+    };
+
     Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
     Route::post('/notifications/read-all', [AdminNotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('/notifications/qc/{submission}/open', [AdminNotificationController::class, 'openQc'])->name('notifications.qc.open');
@@ -126,17 +142,17 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
     Route::get('/kalender-overhaul', [AdminDashboardController::class, 'kalenderOverhaul'])->name('kalender-overhaul');
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
-    Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf');
-    Route::post('/commissioning/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('commissioning.submissions.approval-link');
-    Route::patch('/commissioning/submissions/{submission}/restore-draft', [AdminCommissioningSubmissionController::class, 'restoreDraft'])->name('commissioning.submissions.restore-draft');
-    Route::delete('/commissioning/submissions/{submission}/delete', [AdminCommissioningSubmissionController::class, 'destroy'])->name('commissioning.submissions.destroy');
+    Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf')->missing($missingAdminCommissioningSubmission);
+    Route::post('/commissioning/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('commissioning.submissions.approval-link')->missing($missingAdminCommissioningSubmission);
+    Route::patch('/commissioning/submissions/{submission}/restore-draft', [AdminCommissioningSubmissionController::class, 'restoreDraft'])->name('commissioning.submissions.restore-draft')->missing($missingAdminCommissioningSubmission);
+    Route::delete('/commissioning/submissions/{submission}/delete', [AdminCommissioningSubmissionController::class, 'destroy'])->name('commissioning.submissions.destroy')->missing($missingAdminCommissioningSubmission);
     Route::get('/qc', [AdminDashboardController::class, 'qc'])->name('qc');
-    Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () {
+    Route::prefix('qc/submissions')->name('qc.submissions.')->group(function () use ($missingAdminQcSubmission) {
         Route::get('/', [AdminQcSubmissionController::class, 'index'])->name('index');
-        Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf');
-        Route::post('/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('approval-link');
-        Route::patch('/{submission}/restore-draft', [AdminQcSubmissionController::class, 'restoreDraft'])->name('restore-draft');
-        Route::delete('/{submission}/delete', [AdminQcSubmissionController::class, 'destroy'])->name('destroy');
+        Route::get('/{submission}/pdf', [AdminQcSubmissionController::class, 'pdf'])->name('pdf')->missing($missingAdminQcSubmission);
+        Route::post('/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('approval-link')->missing($missingAdminQcSubmission);
+        Route::patch('/{submission}/restore-draft', [AdminQcSubmissionController::class, 'restoreDraft'])->name('restore-draft')->missing($missingAdminQcSubmission);
+        Route::delete('/{submission}/delete', [AdminQcSubmissionController::class, 'destroy'])->name('destroy')->missing($missingAdminQcSubmission);
     });
     Route::prefix('template-form-qc')->name('template-form-qc.')->group(function () {
         Route::get('/', [TemplateFormQcController::class, 'index'])->name('index');
@@ -187,6 +203,14 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
 
 Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->group(function () {
     Route::prefix('qc')->name('qc.')->middleware('role:qc')->group(function () {
+        $missingQcSubmission = function () {
+            $message = 'Form QC tidak ditemukan atau nomor dokumen sudah berubah. Silakan buka kembali dari riwayat atau draft.';
+
+            return request()->expectsJson()
+                ? response()->json(['message' => $message], 404)
+                : redirect()->route('user.qc.history.index')->with('warning', $message);
+        };
+
         Route::get('/', fn () => redirect()->route('user.qc.dashboard'));
         Route::get('/dashboard', [QcDashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('/forms/create', [QcFormController::class, 'create'])->name('forms.create');
@@ -197,19 +221,33 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::post('/notifications/read-all', [UserNotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('/notifications/submissions/{submission}/open', [UserNotificationController::class, 'openSubmission'])->name('notifications.submissions.open');
         Route::get('/notifications/{masterDataRecord}/open', [UserNotificationController::class, 'open'])->name('notifications.open');
-        Route::get('/submissions/{submission}/edit', [QcFormController::class, 'edit'])->name('submissions.edit');
-        Route::patch('/submissions/{submission}', [QcFormController::class, 'update'])->name('submissions.update');
-        Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show');
-        Route::post('/submissions/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('submissions.approval-link');
-        Route::get('/submissions/{submission}/pdf', [QcFormController::class, 'pdf'])->name('submissions.pdf');
+        Route::get('/submissions/{sequence}/QC/{period}/edit', fn (string $sequence, string $period) => redirect()->route('user.qc.submissions.edit', "{$sequence}-QC-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{sequence}/QC/{period}/pdf', fn (string $sequence, string $period) => redirect()->route('user.qc.submissions.pdf', "{$sequence}-QC-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{sequence}/QC/{period}', fn (string $sequence, string $period) => redirect()->route('user.qc.submissions.show', "{$sequence}-QC-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{submission}/edit', [QcFormController::class, 'edit'])->name('submissions.edit')->missing($missingQcSubmission);
+        Route::patch('/submissions/{submission}', [QcFormController::class, 'update'])->name('submissions.update')->missing($missingQcSubmission);
+        Route::get('/submissions/{submission}', [QcFormController::class, 'show'])->name('submissions.show')->missing($missingQcSubmission);
+        Route::post('/submissions/{submission}/approval-link', [QcFormController::class, 'approvalLink'])->name('submissions.approval-link')->missing($missingQcSubmission);
+        Route::get('/submissions/{submission}/pdf', [QcFormController::class, 'pdf'])->name('submissions.pdf')->missing($missingQcSubmission);
         Route::get('/attachments/{attachment}', [QcFormController::class, 'attachment'])->name('attachments.show');
-        Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy');
+        Route::delete('/submissions/{submission}', [QcFormController::class, 'destroy'])->name('submissions.destroy')->missing($missingQcSubmission);
         Route::get('/profile', [QcProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [QcProfileController::class, 'update'])->name('profile.update');
         Route::patch('/profile/password', [QcProfileController::class, 'updatePassword'])->name('profile.password.update');
     });
 
     Route::prefix('commissioning')->name('commissioning.')->middleware('role:commissioning')->group(function () {
+        $missingCommissioningSubmission = function () {
+            $message = 'Form Commissioning tidak ditemukan atau nomor dokumen sudah berubah. Silakan buka kembali dari riwayat atau draft.';
+
+            return request()->expectsJson()
+                ? response()->json(['message' => $message], 404)
+                : redirect()->route('user.commissioning.history.index')->with('warning', $message);
+        };
+
         Route::get('/', fn () => redirect()->route('user.commissioning.dashboard'));
         Route::get('/dashboard', [CommissioningDashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('/forms/create', [CommissioningFormController::class, 'create'])->name('forms.create');
@@ -220,13 +258,19 @@ Route::prefix('user')->name('user.')->middleware(['auth', 'usertype:user'])->gro
         Route::post('/notifications/read-all', [UserNotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('/notifications/submissions/{submission}/open', [UserNotificationController::class, 'openSubmission'])->name('notifications.submissions.open');
         Route::get('/notifications/{masterDataRecord}/open', [UserNotificationController::class, 'open'])->name('notifications.open');
-        Route::get('/submissions/{submission}/edit', [CommissioningFormController::class, 'edit'])->name('submissions.edit');
-        Route::patch('/submissions/{submission}', [CommissioningFormController::class, 'update'])->name('submissions.update');
-        Route::get('/submissions/{submission}', [CommissioningFormController::class, 'show'])->name('submissions.show');
-        Route::post('/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('submissions.approval-link');
-        Route::get('/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('submissions.pdf');
+        Route::get('/submissions/{sequence}/COM/{period}/edit', fn (string $sequence, string $period) => redirect()->route('user.commissioning.submissions.edit', "{$sequence}-COM-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{sequence}/COM/{period}/pdf', fn (string $sequence, string $period) => redirect()->route('user.commissioning.submissions.pdf', "{$sequence}-COM-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{sequence}/COM/{period}', fn (string $sequence, string $period) => redirect()->route('user.commissioning.submissions.show', "{$sequence}-COM-{$period}"))
+            ->where(['sequence' => '[0-9]+', 'period' => '[0-9]{2}-[0-9]{4}']);
+        Route::get('/submissions/{submission}/edit', [CommissioningFormController::class, 'edit'])->name('submissions.edit')->missing($missingCommissioningSubmission);
+        Route::patch('/submissions/{submission}', [CommissioningFormController::class, 'update'])->name('submissions.update')->missing($missingCommissioningSubmission);
+        Route::get('/submissions/{submission}', [CommissioningFormController::class, 'show'])->name('submissions.show')->missing($missingCommissioningSubmission);
+        Route::post('/submissions/{submission}/approval-link', [CommissioningFormController::class, 'approvalLink'])->name('submissions.approval-link')->missing($missingCommissioningSubmission);
+        Route::get('/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('submissions.pdf')->missing($missingCommissioningSubmission);
         Route::get('/attachments/{attachment}', [CommissioningFormController::class, 'attachment'])->name('attachments.show');
-        Route::delete('/submissions/{submission}', [CommissioningFormController::class, 'destroy'])->name('submissions.destroy');
+        Route::delete('/submissions/{submission}', [CommissioningFormController::class, 'destroy'])->name('submissions.destroy')->missing($missingCommissioningSubmission);
         Route::get('/profile', [CommissioningProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [CommissioningProfileController::class, 'update'])->name('profile.update');
         Route::patch('/profile/password', [CommissioningProfileController::class, 'updatePassword'])->name('profile.password.update');

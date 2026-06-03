@@ -6,6 +6,7 @@ use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\QcFormSubmission;
 use App\Services\ApprovalFlowService;
+use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Http\RedirectResponse;
@@ -344,6 +345,23 @@ class PublicApprovalController extends Controller
                     data_get($submission->approval_data ?? [], $key.'.label', '')
                 );
             }
+
+            if (
+                in_array($templateType, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
+                && ($column['role'] ?? null) === 'Unit Kerja'
+            ) {
+                return AreaOwnerLabel::approvalLabel(
+                    data_get($submission->approval_data ?? [], $key.'.label', $step->label),
+                    data_get($submission->general_info ?? [], 'unit_kerja', $step->label)
+                );
+            }
+        }
+
+        if ($submission instanceof CommissioningFormSubmission && $step->step_order === 3) {
+            return AreaOwnerLabel::approvalLabel(
+                data_get($submission->approval_data ?? [], 'unit_kerja.label', $step->label),
+                data_get($submission->header_data ?? [], 'unit_kerja', $step->label)
+            );
         }
 
         return $step->label;

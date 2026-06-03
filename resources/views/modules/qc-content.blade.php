@@ -240,10 +240,29 @@
                                 $approvalModalId = $submission->model ? 'adminApprovalProgressModal'.$submission->type.$submission->model->id : null;
                                 $approvalStatusLabel = $statusLabels[$submission->status] ?? $submission->status;
                                 $activeApprovalStepLabel = $activeApprovalStep?->label;
-                                $unitKerjaApprovalLabel = trim((string) data_get($submission->model, 'approval_data.unit_kerja.label', ''));
+                                $areaOwnerSourceLabel = trim((string) data_get($submission->model, 'approval_data.unit_kerja.label', ''));
 
-                                if ($activeApprovalStepLabel && Str::upper(trim((string) $activeApprovalStepLabel)) === 'UNIT KERJA' && $unitKerjaApprovalLabel !== '') {
-                                    $activeApprovalStepLabel = $unitKerjaApprovalLabel;
+                                if ($areaOwnerSourceLabel === '') {
+                                    $areaOwnerSourceLabel = trim((string) data_get($submission->model, 'approval_data.approved_by_unit_kerja.label', ''));
+                                }
+
+                                if ($areaOwnerSourceLabel === '') {
+                                    $areaOwnerSourceLabel = trim((string) data_get($submission->model, 'header_data.unit_kerja', ''));
+                                }
+
+                                if ($areaOwnerSourceLabel === '') {
+                                    $areaOwnerSourceLabel = trim((string) data_get($submission->model, 'general_info.unit_kerja', ''));
+                                }
+
+                                if (
+                                    $activeApprovalStepLabel
+                                    && $areaOwnerSourceLabel !== ''
+                                    && (
+                                        \App\Support\AreaOwnerLabel::isPlaceholder(trim((string) $activeApprovalStepLabel))
+                                        || Str::upper(trim((string) $activeApprovalStepLabel)) === Str::upper($areaOwnerSourceLabel)
+                                    )
+                                ) {
+                                    $activeApprovalStepLabel = \App\Support\AreaOwnerLabel::approvalLabel($areaOwnerSourceLabel);
                                 }
 
                                 $approvalStatusTitle = $activeApprovalStep

@@ -8,6 +8,7 @@ use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
 use App\Models\User;
+use App\Services\DocumentNumberGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -90,7 +91,7 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('name="header[area]"', false)
             ->assertSee('data-master-area-select', false)
             ->assertSee('Section No.')
-            ->assertSee('Unit Kerja')
+            ->assertSee('Area Owner')
             ->assertSee('GEARBOX MOTOR')
             ->assertSee('EQ-COM-001');
 
@@ -109,7 +110,7 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('GEARBOX MOTOR', $submission->equipment);
         $this->assertSame('TONASA 4', $submission->header_data['plant']);
         $this->assertSame('Line 2/3 FM Operation', $submission->header_data['unit_kerja']);
-        $this->assertSame('Line 2/3 FM Operation', $submission->approval_data['unit_kerja']['label']);
+        $this->assertSame('Mgr of Line 2/3 FM Operation', $submission->approval_data['unit_kerja']['label']);
         $this->assertSame('Tampered Unit Kerja', $submission->approval_data['unit_kerja']['name']);
         $this->assertSame($user->name, $submission->header_data['inspector_commissioning']);
         $this->assertStringContainsString('/COM/', $submission->form_number);
@@ -167,6 +168,75 @@ class CommissioningFormFlowTest extends TestCase
             ->assertJsonStructure(['url']);
     }
 
+    public function test_missing_commissioning_submission_redirects_to_history_with_warning(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'commissioning']);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.submissions.show', 999999))
+            ->assertRedirect(route('user.commissioning.history.index'))
+            ->assertSessionHas('warning');
+    }
+
+    public function test_commissioning_raw_slash_form_number_url_redirects_to_normalized_url(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $normalizedKey = CommissioningFormSubmission::routeKeyFromFormNumber($submission->form_number);
+
+        $this->actingAs($user)
+            ->get('/user/commissioning/submissions/'.$submission->form_number)
+            ->assertRedirect(route('user.commissioning.submissions.show', $normalizedKey));
+    }
+
+    public function test_duplicate_commissioning_form_number_returns_clear_form_error(): void
+    {
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $duplicateNumber = '777/COM/'.now()->format('m-Y');
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => $duplicateNumber,
+            'status' => 'rejected',
+        ]);
+
+        $this->app->instance(DocumentNumberGenerator::class, new class ($duplicateNumber) {
+            public function __construct(private string $number)
+            {
+            }
+
+            public function generate(string $category, string $prefix, ?string $period = null, int $initialLastNumber = 0): string
+            {
+                return $this->number;
+            }
+
+            public function preview(string $category, string $prefix, ?string $period = null, int $initialLastNumber = 0): string
+            {
+                return $this->number;
+            }
+        });
+
+        $this->actingAs($user)
+            ->from(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors('form_number');
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('Nomor Form Bentrok', false)
+            ->assertSee('showDuplicateFormNumberAlert', false);
+
+        $this->assertSame(1, CommissioningFormSubmission::count());
+    }
+
     public function test_commissioning_submit_creates_four_approver_steps_without_submitter_signature(): void
     {
         [$user, $template, $master] = $this->makeCommissioningSetup();
@@ -184,7 +254,7 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertTrue($steps[0]->requires_magic_link);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $steps[0]->status);
         $this->assertSame(ApprovalStep::STATUS_PENDING, $steps[1]->status);
-        $this->assertSame('Line 2/3 FM Operation', $steps[2]->label);
+        $this->assertSame('Mgr of Line 2/3 FM Operation', $steps[2]->label);
         $this->assertSame(1, $steps[0]->links->whereNull('used_at')->whereNull('revoked_at')->count());
     }
 
@@ -205,7 +275,7 @@ class CommissioningFormFlowTest extends TestCase
             'modalId' => 'approvalProgressModal'.$submission->id,
         ])->render();
 
-        $this->assertStringContainsString('Line 2/3 FM Operation', $html);
+        $this->assertStringContainsString('Mgr of Line 2/3 FM Operation', $html);
         $this->assertStringNotContainsString('>UNIT KERJA<', $html);
     }
 
@@ -222,7 +292,7 @@ class CommissioningFormFlowTest extends TestCase
 
         $html = view('pdf.commissioning-submission', ['submission' => $submission])->render();
 
-        $this->assertStringContainsString('Line 2/3 FM Operation', $html);
+        $this->assertStringContainsString('Mgr of Line 2/3 FM Operation', $html);
         $this->assertStringNotContainsString('>UNIT KERJA<', $html);
     }
 
@@ -373,6 +443,34 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('pending_approval', $submission->status);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[0]->status);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $submission->approvalFlow->steps[1]->status);
+    }
+
+    public function test_public_approval_uses_area_owner_manager_label_for_commissioning_unit_kerja_step(): void
+    {
+        Storage::fake('public');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with('approvalFlow.steps')->firstOrFail();
+        $submission->approvalFlow->steps()->whereIn('step_order', [1, 2])->update([
+            'status' => ApprovalStep::STATUS_APPROVED,
+        ]);
+        $submission->approvalFlow->steps()->where('step_order', 3)->update([
+            'status' => ApprovalStep::STATUS_ACTIVE,
+        ]);
+
+        $url = $this->actingAs($user)
+            ->postJson(route('user.commissioning.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->get(route('public.approval.show', $this->tokenFromUrl($url)))
+            ->assertOk()
+            ->assertSee('value="Mgr of Line 2/3 FM Operation"', false)
+            ->assertDontSee('value="Line 2/3 FM Operation"', false);
     }
 
     public function test_commissioning_user_can_save_draft_without_complete_data(): void
