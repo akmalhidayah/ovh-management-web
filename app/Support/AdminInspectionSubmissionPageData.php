@@ -19,6 +19,7 @@ class AdminInspectionSubmissionPageData
             'plant' => $request->input('plant', 'all') ?: 'all',
             'area' => $request->input('area', 'all') ?: 'all',
             'work_status' => $request->input('work_status', 'all') ?: 'all',
+            'approval_progress' => $request->input('approval_progress', 'all') ?: 'all',
             'sort' => self::validSort($request->input('sort', 'default')),
             'search' => trim((string) $request->input('search')),
         ];
@@ -105,7 +106,7 @@ class AdminInspectionSubmissionPageData
     {
         $generalInfo = $submission->general_info ?? [];
 
-        $row = (object) [
+        $row = (object) ([
             'type' => 'qc',
             'type_label' => 'QC',
             'model' => $submission,
@@ -135,7 +136,7 @@ class AdminInspectionSubmissionPageData
             'submitted_at' => $submission->submitted_at,
             'pdf_route' => $submission->status !== 'draft' ? route('admin.qc.submissions.pdf', $submission) : null,
             'remarks' => self::qcRemarks($submission),
-        ];
+        ] + self::approvalProgressData($submission));
 
         $row->remarks_count = count($row->remarks);
 
@@ -146,7 +147,7 @@ class AdminInspectionSubmissionPageData
     {
         $header = $submission->header_data ?? [];
 
-        $row = (object) [
+        $row = (object) ([
             'type' => 'commissioning',
             'type_label' => 'Commissioning',
             'model' => $submission,
@@ -179,7 +180,7 @@ class AdminInspectionSubmissionPageData
             'submitted_at' => $submission->submitted_at,
             'pdf_route' => $submission->status !== 'draft' ? route('admin.commissioning.submissions.pdf', $submission) : null,
             'remarks' => self::commissioningRemarks($submission),
-        ];
+        ] + self::approvalProgressData($submission));
 
         $row->remarks_count = count($row->remarks);
 
@@ -189,11 +190,11 @@ class AdminInspectionSubmissionPageData
     private static function commissioningIndexRows(array $filters): Collection
     {
         $submissionRows = self::submissionRows('commissioning')
-            ->filter(fn (object $row) => self::matchesFilters($row, self::withoutSearch($filters)))
+            ->filter(fn (object $row) => self::matchesFilters($row, self::withoutTableFilters($filters)))
             ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
             ->values();
         $searchMatchedSubmissionRows = $submissionRows
-            ->filter(fn (object $row) => self::matchesFilters($row, $filters))
+            ->filter(fn (object $row) => self::matchesFilters($row, self::withoutTableFiltersExceptSearch($filters)))
             ->values();
 
         return self::filteredMasterRows($filters, $searchMatchedSubmissionRows, MasterDataRecord::CATEGORY_COMMISSIONING)
@@ -205,6 +206,7 @@ class AdminInspectionSubmissionPageData
                 return self::commissioningMasterRow($record, $submissionRow);
             })
             ->filter(fn (object $row) => self::matchesWorkStatusFilter($row, $filters))
+            ->filter(fn (object $row) => self::matchesApprovalProgressFilter($row, $filters))
             ->values();
     }
 
@@ -215,10 +217,28 @@ class AdminInspectionSubmissionPageData
         return $filters;
     }
 
+    private static function withoutTableFilters(array $filters): array
+    {
+        $filters['search'] = '';
+        $filters['work_status'] = 'all';
+        $filters['approval_progress'] = 'all';
+
+        return $filters;
+    }
+
+    private static function withoutTableFiltersExceptSearch(array $filters): array
+    {
+        $filters['work_status'] = 'all';
+        $filters['approval_progress'] = 'all';
+
+        return $filters;
+    }
+
     private static function dashboardFilters(array $filters): array
     {
         $filters['search'] = '';
         $filters['work_status'] = 'all';
+        $filters['approval_progress'] = 'all';
         $filters['sort'] = 'default';
 
         return $filters;
@@ -335,6 +355,11 @@ class AdminInspectionSubmissionPageData
             'remarks' => $submissionRow?->remarks ?? [],
             'remarks_count' => $submissionRow?->remarks_count ?? 0,
             'inspection_status_update_url' => route('admin.master-data.inspection-status', $record),
+            'approval_approved_count' => $submissionRow?->approval_approved_count ?? 0,
+            'approval_total_count' => $submissionRow?->approval_total_count ?? 0,
+            'approval_progress_key' => $submissionRow?->approval_progress_key ?? 'none',
+            'approval_progress_label' => $submissionRow?->approval_progress_label ?? 'Belum submit',
+            'approval_progress_class' => $submissionRow?->approval_progress_class ?? 'admin-approval-progress-none',
         ];
     }
 
@@ -389,6 +414,10 @@ class AdminInspectionSubmissionPageData
             return false;
         }
 
+        if (! self::matchesApprovalProgressFilter($row, $filters)) {
+            return false;
+        }
+
         foreach (['year', 'plant', 'area'] as $field) {
             if ($filters[$field] !== 'all' && (string) $row->{$field} !== (string) $filters[$field]) {
                 return false;
@@ -437,6 +466,48 @@ class AdminInspectionSubmissionPageData
     {
         return ($filters['work_status'] ?? 'all') === 'all'
             || ($row->work_status ?? null) === $filters['work_status'];
+    }
+
+    private static function matchesApprovalProgressFilter(object $row, array $filters): bool
+    {
+        return ($filters['approval_progress'] ?? 'all') === 'all'
+            || ($row->approval_progress_key ?? 'none') === $filters['approval_progress'];
+    }
+
+    private static function approvalProgressData($submission): array
+    {
+        $steps = $submission->approvalFlow?->steps ?? collect();
+        $total = $steps->count();
+        $approved = $steps->where('status', 'approved')->count();
+        $key = $total > 0 ? "{$approved}/{$total}" : 'none';
+
+        return [
+            'approval_approved_count' => $approved,
+            'approval_total_count' => $total,
+            'approval_progress_key' => $key,
+            'approval_progress_label' => $total > 0 ? "TTD {$key}" : 'Belum submit',
+            'approval_progress_class' => self::approvalProgressClass($approved, $total),
+        ];
+    }
+
+    private static function approvalProgressClass(int $approved, int $total): string
+    {
+        if ($total <= 0) {
+            return 'admin-approval-progress-none';
+        }
+
+        if ($approved >= $total) {
+            return 'admin-approval-progress-complete';
+        }
+
+        return 'admin-approval-progress-'.min($approved, 3);
+    }
+
+    private static function approvalProgressSortRank(string $key): int
+    {
+        [$approved, $total] = array_pad(explode('/', $key, 2), 2, 0);
+
+        return ((int) $total * 100) + (int) $approved;
     }
 
     private static function workStatus(?string $submissionStatus): string
@@ -494,6 +565,12 @@ class AdminInspectionSubmissionPageData
             'years' => $rows->pluck('year')->merge($masterRows->pluck('year'))->filter()->unique()->sortDesc()->values(),
             'plants' => $rows->pluck('plant')->merge($masterRows->pluck('plant'))->filter()->unique()->sort()->values(),
             'areas' => $rows->pluck('area')->merge($masterRows->pluck('area'))->filter()->unique()->sort()->values(),
+            'approvalProgress' => $rows
+                ->pluck('approval_progress_key')
+                ->filter(fn (?string $key) => filled($key) && $key !== 'none')
+                ->unique()
+                ->sortBy(fn (string $key): int => self::approvalProgressSortRank($key))
+                ->values(),
         ];
     }
 

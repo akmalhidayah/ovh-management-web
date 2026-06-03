@@ -1,8 +1,8 @@
 @php
     $statusLabels = $statusLabels ?? [];
     $inspectionMetrics = $inspectionMetrics ?? ($qcMetrics ?? null);
-    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect(), 'areas' => collect()];
-    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'area' => 'all', 'work_status' => 'all', 'sort' => 'default', 'search' => ''];
+    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect(), 'areas' => collect(), 'approvalProgress' => collect()];
+    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'area' => 'all', 'work_status' => 'all', 'approval_progress' => 'all', 'sort' => 'default', 'search' => ''];
     $statusClasses = [
         'draft' => 'text-bg-secondary',
         'submitted' => 'text-bg-info',
@@ -27,6 +27,7 @@
         <input type="hidden" name="search" value="{{ $filters['search'] }}">
         <input type="hidden" name="sort" value="{{ $filters['sort'] ?? 'default' }}">
         <input type="hidden" name="work_status" value="{{ $filters['work_status'] ?? 'all' }}">
+        <input type="hidden" name="approval_progress" value="{{ $filters['approval_progress'] ?? 'all' }}">
         <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Tahun</label>
             <select class="form-select" name="year">
@@ -156,7 +157,7 @@
     </div>
 @endif
 
-<form method="GET" action="{{ route($filterRoute) }}" class="mb-3">
+<form method="GET" action="{{ route($filterRoute) }}" class="admin-table-filter-form">
     <x-filter-card>
         <input type="hidden" name="year" value="{{ $filters['year'] }}">
         <input type="hidden" name="plant" value="{{ $filters['plant'] }}">
@@ -169,7 +170,17 @@
                 <option value="ongoing" @selected(($filters['work_status'] ?? 'all') === 'ongoing')>On Going</option>
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col-12 col-md-6 col-xl-2">
+            <label class="form-label">Approval Tabel</label>
+            <select class="form-select" name="approval_progress">
+                <option value="all" @selected(($filters['approval_progress'] ?? 'all') === 'all')>Semua Approval</option>
+                <option value="none" @selected(($filters['approval_progress'] ?? 'all') === 'none')>Belum submit</option>
+                @foreach ($filterOptions['approvalProgress'] as $approvalProgress)
+                    <option value="{{ $approvalProgress }}" @selected(($filters['approval_progress'] ?? 'all') === $approvalProgress)>TTD {{ $approvalProgress }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
             <label class="form-label">Urutkan Tabel</label>
             <select class="form-select" name="sort">
                 <option value="default" @selected(($filters['sort'] ?? 'default') === 'default')>Default</option>
@@ -179,7 +190,7 @@
                 <option value="area_desc" @selected(($filters['sort'] ?? 'default') === 'area_desc')>Area Z-A</option>
             </select>
         </div>
-        <div class="col-12 col-xl-7">
+        <div class="col-12 col-xl-6">
             <label class="form-label">Cari Tabel</label>
             <div class="d-flex gap-2">
                 <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="Form / equipment / area">
@@ -189,7 +200,7 @@
     </x-filter-card>
 </form>
 
-<div class="content-card">
+<div class="content-card admin-table-card">
     <div class="table-responsive">
         <table class="table align-middle ovh-table admin-submission-table has-location-column">
             <colgroup>
@@ -272,11 +283,12 @@
                                 $approvalFlow = $submission->model?->approvalFlow;
                                 $approvalSteps = $approvalFlow?->steps ?? collect();
                                 $activeApprovalStep = $approvalSteps->firstWhere('status', 'active');
-                                $approvedApprovalSteps = $approvalSteps->where('status', 'approved')->count();
-                                $approvalTotalSteps = $approvalSteps->count();
+                                $approvedApprovalSteps = (int) ($submission->approval_approved_count ?? $approvalSteps->where('status', 'approved')->count());
+                                $approvalTotalSteps = (int) ($submission->approval_total_count ?? $approvalSteps->count());
                                 $approvalModalId = $submission->model ? 'adminApprovalProgressModal'.$submission->type.$submission->model->id : null;
                                 $approvalStatusLabel = $statusLabels[$submission->status] ?? $submission->status;
                                 $activeApprovalStepLabel = $activeApprovalStep?->label;
+                                $approvalProgressClass = $submission->approval_progress_class ?? 'admin-approval-progress-none';
                                 $areaOwnerSourceLabel = trim((string) data_get($submission->model, 'approval_data.unit_kerja.label', ''));
 
                                 if ($areaOwnerSourceLabel === '') {
@@ -310,7 +322,7 @@
                             @if ($submission->status && $submission->status !== 'draft' && $approvalFlow && $approvalModalId)
                                 <button
                                     type="button"
-                                    class="admin-approval-status-trigger {{ $activeApprovalStep ? 'is-active' : 'is-'.$submission->status }}"
+                                    class="admin-approval-status-trigger {{ $activeApprovalStep ? 'is-active' : 'is-'.$submission->status }} {{ $approvalProgressClass }}"
                                     data-bs-toggle="modal"
                                     data-bs-target="#{{ $approvalModalId }}"
                                     title="Detail Approval: {{ $approvalStatusTitle }}"
@@ -324,11 +336,16 @@
                                     @endif
                                 </button>
                             @elseif ($submission->status && $submission->status !== 'draft')
-                                <span class="badge {{ $statusClasses[$submission->status] ?? 'text-bg-secondary' }}">
-                                    {{ $approvalStatusLabel }}
+                                <span class="admin-approval-status-trigger is-{{ $submission->status }} {{ $approvalProgressClass }}">
+                                    <span class="admin-approval-status-main">{{ $approvalStatusLabel }}</span>
+                                    @if ($approvalTotalSteps > 0)
+                                        <span class="admin-approval-status-meta">TTD {{ $approvedApprovalSteps }}/{{ $approvalTotalSteps }}</span>
+                                    @endif
                                 </span>
                             @else
-                                <span class="text-muted small">Belum submit</span>
+                                <span class="admin-approval-status-trigger admin-approval-progress-none">
+                                    <span class="admin-approval-status-main">Belum submit</span>
+                                </span>
                             @endif
                         </td>
                         <td class="text-end">
@@ -1007,6 +1024,22 @@
             font-size: .82rem;
         }
 
+        .admin-table-filter-form {
+            margin-bottom: 0;
+        }
+
+        .admin-table-filter-form .filter-card {
+            margin-bottom: 0;
+            border-bottom-right-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        .admin-table-card {
+            border-top: 0;
+            border-top-right-radius: 0;
+            border-top-left-radius: 0;
+        }
+
         .admin-submission-table thead th {
             padding: .72rem .7rem;
             font-size: .7rem;
@@ -1085,6 +1118,40 @@
         .admin-approval-status-trigger.is-cancelled {
             color: #991b1b;
             background: #fee2e2;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-none {
+            color: #475569;
+            background: #f1f5f9;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-0 {
+            color: #1d4ed8;
+            background: #dbeafe;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-1 {
+            color: #6d28d9;
+            background: #ede9fe;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-2 {
+            color: #0f766e;
+            background: #ccfbf1;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-3 {
+            color: #b45309;
+            background: #fef3c7;
+        }
+
+        .admin-approval-status-trigger.admin-approval-progress-complete {
+            color: #166534;
+            background: #dcfce7;
+        }
+
+        .admin-approval-status-trigger:not(button) {
+            cursor: default;
         }
 
         .admin-approval-status-main {

@@ -26,7 +26,7 @@ class PublicApprovalController extends Controller
     private const APPROVAL_SUCCESS_TITLE = 'Approval berhasil';
     private const APPROVAL_SUCCESS_MESSAGE = 'Approval berhasil disimpan. Dokumen sudah diteruskan ke tahap approval berikutnya.';
     private const FINAL_OVERHAUL_APPROVAL_TITLE = 'Approval final berhasil';
-    private const FINAL_OVERHAUL_APPROVAL_MESSAGE = 'Jangan Lupa Pak dih Mwehehehhehe:V.';
+    private const FINAL_OVERHAUL_APPROVAL_MESSAGE = 'Jangki Lupa Pak dih Mwehehehhehe:V.';
 
     public function __construct(private readonly ApprovalFlowService $approvalFlowService)
     {

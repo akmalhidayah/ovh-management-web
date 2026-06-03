@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
+use App\Models\ApprovalFlow;
+use App\Models\ApprovalStep;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
@@ -390,6 +392,73 @@ class AdminInspectionMetricsTest extends TestCase
             'id' => $master->id,
             'inspection_status' => null,
         ]);
+    }
+
+    public function test_admin_table_can_filter_by_approval_progress_and_colors_progress_label(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-APPROVAL-FILTER',
+            'name' => 'QC Approval Filter Template',
+            'category' => 'QC',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+
+        $firstSubmission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '021/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now()->subMinute(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'Approval One Equipment',
+            'general_info' => [
+                'id_equipment' => 'EQ-QC-APPROVAL-1',
+                'name_equipment' => 'Approval One Equipment',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+        $secondSubmission = QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'form_number' => '022/QC/05-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'year' => '2026',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'equipment' => 'Approval Two Equipment',
+            'general_info' => [
+                'id_equipment' => 'EQ-QC-APPROVAL-2',
+                'name_equipment' => 'Approval Two Equipment',
+                'plant' => 'TONASA 4',
+                'area' => 'RAW MILL',
+            ],
+        ]);
+
+        $this->makeApprovalFlow($firstSubmission, 1, 4);
+        $this->makeApprovalFlow($secondSubmission, 2, 4);
+
+        $data = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.qc'), 'GET', [
+                'approval_progress' => '2/4',
+            ]),
+            'qc'
+        );
+
+        $this->assertSame(['022/QC/05-2026'], $data['submissions']->getCollection()->pluck('form_number')->all());
+        $this->assertContains('1/4', $data['filterOptions']['approvalProgress']->all());
+        $this->assertContains('2/4', $data['filterOptions']['approvalProgress']->all());
+
+        $this->actingAs($admin);
+        $html = view('modules.qc-content', $data)->render();
+
+        $this->assertStringContainsString('value="2/4" selected', $html);
+        $this->assertStringContainsString('TTD 2/4', $html);
+        $this->assertStringContainsString('admin-approval-progress-2', $html);
+        $this->assertStringNotContainsString('021/QC/05-2026', $html);
     }
 
     public function test_commissioning_master_row_without_submission_shows_reset_status_action(): void
@@ -779,5 +848,28 @@ class AdminInspectionMetricsTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('commissioning_form_submissions', ['id' => $submission->id]);
+    }
+
+    private function makeApprovalFlow($submission, int $approvedSteps, int $totalSteps): ApprovalFlow
+    {
+        $flow = ApprovalFlow::create([
+            'approvable_type' => $submission->getMorphClass(),
+            'approvable_id' => $submission->getKey(),
+            'status' => 'pending',
+            'current_step_order' => min($approvedSteps + 1, $totalSteps),
+        ]);
+
+        foreach (range(1, $totalSteps) as $stepOrder) {
+            ApprovalStep::create([
+                'approval_flow_id' => $flow->id,
+                'step_order' => $stepOrder,
+                'label' => "Approver {$stepOrder}",
+                'status' => $stepOrder <= $approvedSteps
+                    ? ApprovalStep::STATUS_APPROVED
+                    : ($stepOrder === $approvedSteps + 1 ? ApprovalStep::STATUS_ACTIVE : ApprovalStep::STATUS_PENDING),
+            ]);
+        }
+
+        return $flow;
     }
 }
