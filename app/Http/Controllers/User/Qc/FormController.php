@@ -18,6 +18,7 @@ use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
+use iio\libmergepdf\Merger;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -42,7 +43,7 @@ class FormController extends Controller
     private const ERROR_DUPLICATE_NUMBER = 'QC-DOC-NUMBER-DUPLICATE';
     private const ERROR_FORBIDDEN = 'QC-SUB-FORBIDDEN';
     private const ERROR_NOT_EDITABLE = 'QC-SUB-NOT-EDITABLE';
-    private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png';
+    private const ALLOWED_ATTACHMENT_MIMES = 'jpg,jpeg,png,pdf';
     private const SIGNATURE_MAX_BYTES = 1048576;
     private const TEMP_ATTACHMENT_SESSION_KEY = 'qc_temporary_attachments';
 
@@ -464,8 +465,51 @@ class FormController extends Controller
         $pekerjaan = $submission->pekerjaan ?: ($submission->general_info['pekerjaan'] ?? 'Form QC');
         $safePekerjaan = trim(preg_replace('/[\\\\\/:*?"<>|]+/', '-', (string) $pekerjaan));
         $filename = 'Quality Control - '.($safePekerjaan ?: 'Form QC').'.pdf';
+        $supportPdfPaths = self::supportPdfAttachmentPaths($submission);
 
-        return $pdf->stream($filename);
+        if ($supportPdfPaths === []) {
+            return $pdf->stream($filename);
+        }
+
+        $merger = new Merger();
+        $merger->addRaw($pdf->output());
+
+        foreach ($supportPdfPaths as $path) {
+            $merger->addFile($path);
+        }
+
+        $mergedPdf = $merger->merge();
+        $filename = str_replace(['"', "\r", "\n"], '', $filename);
+
+        return response($mergedPdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    private static function supportPdfAttachmentPaths(QcFormSubmission $submission): array
+    {
+        return $submission->attachments
+            ->where('field_key', 'dokumen_pendukung')
+            ->filter(fn (QcFormSubmissionAttachment $attachment): bool => $attachment->mime_type === 'application/pdf')
+            ->map(fn (QcFormSubmissionAttachment $attachment): ?string => self::storedAttachmentPath($attachment))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private static function storedAttachmentPath(QcFormSubmissionAttachment $attachment): ?string
+    {
+        if (Storage::disk('local')->exists($attachment->file_path)) {
+            return Storage::disk('local')->path($attachment->file_path);
+        }
+
+        if (Storage::disk('public')->exists($attachment->file_path)) {
+            return Storage::disk('public')->path($attachment->file_path);
+        }
+
+        return null;
     }
 
     public static function statusLabels(): array
@@ -484,7 +528,7 @@ class FormController extends Controller
 
     private function validateSubmissionRequest(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'template_id' => ['required', 'exists:qc_form_templates,id'],
             'action' => ['required', 'in:draft,submit'],
             'general_info' => ['nullable', 'array'],
@@ -500,17 +544,68 @@ class FormController extends Controller
             'body_signature_files.*' => ['nullable', 'file', 'mimes:png,jpg,jpeg', 'mimetypes:image/png,image/jpeg', 'max:1024'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['nullable', 'array'],
-            'attachments.*.*' => ['file', 'mimes:'.self::ALLOWED_ATTACHMENT_MIMES, 'mimetypes:image/jpeg,image/png', 'max:10240'],
+            'attachments.*.*' => ['file', 'mimes:'.self::ALLOWED_ATTACHMENT_MIMES, 'mimetypes:image/jpeg,image/png,application/pdf', 'max:10240'],
             'temporary_attachments' => ['nullable', 'array'],
             'temporary_attachments.*' => ['nullable', 'array'],
             'temporary_attachments.*.*' => ['string'],
         ], [
-            'attachments.*.*.uploaded' => 'Foto lampiran gagal diupload. Ukuran file kemungkinan terlalu besar atau koneksi terputus. Coba ambil ulang foto atau pilih foto yang lebih kecil.',
-            'attachments.*.*.file' => 'Lampiran harus berupa file gambar.',
-            'attachments.*.*.max' => 'Foto lampiran maksimal 10 MB per file.',
-            'attachments.*.*.mimes' => 'Foto lampiran harus berupa JPG atau PNG.',
-            'attachments.*.*.mimetypes' => 'Foto lampiran harus berupa JPG atau PNG.',
+            'attachments.*.*.uploaded' => 'Lampiran gagal diupload. Ukuran file kemungkinan terlalu besar atau koneksi terputus. Coba pilih file yang lebih kecil.',
+            'attachments.*.*.file' => 'Lampiran harus berupa file.',
+            'attachments.*.*.max' => 'Lampiran maksimal 10 MB per file.',
+            'attachments.*.*.mimes' => 'Lampiran harus berupa JPG, PNG, atau PDF khusus Dokumen Pendukung.',
+            'attachments.*.*.mimetypes' => 'Lampiran harus berupa JPG, PNG, atau PDF khusus Dokumen Pendukung.',
         ]);
+
+        $this->validateAttachmentFileTypes($request);
+
+        return $validated;
+    }
+
+    private function validateAttachmentFileTypes(Request $request): void
+    {
+        $errors = [];
+        $sessionAttachments = session(self::TEMP_ATTACHMENT_SESSION_KEY, []);
+
+        foreach ($request->file('attachments', []) as $fieldKey => $files) {
+            foreach ((array) $files as $index => $file) {
+                if (! $file instanceof UploadedFile) {
+                    continue;
+                }
+
+                $this->validateAttachmentMimeForField($errors, (string) $fieldKey, $file->getMimeType(), "attachments.{$fieldKey}.{$index}");
+            }
+        }
+
+        foreach ($request->input('temporary_attachments', []) as $fieldKey => $tokens) {
+            foreach ((array) $tokens as $index => $token) {
+                $attachment = $sessionAttachments[$token] ?? null;
+
+                if (! is_array($attachment)) {
+                    continue;
+                }
+
+                $this->validateAttachmentMimeForField($errors, (string) $fieldKey, $attachment['mime_type'] ?? null, "temporary_attachments.{$fieldKey}.{$index}");
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function validateAttachmentMimeForField(array &$errors, string $fieldKey, ?string $mime, string $errorKey): void
+    {
+        $allowedMimes = $fieldKey === 'dokumen_pendukung'
+            ? ['image/jpeg', 'image/png', 'application/pdf']
+            : ['image/jpeg', 'image/png'];
+
+        if (in_array($mime, $allowedMimes, true)) {
+            return;
+        }
+
+        $errors[$errorKey] = $fieldKey === 'dokumen_pendukung'
+            ? 'Dokumen Pendukung hanya boleh JPG, PNG, atau PDF.'
+            : 'Foto Before dan Foto After hanya boleh JPG atau PNG.';
     }
 
     private function approvalDataWithSignatureFiles(Request $request, mixed $approval, QcFormSubmission $submission): array
@@ -1205,7 +1300,7 @@ class FormController extends Controller
                     'original_name' => $file->getClientOriginalName(),
                     'mime_type' => $mime,
                     'size' => $file->getSize(),
-                    'type' => 'image',
+                    'type' => $this->attachmentTypeFromMime($mime),
                 ]);
             }
         }
@@ -1290,7 +1385,7 @@ class FormController extends Controller
                     'original_name' => $attachment['original_name'],
                     'mime_type' => $attachment['mime_type'],
                     'size' => $attachment['size'],
-                    'type' => 'image',
+                    'type' => $this->attachmentTypeFromMime($attachment['mime_type'] ?? null),
                 ]);
 
                 unset($sessionAttachments[$token]);
@@ -1298,6 +1393,11 @@ class FormController extends Controller
         }
 
         session([self::TEMP_ATTACHMENT_SESSION_KEY => $sessionAttachments]);
+    }
+
+    private function attachmentTypeFromMime(?string $mime): string
+    {
+        return str_starts_with((string) $mime, 'image/') ? 'image' : 'document';
     }
 
     private function generateFormNumber(): string

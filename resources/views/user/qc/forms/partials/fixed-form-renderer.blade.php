@@ -241,6 +241,12 @@
                     $hasExistingAttachment = ($draftSubmission ?? null)
                         ? $draftSubmission->attachments->where('field_key', $attachmentKey)->isNotEmpty()
                         : false;
+                    $accept = $attachmentKey === 'dokumen_pendukung'
+                        ? '.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf'
+                        : '.jpg,.jpeg,.png,image/jpeg,image/png';
+                    $uploadHint = $attachmentKey === 'dokumen_pendukung'
+                        ? 'JPG, PNG, atau PDF. Format HEIC/HEIF belum didukung. Opsional.'
+                        : 'Hanya JPG atau PNG. Format HEIC/HEIF belum didukung. Wajib diisi saat submit.';
                     $uploadInputId = "qc-upload-{$attachmentKey}";
                     $cameraInputId = "qc-camera-{$attachmentKey}";
                 @endphp
@@ -248,7 +254,7 @@
                     <div class="qc-upload-box-head">
                         <div>
                             <strong>{{ $attachmentLabel }} @if ($isRequiredAttachment)<span class="text-danger">*</span>@endif</strong>
-                            <span>Hanya JPG atau PNG. Format HEIC/HEIF belum didukung. {{ $isRequiredAttachment ? 'Wajib diisi saat submit.' : 'Opsional.' }}</span>
+                            <span>{{ $uploadHint }}</span>
                         </div>
                         <i class="bi bi-images"></i>
                     </div>
@@ -258,7 +264,7 @@
                         class="visually-hidden"
                         name="attachments[{{ $attachmentKey }}][]"
                         data-upload-input
-                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                        accept="{{ $accept }}"
                         multiple
                     >
                     @if ($isRequiredAttachment)

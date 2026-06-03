@@ -1,20 +1,25 @@
 @php
     use App\Support\QcTemplates\FixedQcTemplate;
 
-    $attachmentImages = static function (string $key) use ($attachments) {
+    $attachmentPath = static function ($attachment): ?string {
+        if (\Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)) {
+            return \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path);
+        }
+
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->path($attachment->file_path);
+        }
+
+        $publicPath = storage_path('app/public/'.$attachment->file_path);
+
+        return file_exists($publicPath) ? $publicPath : null;
+    };
+
+    $attachmentImages = static function (string $key) use ($attachments, $attachmentPath) {
         return ($attachments[$key] ?? collect())
             ->take(6)
-            ->map(function ($attachment) {
-                $path = null;
-
-                if (\Illuminate\Support\Facades\Storage::disk('local')->exists($attachment->file_path)) {
-                    $path = \Illuminate\Support\Facades\Storage::disk('local')->path($attachment->file_path);
-                } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
-                    $path = \Illuminate\Support\Facades\Storage::disk('public')->path($attachment->file_path);
-                } else {
-                    $publicPath = storage_path('app/public/'.$attachment->file_path);
-                    $path = file_exists($publicPath) ? $publicPath : null;
-                }
+            ->map(function ($attachment) use ($attachmentPath) {
+                $path = $attachmentPath($attachment);
 
                 if ($attachment->type !== 'image' || ! $path || ! file_exists($path)) {
                     return null;
@@ -112,4 +117,5 @@
             </table>
         @endif
     @endif
+
 </div>

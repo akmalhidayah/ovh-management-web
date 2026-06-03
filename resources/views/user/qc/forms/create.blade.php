@@ -551,7 +551,7 @@
 
         (() => {
             const MAX_IMAGE_BYTES = 1.4 * 1024 * 1024;
-            const MAX_TOTAL_UPLOAD_BYTES = 6 * 1024 * 1024;
+            const MAX_TOTAL_UPLOAD_BYTES = 24 * 1024 * 1024;
             const MAX_IMAGE_DIMENSION = 1800;
             const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png)$/;
             const UNSUPPORTED_HEIC_EXTENSION = /\.(heic|heif)$/i;
@@ -796,7 +796,7 @@
 
                     if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
                         event.preventDefault();
-                        showUploadWarning('Total ukuran foto masih terlalu besar. Kurangi jumlah foto pendukung atau pilih foto yang lebih kecil.');
+                        showUploadWarning('Total ukuran lampiran masih terlalu besar. Kurangi jumlah lampiran atau pilih file yang lebih kecil.');
                         return;
                     }
                 });
