@@ -1,8 +1,8 @@
 @php
     $statusLabels = $statusLabels ?? [];
     $inspectionMetrics = $inspectionMetrics ?? ($qcMetrics ?? null);
-    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect()];
-    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'work_status' => 'all', 'search' => ''];
+    $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect(), 'areas' => collect()];
+    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'area' => 'all', 'work_status' => 'all', 'sort' => 'default', 'search' => ''];
     $statusClasses = [
         'draft' => 'text-bg-secondary',
         'submitted' => 'text-bg-info',
@@ -24,7 +24,7 @@
 
 <form method="GET" action="{{ route($filterRoute) }}">
     <x-filter-card>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col-12 col-md-6 col-xl-2">
             <label class="form-label">Tahun</label>
             <select class="form-select" name="year">
                 <option value="all">Semua Tahun</option>
@@ -33,12 +33,21 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col-12 col-md-6 col-xl-2">
             <label class="form-label">Plant</label>
             <select class="form-select" name="plant">
                 <option value="all">Semua Plant</option>
                 @foreach ($filterOptions['plants'] as $plant)
                     <option value="{{ $plant }}" @selected($filters['plant'] == $plant)>{{ $plant }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label class="form-label">Area</label>
+            <select class="form-select" name="area">
+                <option value="all">Semua Area</option>
+                @foreach ($filterOptions['areas'] as $area)
+                    <option value="{{ $area }}" @selected(($filters['area'] ?? 'all') == $area)>{{ $area }}</option>
                 @endforeach
             </select>
         </div>
@@ -50,10 +59,20 @@
                 <option value="ongoing" @selected(($filters['work_status'] ?? 'all') === 'ongoing')>On Going</option>
             </select>
         </div>
-        <div class="col-12 col-xl-4">
+        <div class="col-12 col-md-6 col-xl-2">
+            <label class="form-label">Urutkan</label>
+            <select class="form-select" name="sort">
+                <option value="default" @selected(($filters['sort'] ?? 'default') === 'default')>Default</option>
+                <option value="name_asc" @selected(($filters['sort'] ?? 'default') === 'name_asc')>Nama A-Z</option>
+                <option value="name_desc" @selected(($filters['sort'] ?? 'default') === 'name_desc')>Nama Z-A</option>
+                <option value="area_asc" @selected(($filters['sort'] ?? 'default') === 'area_asc')>Area A-Z</option>
+                <option value="area_desc" @selected(($filters['sort'] ?? 'default') === 'area_desc')>Area Z-A</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
             <label class="form-label">Cari</label>
             <div class="d-flex gap-2">
-                <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="No form / equipment">
+                <input type="search" class="form-control" name="search" value="{{ $filters['search'] }}" placeholder="Form / equipment / area">
                 <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i></button>
             </div>
         </div>
@@ -299,6 +318,11 @@
                                 $remarks = collect($submission->remarks ?? []);
                                 $remarksCount = (int) ($submission->remarks_count ?? $remarks->count());
                                 $remarksModalId = $submission->model ? 'adminRemarksModal'.$submission->type.$submission->model->id : null;
+                                $canResetInspectionStatus = $canUpdateInspectionStatus
+                                    && $submission->type === 'commissioning'
+                                    && ! $submission->model
+                                    && ($submission->inspection_status_update_url ?? null)
+                                    && in_array($submission->work_status ?? null, ['close', 'ongoing'], true);
                             @endphp
                             <div class="d-inline-flex align-items-center gap-2">
                                 @if ($supportsRemarks && $remarksCount > 0 && $remarksModalId)
@@ -312,8 +336,20 @@
                                     <a href="{{ $submission->pdf_route }}" target="_blank" class="btn btn-sm btn-primary admin-inspection-icon-btn" title="PDF" aria-label="PDF">
                                         <i class="bi bi-filetype-pdf"></i>
                                     </a>
-                                @else
+                                @elseif (! $canResetInspectionStatus)
                                     <span class="text-muted small">-</span>
+                                @endif
+
+                                @if ($canResetInspectionStatus)
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning admin-inspection-icon-btn"
+                                            data-reset-inspection-status-button
+                                            data-update-url="{{ $submission->inspection_status_update_url }}"
+                                            data-equipment-label="{{ $submission->equipment ?: 'equipment ini' }}"
+                                            title="Reset Status Equipment"
+                                            aria-label="Reset Status Equipment">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
                                 @endif
 
                                 @if ($canDeleteInspectionSubmission && $submission->model)
@@ -605,6 +641,66 @@
                     });
 
                     select.dataset.previousValue = select.value;
+                });
+
+                document.querySelectorAll('[data-reset-inspection-status-button]').forEach(function (button) {
+                    button.addEventListener('click', async function () {
+                        const label = button.dataset.equipmentLabel || 'equipment ini';
+                        let confirmed = true;
+
+                        if (window.Swal) {
+                            const result = await window.Swal.fire({
+                                title: 'Reset status equipment?',
+                                text: `Equipment ${label} akan dikembalikan ke status belum dipakai dan bisa dipilih lagi di form Commissioning.`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Ya, reset',
+                                cancelButtonText: 'Batal',
+                                confirmButtonColor: '#f59e0b',
+                            });
+
+                            confirmed = result.isConfirmed;
+                        } else {
+                            confirmed = confirm(`Reset status equipment ${label} agar bisa dipakai lagi?`);
+                        }
+
+                        if (!confirmed) {
+                            return;
+                        }
+
+                        button.disabled = true;
+
+                        try {
+                            const response = await fetch(button.dataset.updateUrl, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                                },
+                                body: JSON.stringify({ inspection_status: null }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Gagal reset status equipment.');
+                            }
+
+                            window.location.reload();
+                        } catch (error) {
+                            button.disabled = false;
+
+                            if (window.Swal) {
+                                window.Swal.fire({
+                                    icon: 'error',
+                                    title: 'Reset gagal',
+                                    text: error.message || 'Silakan coba lagi.',
+                                });
+                                return;
+                            }
+
+                            alert(error.message || 'Gagal reset status equipment.');
+                        }
+                    });
                 });
             @endif
         </script>

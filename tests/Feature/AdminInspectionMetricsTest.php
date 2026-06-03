@@ -392,6 +392,111 @@ class AdminInspectionMetricsTest extends TestCase
         ]);
     }
 
+    public function test_commissioning_master_row_without_submission_shows_reset_status_action(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $master = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-RESET-ONLY',
+            'equipment_no' => 'EQ-COM-RESET-ONLY',
+            'section_no' => 'SEC-COM-RESET-ONLY',
+            'description' => 'Commissioning Reset Only Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+            'inspection_status' => 'close',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.commissioning'))
+            ->assertOk()
+            ->assertSee('Commissioning Reset Only Equipment')
+            ->assertSee('data-reset-inspection-status-button', false)
+            ->assertSee('Reset Status Equipment')
+            ->assertDontSee('data-delete-label="Commissioning Reset Only Equipment"', false);
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.master-data.inspection-status', $master), [
+                'inspection_status' => null,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'status' => null,
+                'label' => 'Pilih Status',
+            ]);
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $master->id,
+            'inspection_status' => null,
+        ]);
+    }
+
+    public function test_commissioning_admin_rows_can_filter_by_area_and_sort_by_name_or_area(): void
+    {
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-SORT-ZETA',
+            'equipment_no' => 'EQ-COM-SORT-ZETA',
+            'section_no' => 'SEC-COM-SORT-ZETA',
+            'description' => 'Zeta Commissioning Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-SORT-ALPHA',
+            'equipment_no' => 'EQ-COM-SORT-ALPHA',
+            'section_no' => 'SEC-COM-SORT-ALPHA',
+            'description' => 'Alpha Commissioning Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+        MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'LOC-COM-SORT-BETA',
+            'equipment_no' => 'EQ-COM-SORT-BETA',
+            'section_no' => 'SEC-COM-SORT-BETA',
+            'description' => 'Beta Commissioning Equipment',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL',
+            'status' => 'active',
+        ]);
+
+        $areaFiltered = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET', [
+                'area' => 'RAW MILL',
+                'sort' => 'name_asc',
+            ]),
+            'commissioning'
+        );
+
+        $this->assertSame('RAW MILL', $areaFiltered['filters']['area']);
+        $this->assertSame('name_asc', $areaFiltered['filters']['sort']);
+        $this->assertSame(
+            ['Alpha Commissioning Equipment', 'Zeta Commissioning Equipment'],
+            $areaFiltered['submissions']->getCollection()->pluck('equipment')->all()
+        );
+        $this->assertSame(2, $areaFiltered['inspectionMetrics']['cards']['total']);
+
+        $areaSorted = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET', [
+                'sort' => 'area_desc',
+            ]),
+            'commissioning'
+        );
+
+        $this->assertSame(
+            ['RAW MILL', 'RAW MILL', 'COAL MILL'],
+            $areaSorted['submissions']->getCollection()->pluck('area')->all()
+        );
+    }
+
     public function test_admin_can_restore_qc_submission_to_draft(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

@@ -371,12 +371,14 @@ class QcFormSubmissionTest extends TestCase
             ->assertSee('Approval berhasil disimpan')
             ->assertSee('Swal.fire', false)
             ->assertSee('Lihat PDF')
-            ->assertSee('/approval/signed-pdf/', false);
+            ->assertSee('approval\/signed-pdf', false)
+            ->assertSee('window.location.assign', false)
+            ->assertDontSee('class="btn btn-primary"', false);
 
-        preg_match('/href="([^"]*\/approval\/signed-pdf\/[^"]+)"/', $approveResponse->getContent(), $matches);
+        preg_match('/const signedPdfUrl = ("[^"]+");/', $approveResponse->getContent(), $matches);
         $this->assertNotEmpty($matches[1] ?? null);
 
-        $this->get(html_entity_decode($matches[1]))
+        $this->get(json_decode($matches[1], true))
             ->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps.links');

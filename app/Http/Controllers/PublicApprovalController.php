@@ -24,10 +24,9 @@ use Illuminate\View\View;
 class PublicApprovalController extends Controller
 {
     private const APPROVAL_SUCCESS_TITLE = 'Approval berhasil';
-    private const APPROVAL_SUCCESS_MESSAGE = 'Approval berhasil disimpan. Dokumen sudah diteruskan ke tahap approval berikutnya jika masih ada.';
+    private const APPROVAL_SUCCESS_MESSAGE = 'Approval berhasil disimpan. Dokumen sudah diteruskan ke tahap approval berikutnya.';
     private const FINAL_OVERHAUL_APPROVAL_TITLE = 'Approval final berhasil';
     private const FINAL_OVERHAUL_APPROVAL_MESSAGE = 'Jangan Lupa Pak dih Mwehehehhehe:V.';
-    private const FINAL_OVERHAUL_APPROVAL_CONFIRM_BUTTON = 'Selesai';
 
     public function __construct(private readonly ApprovalFlowService $approvalFlowService)
     {
@@ -339,9 +338,7 @@ class PublicApprovalController extends Controller
                 ? self::FINAL_OVERHAUL_APPROVAL_MESSAGE
                 : self::APPROVAL_SUCCESS_MESSAGE,
             'icon' => 'success',
-            'confirmButtonText' => $isFinalOverhaulManagement
-                ? self::FINAL_OVERHAUL_APPROVAL_CONFIRM_BUTTON
-                : 'Mengerti',
+            'confirmButtonText' => 'Mengerti',
             'signedPdfUrl' => $signedPdfUrl,
             'signedPdfLabel' => 'Lihat PDF',
         ];

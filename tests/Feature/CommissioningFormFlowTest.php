@@ -439,12 +439,14 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee('Approval berhasil disimpan')
             ->assertSee('Swal.fire', false)
             ->assertSee('Lihat PDF')
-            ->assertSee('/approval/signed-pdf/', false);
+            ->assertSee('approval\/signed-pdf', false)
+            ->assertSee('window.location.assign', false)
+            ->assertDontSee('class="btn btn-primary"', false);
 
-        preg_match('/href="([^"]*\/approval\/signed-pdf\/[^"]+)"/', $approveResponse->getContent(), $matches);
+        preg_match('/const signedPdfUrl = ("[^"]+");/', $approveResponse->getContent(), $matches);
         $this->assertNotEmpty($matches[1] ?? null);
 
-        $this->get(html_entity_decode($matches[1]))
+        $this->get(json_decode($matches[1], true))
             ->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps');
@@ -486,10 +488,10 @@ class CommissioningFormFlowTest extends TestCase
             'signature' => $this->validSignatureData(),
         ])->assertOk()
             ->assertSee('Approval final berhasil')
-            ->assertSee('Approval Overhaul Management berhasil disimpan. Semua tahap approval dokumen ini sudah selesai.')
             ->assertSee('Swal.fire', false)
-            ->assertSee('Selesai')
             ->assertSee('Lihat PDF')
+            ->assertSee('window.location.assign', false)
+            ->assertDontSee('class="btn btn-primary"', false)
             ->assertDontSee('Dokumen sudah diteruskan ke tahap approval berikutnya jika masih ada.');
 
         $submission->refresh()->load('approvalFlow.steps');

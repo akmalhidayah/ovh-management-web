@@ -17,7 +17,9 @@ class AdminInspectionSubmissionPageData
             'type' => self::validType($request->input('type', $defaultType)),
             'year' => $request->input('year', 'all') ?: 'all',
             'plant' => $request->input('plant', 'all') ?: 'all',
+            'area' => $request->input('area', 'all') ?: 'all',
             'work_status' => $request->input('work_status', 'all') ?: 'all',
+            'sort' => self::validSort($request->input('sort', 'default')),
             'search' => trim((string) $request->input('search')),
         ];
 
@@ -25,8 +27,8 @@ class AdminInspectionSubmissionPageData
             ? self::commissioningIndexRows($filters)
             : self::submissionRows()
                 ->filter(fn (object $row) => self::matchesFilters($row, $filters))
-                ->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)
                 ->values();
+        $allRows = self::sortIndexRows($allRows, $filters);
 
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
@@ -61,6 +63,13 @@ class AdminInspectionSubmissionPageData
     private static function validType(string $type): string
     {
         return in_array($type, ['all', 'qc', 'commissioning'], true) ? $type : 'all';
+    }
+
+    private static function validSort(?string $sort): string
+    {
+        return in_array($sort, ['default', 'name_asc', 'name_desc', 'area_asc', 'area_desc'], true)
+            ? $sort
+            : 'default';
     }
 
     private static function submissionRows(?string $type = null): Collection
@@ -193,8 +202,63 @@ class AdminInspectionSubmissionPageData
                 return self::commissioningMasterRow($record, $submissionRow);
             })
             ->filter(fn (object $row) => self::matchesWorkStatusFilter($row, $filters))
-            ->sort(fn (object $a, object $b): int => self::compareCommissioningIndexRows($a, $b))
             ->values();
+    }
+
+    private static function sortIndexRows(Collection $rows, array $filters): Collection
+    {
+        return match ($filters['sort'] ?? 'default') {
+            'name_asc' => $rows->sort(fn (object $a, object $b): int => self::compareRowText(
+                self::rowSubmissionName($a),
+                self::rowSubmissionName($b),
+            ))->values(),
+            'name_desc' => $rows->sort(fn (object $a, object $b): int => self::compareRowText(
+                self::rowSubmissionName($b),
+                self::rowSubmissionName($a),
+            ))->values(),
+            'area_asc' => $rows->sort(fn (object $a, object $b): int => self::compareRowText(
+                self::rowAreaSortKey($a),
+                self::rowAreaSortKey($b),
+            ))->values(),
+            'area_desc' => $rows->sort(fn (object $a, object $b): int => self::compareRowText(
+                self::rowAreaSortKey($b),
+                self::rowAreaSortKey($a),
+            ))->values(),
+            default => ($filters['type'] ?? null) === 'commissioning'
+                ? $rows->sort(fn (object $a, object $b): int => self::compareCommissioningIndexRows($a, $b))->values()
+                : $rows->sortByDesc(fn (object $row) => $row->submitted_at?->timestamp ?? 0)->values(),
+        };
+    }
+
+    private static function rowSubmissionName(object $row): string
+    {
+        return implode('|', [
+            self::sortText($row->equipment ?? null),
+            self::sortText($row->form_number ?? null),
+            self::sortText($row->functional_location ?? null),
+            self::sortText($row->equipment_no ?? null),
+        ]);
+    }
+
+    private static function rowAreaSortKey(object $row): string
+    {
+        return implode('|', [
+            self::sortText($row->area ?? null),
+            self::sortText($row->plant ?? null),
+            self::rowSubmissionName($row),
+        ]);
+    }
+
+    private static function compareRowText(string $left, string $right): int
+    {
+        return strnatcasecmp($left, $right);
+    }
+
+    private static function sortText(mixed $value): string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? '~~~~' : mb_strtolower($text);
     }
 
     private static function compareCommissioningIndexRows(object $a, object $b): int
@@ -306,7 +370,7 @@ class AdminInspectionSubmissionPageData
             return false;
         }
 
-        foreach (['year', 'plant'] as $field) {
+        foreach (['year', 'plant', 'area'] as $field) {
             if ($filters[$field] !== 'all' && (string) $row->{$field} !== (string) $filters[$field]) {
                 return false;
             }
@@ -388,6 +452,7 @@ class AdminInspectionSubmissionPageData
         return [
             'years' => $rows->pluck('year')->merge($masterRows->pluck('year'))->filter()->unique()->sortDesc()->values(),
             'plants' => $rows->pluck('plant')->merge($masterRows->pluck('plant'))->filter()->unique()->sort()->values(),
+            'areas' => $rows->pluck('area')->merge($masterRows->pluck('area'))->filter()->unique()->sort()->values(),
         ];
     }
 
@@ -531,6 +596,10 @@ class AdminInspectionSubmissionPageData
                 }
 
                 if ($filters['plant'] !== 'all' && (string) $record->plant !== (string) $filters['plant']) {
+                    return false;
+                }
+
+                if ($filters['area'] !== 'all' && (string) $record->area !== (string) $filters['area']) {
                     return false;
                 }
 
