@@ -494,6 +494,32 @@ class CommissioningFormFlowTest extends TestCase
             ->assertSee($submission->form_number);
     }
 
+    public function test_commissioning_draft_edit_shows_saved_documentation_and_approval_signature_data(): void
+    {
+        Storage::fake('local');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $payload = $this->payload($template, $master, 'draft');
+        $payload['approval']['commissioning_leader']['signature'] = $this->validSignatureData();
+        $payload['approval']['commissioning_leader']['signed_at'] = '2026-05-08T10:00:00+00:00';
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $submission = CommissioningFormSubmission::with('attachments')->firstOrFail();
+        $attachment = $submission->attachments->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.submissions.edit', $submission))
+            ->assertOk()
+            ->assertSee('Dokumentasi tersimpan')
+            ->assertSee('commissioning.jpg')
+            ->assertSee(route('user.commissioning.attachments.show', $attachment), false)
+            ->assertSee('Leader A')
+            ->assertSee('value="2026-05-08"', false)
+            ->assertSee('TTD tersimpan');
+    }
+
     public function test_commissioning_master_data_used_by_any_submission_is_hidden_from_new_forms(): void
     {
         [$user, $template, $master] = $this->makeCommissioningSetup();

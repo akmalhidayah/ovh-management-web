@@ -1,6 +1,7 @@
 @php
     use App\Support\AreaOwnerLabel;
     use App\Support\Commissioning\FixedCommissioningTemplate;
+    use Illuminate\Support\Facades\Storage;
 
     $draftSubmission = $draftSubmission ?? null;
     $schema = \App\Support\Commissioning\FixedCommissioningTemplate::normalizeSchema($selectedTemplate->body_schema);
@@ -70,6 +71,10 @@
     $motorRating = old('body.motor_rating', $draftBody['motor_rating'] ?? []);
     $gearboxRating = old('body.gearbox_rating', $draftBody['gearbox_rating'] ?? []);
     $approval = old('approval', $draftSubmission?->approval_data ?? []);
+    $existingDocumentationAttachments = $draftSubmission
+        ? $draftSubmission->attachments->where('field_key', 'dokumentasi')->values()
+        : collect();
+    $draftApprovalSteps = $draftSubmission?->approvalFlow?->steps?->sortBy('step_order')->values() ?? collect();
     $signerName = auth()->user()?->name ?: 'User Commissioning';
     $labels = $schema['labels'];
     $motorRatingFields = $schema['motor_rating_fields'];
@@ -332,9 +337,9 @@
                         ->map(fn ($token) => ['token' => $token] + (session("commissioning_temporary_attachments.{$token}") ?? []))
                         ->filter(fn ($attachment) => isset($attachment['original_name']));
                     $hasTemporaryDocumentation = $temporaryAttachmentMetas->isNotEmpty();
-                    $hasExistingDocumentation = $draftSubmission?->attachments()->exists() ?? false;
+                    $hasExistingDocumentation = $existingDocumentationAttachments->isNotEmpty();
                 @endphp
-                <label class="qc-user-note-box">
+                <div class="qc-user-note-box">
                     <span>{{ $labels['documentation_label'] }}</span>
                     <input
                         id="commissioning-upload-dokumentasi"
@@ -373,6 +378,20 @@
                     @if (! $hasTemporaryDocumentation && ! $hasExistingDocumentation)
                         <small class="text-muted d-block">Wajib diisi saat submit.</small>
                     @endif
+                    @if ($existingDocumentationAttachments->isNotEmpty())
+                        <div class="mt-2">
+                            <strong class="d-block text-body small mb-2">Dokumentasi tersimpan:</strong>
+                            <div class="qc-upload-preview">
+                                @foreach ($existingDocumentationAttachments as $attachment)
+                                    <div class="qc-upload-thumb">
+                                        <img src="{{ route('user.commissioning.attachments.show', $attachment) }}" alt="{{ $attachment->original_name ?: 'Dokumentasi tersimpan' }}">
+                                        <span>{{ $attachment->original_name ?: 'Dokumentasi tersimpan' }}</span>
+                                        <a href="{{ route('user.commissioning.attachments.show', $attachment) }}" class="btn btn-sm btn-light border" target="_blank" rel="noopener">Buka</a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     @if ($temporaryAttachmentMetas->isNotEmpty())
                         <div class="mt-2 small text-muted">
                             <strong class="d-block text-body">Lampiran tersimpan sementara:</strong>
@@ -382,7 +401,7 @@
                             @endforeach
                         </div>
                     @endif
-                </label>
+                </div>
             </div>
         </div>
     </section>
@@ -390,9 +409,26 @@
     <section class="inspector-panel qc-form-card">
         <div class="qc-form-section-title"><h3>Approval Footer</h3></div>
         <div class="qc-user-approval-grid" style="--qc-approval-columns: 4">
-            @foreach (FixedCommissioningTemplate::approvalColumns() as $column)
+            @foreach (FixedCommissioningTemplate::approvalColumns() as $approvalIndex => $column)
                 @php
-                    $approvalName = $approval[$column['key']]['name'] ?? ($approvalDefaults[$column['key']]['name'] ?? '');
+                    $approvalData = is_array($approval[$column['key']] ?? null) ? $approval[$column['key']] : [];
+                    $storedApprovalStep = $draftApprovalSteps->firstWhere('step_order', $approvalIndex + 1);
+                    $storedSignatureUrl = '';
+                    if (! blank($approvalData['signature'] ?? null)) {
+                        $storedSignatureUrl = (string) $approvalData['signature'];
+                    } elseif (! blank($storedApprovalStep?->signature_path) && Storage::disk('public')->exists($storedApprovalStep->signature_path)) {
+                        $storedSignatureUrl = Storage::disk('public')->url($storedApprovalStep->signature_path);
+                    } elseif (! blank($storedApprovalStep?->signature_data)) {
+                        $storedSignatureUrl = (string) $storedApprovalStep->signature_data;
+                    }
+                    $approvalName = $approvalData['name']
+                        ?? ($storedApprovalStep?->approver_name ?: ($approvalDefaults[$column['key']]['name'] ?? ''));
+                    $approvalDate = $approvalData['date']
+                        ?? ($storedApprovalStep?->acted_at?->format('Y-m-d') ?: '');
+                    $approvalSignedAt = $approvalData['signed_at']
+                        ?? ($storedApprovalStep?->acted_at?->toISOString() ?: '');
+                    $approvalRole = $approvalData['role']
+                        ?? ($storedApprovalStep?->approver_position ?: $column['label']);
                     $isUnitKerjaApprover = $column['key'] === 'unit_kerja';
                     $approvalLabel = $isUnitKerjaApprover
                         ? AreaOwnerLabel::approvalLabel($oldHeader['unit_kerja'] ?? $selectedOrganizationSection, $column['label'])
@@ -411,8 +447,23 @@
                         class="form-control mb-2"
                         placeholder="Nama"
                     >
-                    <input type="date" name="approval[{{ $column['key'] }}][date]" value="{{ $approval[$column['key']]['date'] ?? '' }}" class="form-control" disabled>
-                    <div class="qc-signature-locked mt-2"><i class="bi bi-lock"></i><span>Tanda tangan terkunci.</span></div>
+                    <input type="hidden" name="approval[{{ $column['key'] }}][date]" value="{{ $approvalDate }}">
+                    <input type="hidden" name="approval[{{ $column['key'] }}][signature]" value="{{ $storedSignatureUrl }}">
+                    <input type="hidden" name="approval[{{ $column['key'] }}][signed_at]" value="{{ $approvalSignedAt }}">
+                    <input type="hidden" name="approval[{{ $column['key'] }}][role]" value="{{ $approvalRole }}">
+                    <input type="date" value="{{ $approvalDate }}" class="form-control" disabled>
+                    @if ($storedSignatureUrl !== '')
+                        <div class="qc-signature-result mt-2">
+                            <img src="{{ $storedSignatureUrl }}" alt="TTD tersimpan">
+                            <div>
+                                <strong>TTD tersimpan</strong>
+                                <span>{{ $approvalRole }}</span>
+                                <small>{{ $approvalSignedAt ?: ($approvalDate ? 'Date : '.$approvalDate : '') }}</small>
+                            </div>
+                        </div>
+                    @else
+                        <div class="qc-signature-locked mt-2"><i class="bi bi-lock"></i><span>Tanda tangan terkunci.</span></div>
+                    @endif
                 </div>
             @endforeach
         </div>

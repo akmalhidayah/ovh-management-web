@@ -177,6 +177,8 @@ class FormController extends Controller
             return $redirect;
         }
 
+        $submission->loadMissing(['attachments', 'approvalFlow.steps']);
+
         return view('user.commissioning.forms.create', array_merge(UserRoleUiData::commissioningForm(), [
             'templates' => CommissioningFormTemplate::where('status', 'active')->orderBy('name')->get(),
             'selectedTemplate' => $submission->template,
