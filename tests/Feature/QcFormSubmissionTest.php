@@ -366,9 +366,17 @@ class QcFormSubmissionTest extends TestCase
             'approver_name' => 'Leader QC',
             'approver_position' => 'QC Leader',
             'signature_file' => UploadedFile::fake()->image('signature.png', 20, 10),
-        ])->assertRedirect();
+        ])->assertOk()
+            ->assertSee('Approval berhasil')
+            ->assertSee('Approval berhasil disimpan')
+            ->assertSee('Swal.fire', false)
+            ->assertSee('Lihat PDF')
+            ->assertSee('/approval/signed-pdf/', false);
 
-        $this->get($approveResponse->headers->get('Location'))
+        preg_match('/href="([^"]*\/approval\/signed-pdf\/[^"]+)"/', $approveResponse->getContent(), $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+
+        $this->get(html_entity_decode($matches[1]))
             ->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps.links');
@@ -408,7 +416,7 @@ class QcFormSubmissionTest extends TestCase
             'approver_name' => 'Leader QC',
             'approver_position' => 'QC Leader',
             'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
-        ])->assertRedirect();
+        ])->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps');
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[1]->status);
@@ -453,7 +461,7 @@ class QcFormSubmissionTest extends TestCase
             'approver_name' => 'Leader QC',
             'approver_position' => 'QC Leader',
             'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
-        ])->assertRedirect();
+        ])->assertOk();
 
         $unitKerjaUrl = $this->actingAs($user)
             ->postJson(route('user.qc.submissions.approval-link', $submission->fresh()))
@@ -505,7 +513,7 @@ class QcFormSubmissionTest extends TestCase
             'approver_name' => 'Leader QC',
             'approver_position' => 'QC Leader',
             'signature_file' => UploadedFile::fake()->image('leader.png', 20, 10),
-        ])->assertRedirect();
+        ])->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps');
         $historicalSteps = $submission->approvalFlow->steps;

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApprovalFlow;
 use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
@@ -433,9 +434,17 @@ class CommissioningFormFlowTest extends TestCase
             'approver_name' => 'Commissioning Lead',
             'approver_position' => 'COMMISSIONING Leader',
             'signature' => $this->validSignatureData(),
-        ])->assertRedirect();
+        ])->assertOk()
+            ->assertSee('Approval berhasil')
+            ->assertSee('Approval berhasil disimpan')
+            ->assertSee('Swal.fire', false)
+            ->assertSee('Lihat PDF')
+            ->assertSee('/approval/signed-pdf/', false);
 
-        $this->get($approveResponse->headers->get('Location'))
+        preg_match('/href="([^"]*\/approval\/signed-pdf\/[^"]+)"/', $approveResponse->getContent(), $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+
+        $this->get(html_entity_decode($matches[1]))
             ->assertOk();
 
         $submission->refresh()->load('approvalFlow.steps');
@@ -443,6 +452,51 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('pending_approval', $submission->status);
         $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[0]->status);
         $this->assertSame(ApprovalStep::STATUS_ACTIVE, $submission->approvalFlow->steps[1]->status);
+    }
+
+    public function test_public_approval_final_overhaul_management_shows_custom_success_alert(): void
+    {
+        Storage::fake('public');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $this->payload($template, $master, 'submit'))
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::with('approvalFlow.steps')->firstOrFail();
+        $submission->approvalFlow->steps()->whereIn('step_order', [1, 2, 3])->update([
+            'status' => ApprovalStep::STATUS_APPROVED,
+        ]);
+        $submission->approvalFlow->steps()->where('step_order', 4)->update([
+            'status' => ApprovalStep::STATUS_ACTIVE,
+        ]);
+        $submission->approvalFlow->update([
+            'status' => ApprovalFlow::STATUS_PENDING,
+            'current_step_order' => 4,
+        ]);
+
+        $url = $this->actingAs($user)
+            ->postJson(route('user.commissioning.submissions.approval-link', $submission))
+            ->assertOk()
+            ->json('url');
+
+        $this->post(route('public.approval.approve', $this->tokenFromUrl($url)), [
+            'approver_name' => 'Overhaul Management',
+            'approver_position' => 'OVERHAUL MANAGEMENT',
+            'signature' => $this->validSignatureData(),
+        ])->assertOk()
+            ->assertSee('Approval final berhasil')
+            ->assertSee('Approval Overhaul Management berhasil disimpan. Semua tahap approval dokumen ini sudah selesai.')
+            ->assertSee('Swal.fire', false)
+            ->assertSee('Selesai')
+            ->assertSee('Lihat PDF')
+            ->assertDontSee('Dokumen sudah diteruskan ke tahap approval berikutnya jika masih ada.');
+
+        $submission->refresh()->load('approvalFlow.steps');
+
+        $this->assertSame('approved', $submission->status);
+        $this->assertSame(ApprovalFlow::STATUS_APPROVED, $submission->approvalFlow->status);
+        $this->assertSame(ApprovalStep::STATUS_APPROVED, $submission->approvalFlow->steps[3]->status);
     }
 
     public function test_public_approval_uses_area_owner_manager_label_for_commissioning_unit_kerja_step(): void

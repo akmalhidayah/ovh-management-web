@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\User\Commissioning\FormController as CommissioningFormController;
+use App\Http\Controllers\User\Qc\FormController as QcFormController;
+use App\Models\ApprovalFlow;
 use App\Models\ApprovalStep;
 use App\Models\CommissioningFormSubmission;
 use App\Models\QcFormSubmission;
@@ -17,11 +20,15 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use App\Http\Controllers\User\Commissioning\FormController as CommissioningFormController;
-use App\Http\Controllers\User\Qc\FormController as QcFormController;
 
 class PublicApprovalController extends Controller
 {
+    private const APPROVAL_SUCCESS_TITLE = 'Approval berhasil';
+    private const APPROVAL_SUCCESS_MESSAGE = 'Approval berhasil disimpan. Dokumen sudah diteruskan ke tahap approval berikutnya jika masih ada.';
+    private const FINAL_OVERHAUL_APPROVAL_TITLE = 'Approval final berhasil';
+    private const FINAL_OVERHAUL_APPROVAL_MESSAGE = 'Jangan Lupa Pak dih Mwehehehhehe:V.';
+    private const FINAL_OVERHAUL_APPROVAL_CONFIRM_BUTTON = 'Selesai';
+
     public function __construct(private readonly ApprovalFlowService $approvalFlowService)
     {
     }
@@ -111,14 +118,17 @@ class PublicApprovalController extends Controller
             return response()->view('public.approval.done', [
                 'title' => 'Approval gagal',
                 'message' => 'Approval gagal diproses. Silakan coba lagi.',
+                'icon' => 'error',
             ], 500);
         }
 
-        return redirect()->to(URL::temporarySignedRoute(
+        $signedPdfUrl = URL::temporarySignedRoute(
             'public.approval.signed-pdf',
             now()->addMinutes(10),
             ['step' => $step],
-        ));
+        );
+
+        return response()->view('public.approval.done', $this->approvalSuccessViewData($step, $signedPdfUrl));
     }
 
     public function reject(Request $request, string $token): View|Response
@@ -137,12 +147,14 @@ class PublicApprovalController extends Controller
             return response()->view('public.approval.done', [
                 'title' => 'Reject gagal',
                 'message' => 'Reject gagal diproses. Silakan coba lagi.',
+                'icon' => 'error',
             ], 500);
         }
 
         return view('public.approval.done', [
             'title' => 'Reject berhasil',
             'message' => 'Reject berhasil disimpan. Link ini sudah tidak dapat dipakai lagi.',
+            'icon' => 'success',
         ]);
     }
 
@@ -313,6 +325,39 @@ class PublicApprovalController extends Controller
         }
 
         return '';
+    }
+
+    private function approvalSuccessViewData(ApprovalStep $step, string $signedPdfUrl): array
+    {
+        $isFinalOverhaulManagement = $this->isFinalOverhaulManagementApproval($step);
+
+        return [
+            'title' => $isFinalOverhaulManagement
+                ? self::FINAL_OVERHAUL_APPROVAL_TITLE
+                : self::APPROVAL_SUCCESS_TITLE,
+            'message' => $isFinalOverhaulManagement
+                ? self::FINAL_OVERHAUL_APPROVAL_MESSAGE
+                : self::APPROVAL_SUCCESS_MESSAGE,
+            'icon' => 'success',
+            'confirmButtonText' => $isFinalOverhaulManagement
+                ? self::FINAL_OVERHAUL_APPROVAL_CONFIRM_BUTTON
+                : 'Mengerti',
+            'signedPdfUrl' => $signedPdfUrl,
+            'signedPdfLabel' => 'Lihat PDF',
+        ];
+    }
+
+    private function isFinalOverhaulManagementApproval(ApprovalStep $step): bool
+    {
+        $step->loadMissing('flow.steps');
+
+        if ($step->flow?->status !== ApprovalFlow::STATUS_APPROVED) {
+            return false;
+        }
+
+        $normalizedLabel = str($step->label)->lower()->replace([' ', '/', '_', '-'], '')->toString();
+
+        return str_contains($normalizedLabel, 'overhaulmanagement');
     }
 
     private function suggestedApproverPosition(ApprovalStep $step): string
