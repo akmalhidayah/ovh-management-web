@@ -132,6 +132,7 @@ class AdminInspectionMetricsTest extends TestCase
                     ['no' => '1', 'item' => 'Visual inspection', 'result' => 'NO', 'remark' => 'Paint damage'],
                     ['no' => '2', 'item' => 'Mounting bolt', 'result' => 'NO', 'remark' => 'Bolt loose'],
                     ['no' => '3', 'item' => 'Safety guard', 'result' => 'NO', 'remark' => 'Guard missing'],
+                    ['no' => '4', 'item' => 'Running test', 'result' => 'YES', 'remark' => 'Running normal'],
                 ],
             ],
         ]);
@@ -148,11 +149,21 @@ class AdminInspectionMetricsTest extends TestCase
 
         $this->assertSame(1, $data['inspectionMetrics']['remarkForms']);
         $this->assertSame('010/COM/05-2026', $row->form_number);
-        $this->assertSame(7, $row->remarks_count);
-        $this->assertCount(7, $row->remarks);
+        $this->assertSame(8, $row->remarks_count);
+        $this->assertCount(8, $row->remarks);
         $this->assertSame('Motor Test Report', $row->remarks[0]['section']);
         $this->assertSame('Equipment Check Data', $row->remarks[6]['section']);
         $this->assertSame('Safety guard', $row->remarks[6]['item']);
+
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $this->actingAs($admin);
+        $html = view('modules.qc-content', $data)->render();
+
+        $this->assertStringContainsString('admin-remarks-item is-no', $html);
+        $this->assertStringContainsString('admin-remarks-item is-yes', $html);
+        $this->assertStringNotContainsString('>Row 1<', $html);
+        $this->assertStringNotContainsString('>NO</span>', $html);
+        $this->assertStringNotContainsString('>YES</span>', $html);
     }
 
     public function test_qc_equipment_card_uses_total_master_equipment_rows(): void

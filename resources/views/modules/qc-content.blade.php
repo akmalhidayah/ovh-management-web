@@ -370,13 +370,17 @@
                     <div class="modal-body">
                         <div class="admin-remarks-list">
                             @foreach ($remarks as $remark)
-                                <article class="admin-remarks-item">
+                                @php
+                                    $remarkResult = strtoupper(trim((string) ($remark['result'] ?? '')));
+                                    $remarkResultClass = match ($remarkResult) {
+                                        'YES' => 'is-yes',
+                                        'NO' => 'is-no',
+                                        default => '',
+                                    };
+                                @endphp
+                                <article class="admin-remarks-item {{ $remarkResultClass }}">
                                     <div class="admin-remarks-item-meta">
                                         <span>{{ $remark['section'] ?? 'Remarks' }}</span>
-                                        <span>Row {{ $remark['row'] ?? $loop->iteration }}</span>
-                                        @if (! empty($remark['result']))
-                                            <span>{{ $remark['result'] }}</span>
-                                        @endif
                                     </div>
                                     @if (! empty($remark['item']))
                                         <div class="admin-remarks-item-title">{{ $remark['item'] }}</div>
@@ -1195,6 +1199,16 @@
             background: #ffffff;
         }
 
+        .admin-remarks-item.is-yes {
+            border-color: #86efac;
+            background: #dcfce7;
+        }
+
+        .admin-remarks-item.is-no {
+            border-color: #fecaca;
+            background: #fee2e2;
+        }
+
         .admin-remarks-item-meta {
             display: flex;
             flex-wrap: wrap;
@@ -1212,6 +1226,16 @@
             background: #f1f5f9;
             font-size: .68rem;
             font-weight: 800;
+        }
+
+        .admin-remarks-item.is-yes .admin-remarks-item-meta span {
+            color: #166534;
+            background: #bbf7d0;
+        }
+
+        .admin-remarks-item.is-no .admin-remarks-item-meta span {
+            color: #991b1b;
+            background: #fecaca;
         }
 
         .admin-remarks-item-title {
