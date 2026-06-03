@@ -54,7 +54,7 @@ class AdminInspectionSubmissionPageData
             'pageTitle' => $pageTitle,
             'submissions' => $submissions,
             'statusLabels' => self::statusLabels(),
-            'inspectionMetrics' => self::inspectionMetrics(self::withoutSearch($filters)),
+            'inspectionMetrics' => self::inspectionMetrics(self::dashboardFilters($filters)),
             'filterOptions' => self::filterOptions(),
             'filters' => $filters,
         ];
@@ -211,6 +211,15 @@ class AdminInspectionSubmissionPageData
     private static function withoutSearch(array $filters): array
     {
         $filters['search'] = '';
+
+        return $filters;
+    }
+
+    private static function dashboardFilters(array $filters): array
+    {
+        $filters['search'] = '';
+        $filters['work_status'] = 'all';
+        $filters['sort'] = 'default';
 
         return $filters;
     }

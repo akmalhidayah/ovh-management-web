@@ -444,6 +444,7 @@ class AdminInspectionMetricsTest extends TestCase
             'plant' => 'TONASA 4',
             'area' => 'RAW MILL',
             'status' => 'active',
+            'inspection_status' => 'close',
         ]);
         MasterDataRecord::create([
             'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
@@ -455,6 +456,7 @@ class AdminInspectionMetricsTest extends TestCase
             'plant' => 'TONASA 4',
             'area' => 'RAW MILL',
             'status' => 'active',
+            'inspection_status' => 'ongoing',
         ]);
         MasterDataRecord::create([
             'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
@@ -483,6 +485,20 @@ class AdminInspectionMetricsTest extends TestCase
             $areaFiltered['submissions']->getCollection()->pluck('equipment')->all()
         );
         $this->assertSame(2, $areaFiltered['inspectionMetrics']['cards']['total']);
+
+        $statusFiltered = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET', [
+                'area' => 'RAW MILL',
+                'work_status' => 'close',
+            ]),
+            'commissioning'
+        );
+
+        $this->assertSame(
+            ['Zeta Commissioning Equipment'],
+            $statusFiltered['submissions']->getCollection()->pluck('equipment')->all()
+        );
+        $this->assertSame(2, $statusFiltered['inspectionMetrics']['cards']['total']);
 
         $areaSorted = AdminInspectionSubmissionPageData::make(
             Request::create(route('admin.commissioning'), 'GET', [
