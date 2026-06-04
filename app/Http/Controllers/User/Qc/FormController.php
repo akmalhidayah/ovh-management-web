@@ -296,6 +296,7 @@ class FormController extends Controller
                     $this->storeRows($submission, $template, $request->input('rows', []));
                 }
 
+                $this->deleteRequestedOrReplacedAttachments($submission, $request);
                 $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
                 $this->syncMasterDataInspectionStatus($submission, $request);
 
@@ -548,6 +549,8 @@ class FormController extends Controller
             'temporary_attachments' => ['nullable', 'array'],
             'temporary_attachments.*' => ['nullable', 'array'],
             'temporary_attachments.*.*' => ['string'],
+            'remove_existing_attachments' => ['nullable', 'array'],
+            'remove_existing_attachments.*' => ['integer'],
         ], [
             'attachments.*.*.uploaded' => 'Lampiran gagal diupload. Ukuran file kemungkinan terlalu besar atau koneksi terputus. Coba pilih file yang lebih kecil.',
             'attachments.*.*.file' => 'Lampiran harus berupa file.',
@@ -999,9 +1002,27 @@ class FormController extends Controller
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_BRICS) {
-            foreach ($body['brics_checks'] ?? [] as $key => $row) {
-                if (blank($row['status'] ?? null)) {
-                    $errors["body.brics_checks.{$key}.status"] = 'Status Brics wajib dipilih.';
+            foreach (FixedQcTemplate::bricsCustomerRows() as $definition) {
+                $key = $definition['key'];
+
+                if (! in_array($key, FixedQcTemplate::requiredBricsCustomerKeys(), true)) {
+                    continue;
+                }
+
+                if (blank($body['brics_customer'][$key] ?? null)) {
+                    $errors["body.brics_customer.{$key}"] = "{$definition['label']} wajib diisi.";
+                }
+            }
+
+            foreach (FixedQcTemplate::bricsTechnicalRows() as $definition) {
+                $key = $definition['key'];
+
+                if (! in_array($key, FixedQcTemplate::requiredBricsTechnicalKeys(), true)) {
+                    continue;
+                }
+
+                if (blank($body['brics_technical'][$key] ?? null)) {
+                    $errors["body.brics_technical.{$key}"] = "{$definition['label']} wajib diisi.";
                 }
             }
         }
@@ -1044,7 +1065,83 @@ class FormController extends Controller
             }
         }
 
-        return (bool) $submission?->attachments()->where('field_key', $fieldKey)->exists();
+        $removedIds = $this->attachmentRemovalIds($request);
+        $query = $submission?->attachments()->where('field_key', $fieldKey);
+
+        if (! $query) {
+            return false;
+        }
+
+        if ($removedIds !== []) {
+            $query->whereNotIn('id', $removedIds);
+        }
+
+        return (bool) $query->exists();
+    }
+
+    private function attachmentRemovalIds(Request $request): array
+    {
+        return collect($request->input('remove_existing_attachments', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function incomingAttachmentFieldKeys(Request $request): array
+    {
+        $fieldKeys = [];
+
+        foreach ($request->file('attachments', []) as $fieldKey => $files) {
+            foreach ((array) $files as $file) {
+                if ($file instanceof UploadedFile) {
+                    $fieldKeys[] = (string) $fieldKey;
+                    break;
+                }
+            }
+        }
+
+        foreach ($request->input('temporary_attachments', []) as $fieldKey => $tokens) {
+            foreach ((array) $tokens as $token) {
+                if ($this->temporaryAttachmentExists($token, (string) $fieldKey)) {
+                    $fieldKeys[] = (string) $fieldKey;
+                    break;
+                }
+            }
+        }
+
+        return collect($fieldKeys)->unique()->values()->all();
+    }
+
+    private function deleteRequestedOrReplacedAttachments(QcFormSubmission $submission, Request $request): void
+    {
+        $removedIds = $this->attachmentRemovalIds($request);
+        $replacementFields = $this->incomingAttachmentFieldKeys($request);
+
+        if ($removedIds === [] && $replacementFields === []) {
+            return;
+        }
+
+        $attachments = $submission->attachments()
+            ->where(function ($query) use ($removedIds, $replacementFields) {
+                if ($removedIds !== []) {
+                    $query->whereIn('id', $removedIds);
+                }
+
+                if ($replacementFields !== []) {
+                    $method = $removedIds !== [] ? 'orWhereIn' : 'whereIn';
+                    $query->{$method}('field_key', $replacementFields);
+                }
+            })
+            ->get();
+
+        if ($attachments->isEmpty()) {
+            return;
+        }
+
+        $this->deleteAttachmentFiles($attachments);
+        $submission->attachments()->whereKey($attachments->pluck('id'))->delete();
     }
 
     private function temporaryAttachmentExists(mixed $token, string $fieldKey): bool

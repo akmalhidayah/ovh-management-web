@@ -238,9 +238,10 @@
                         ->map(fn ($token) => ['token' => $token] + (session("qc_temporary_attachments.{$token}") ?? []))
                         ->filter(fn ($attachment) => isset($attachment['original_name']));
                     $isRequiredAttachment = in_array($attachmentKey, ['foto_before', 'foto_after'], true);
-                    $hasExistingAttachment = ($draftSubmission ?? null)
-                        ? $draftSubmission->attachments->where('field_key', $attachmentKey)->isNotEmpty()
-                        : false;
+                    $existingAttachments = ($draftSubmission ?? null)
+                        ? $draftSubmission->attachments->where('field_key', $attachmentKey)->values()
+                        : collect();
+                    $hasExistingAttachment = $existingAttachments->isNotEmpty();
                     $accept = $attachmentKey === 'dokumen_pendukung'
                         ? '.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf'
                         : '.jpg,.jpeg,.png,image/jpeg,image/png';
@@ -300,6 +301,29 @@
                     </div>
                     <div class="qc-upload-message" data-upload-message></div>
                     <div class="qc-upload-preview" data-upload-preview></div>
+                    @if ($existingAttachments->isNotEmpty())
+                        <div class="mt-2">
+                            <strong class="d-block text-body small mb-2">Lampiran tersimpan:</strong>
+                            <div class="qc-upload-preview">
+                                @foreach ($existingAttachments as $attachment)
+                                    @php
+                                        $attachmentUrl = route('user.qc.attachments.show', $attachment);
+                                    @endphp
+                                    <div class="{{ $attachment->type === 'image' ? 'qc-upload-thumb' : 'qc-file-list-item' }}" data-existing-attachment-item>
+                                        <input type="hidden" name="remove_existing_attachments[]" value="{{ $attachment->id }}" disabled data-existing-attachment-remove-input>
+                                        @if ($attachment->type === 'image')
+                                            <img src="{{ $attachmentUrl }}" alt="{{ $attachment->original_name ?: 'Lampiran tersimpan' }}">
+                                        @else
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        @endif
+                                        <span>{{ $attachment->original_name ?: 'Lampiran tersimpan' }}</span>
+                                        <a href="{{ $attachmentUrl }}" class="btn btn-sm btn-light border" target="_blank" rel="noopener">Buka</a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-existing-attachment-remove>Hapus</button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     @if ($temporaryAttachmentMetas->isNotEmpty())
                         <div class="mt-2 small text-muted">
                             <strong class="d-block text-body">Lampiran tersimpan sementara:</strong>

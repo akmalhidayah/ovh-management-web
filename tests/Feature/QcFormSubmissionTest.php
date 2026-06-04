@@ -868,6 +868,145 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(1, $submission->rows()->count());
     }
 
+    public function test_fixed_qc_draft_edit_shows_saved_attachments_and_keeps_signature_without_reupload(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        foreach ([FixedQcTemplate::TYPE_CASTABLE, FixedQcTemplate::TYPE_BRICS] as $type) {
+            if ($type === FixedQcTemplate::TYPE_CASTABLE) {
+                [$user, $template] = $this->makeFixedCastableTemplate();
+                $payload = $this->fixedCastablePayload($template);
+                $approvalKey = 'castable_filled_by';
+            } else {
+                [$user, $template] = $this->makeFixedBricsTemplate();
+                $payload = $this->fixedBricsPayload($template);
+                $approvalKey = 'brics_report_by';
+            }
+
+            $payload['action'] = 'draft';
+
+            $this->actingAs($user)
+                ->post(route('user.qc.forms.store'), $payload)
+                ->assertRedirect(route('user.qc.drafts.index'));
+
+            $submission = QcFormSubmission::with('attachments')->latest('id')->firstOrFail();
+            $beforeAttachment = $submission->attachments->firstWhere('field_key', 'foto_before');
+            $storedSignature = $submission->approval_data[$approvalKey]['signature'] ?? '';
+
+            $this->assertNotNull($beforeAttachment);
+            $this->assertNotSame('', $storedSignature);
+            $this->assertSame(2, $submission->attachments->count());
+
+            $this->actingAs($user)
+                ->get(route('user.qc.submissions.edit', $submission))
+                ->assertOk()
+                ->assertSee('Lampiran tersimpan:')
+                ->assertSee('before.jpg')
+                ->assertSee('after.jpg')
+                ->assertSee(route('user.qc.attachments.show', $beforeAttachment), false)
+                ->assertSee('data-existing-attachment-remove', false)
+                ->assertSee($storedSignature, false)
+                ->assertSee('value="2026-05-15"', false);
+
+            $updatePayload = $payload;
+            $updatePayload['approval'][$approvalKey]['signature'] = $storedSignature;
+            unset($updatePayload['attachments']);
+
+            $this->actingAs($user)
+                ->patch(route('user.qc.submissions.update', $submission), $updatePayload)
+                ->assertRedirect(route('user.qc.drafts.index'))
+                ->assertSessionHas('success', 'Draft QC berhasil diperbarui.');
+
+            $submission->refresh()->load('attachments');
+
+            $this->assertSame(2, $submission->attachments->count());
+            $this->assertSame($storedSignature, $submission->approval_data[$approvalKey]['signature']);
+        }
+    }
+
+    public function test_fixed_qc_draft_replaces_same_field_attachment_and_deletes_marked_attachment(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::with('attachments')->firstOrFail();
+        $oldBefore = $submission->attachments->firstWhere('field_key', 'foto_before');
+        $oldAfter = $submission->attachments->firstWhere('field_key', 'foto_after');
+        $oldBeforePath = $oldBefore->file_path;
+
+        $replacePayload = $payload;
+        unset($replacePayload['attachments']);
+        $replacePayload['attachments'] = [
+            'foto_before' => [UploadedFile::fake()->image('before-new.jpg', 20, 20)],
+        ];
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission), $replacePayload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission->refresh()->load('attachments');
+        $newBefore = $submission->attachments->firstWhere('field_key', 'foto_before');
+
+        $this->assertSame(2, $submission->attachments->count());
+        $this->assertNotSame($oldBefore->id, $newBefore->id);
+        $this->assertSame('before-new.jpg', $newBefore->original_name);
+        $this->assertTrue($submission->attachments->contains('id', $oldAfter->id));
+        Storage::disk('local')->assertMissing($oldBeforePath);
+
+        $deletePayload = $payload;
+        unset($deletePayload['attachments']);
+        $deletePayload['remove_existing_attachments'] = [$oldAfter->id];
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission), $deletePayload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission->refresh()->load('attachments');
+
+        $this->assertSame(1, $submission->attachments->count());
+        $this->assertFalse($submission->attachments->contains('id', $oldAfter->id));
+        Storage::disk('local')->assertMissing($oldAfter->file_path);
+    }
+
+    public function test_fixed_qc_submit_requires_replacement_when_required_attachment_is_marked_for_removal(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['action'] = 'draft';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::with('attachments')->firstOrFail();
+        $before = $submission->attachments->firstWhere('field_key', 'foto_before');
+        $submitPayload = $this->fixedGeneralPayload($template);
+        unset($submitPayload['attachments']);
+        $submitPayload['remove_existing_attachments'] = [$before->id];
+
+        $this->actingAs($user)
+            ->from(route('user.qc.submissions.edit', $submission))
+            ->patch(route('user.qc.submissions.update', $submission), $submitPayload)
+            ->assertRedirect(route('user.qc.submissions.edit', $submission))
+            ->assertSessionHasErrors([
+                'attachments.foto_before' => 'Foto Before wajib diupload. Dokumen Pendukung boleh dikosongkan.',
+            ]);
+
+        $this->assertSame(2, $submission->fresh()->attachments()->count());
+    }
+
     public function test_user_editing_qc_submission_that_is_no_longer_draft_is_redirected_with_error(): void
     {
         [$user, $template] = $this->makeFixedGeneralTemplate();
@@ -1106,6 +1245,46 @@ class QcFormSubmissionTest extends TestCase
         $this->assertStringNotContainsString('SUPPLIER PARTNER', $html);
         $this->assertStringContainsString('SUPPLIER PIC', $html);
         $this->assertStringNotContainsString('<td>APPROVE BY</td>', $html);
+    }
+
+    public function test_fixed_brics_optional_sections_are_not_required_on_submit(): void
+    {
+        [$user, $template] = $this->makeFixedBricsTemplate();
+        $payload = $this->fixedBricsPayload($template);
+        unset(
+            $payload['body']['brics_manpower_rows'],
+            $payload['body']['brics_weather'],
+            $payload['body']['brics_checks']
+        );
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame('PT Test', $submission->body_data['brics_customer']['company_name']);
+        $this->assertSame('54 m', $submission->body_data['brics_technical']['kiln_length']);
+    }
+
+    public function test_fixed_brics_required_customer_and_technical_fields_are_validated_on_submit(): void
+    {
+        [$user, $template] = $this->makeFixedBricsTemplate();
+        $payload = $this->fixedBricsPayload($template);
+        $payload['body']['brics_customer']['company_name'] = '';
+        $payload['body']['brics_technical']['kiln_length'] = '';
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertSessionHasErrors([
+                'body.brics_customer.company_name' => 'COMPANY NAME wajib diisi.',
+                'body.brics_technical.kiln_length' => 'Kiln Length wajib diisi.',
+            ]);
+
+        $this->assertSame(0, QcFormSubmission::count());
     }
 
     public function test_user_can_submit_fixed_castable_qc_with_dynamic_monitoring_rows(): void
@@ -1658,8 +1837,20 @@ class QcFormSubmissionTest extends TestCase
             ],
             'body' => [
                 'final_check' => '1',
+                'brics_customer' => [
+                    'company_name' => 'PT Test',
+                    'subject' => 'BRICK INSTALLATIONS',
+                    'locations' => 'ROTARY KILN PLANT',
+                    'install_method' => 'CLENCH LINING',
+                    'installations_section' => 'COOLING ZONE',
+                ],
                 'brics_technical' => [
+                    'kiln_length' => '54 m',
+                    'kiln_diameter' => '5.2 m',
+                    'starting_metering' => '10 m',
                     'activity_date' => '2026-05-15',
+                    'finishing_metering' => '18 m',
+                    'start_finishing_ring' => 'R-10 / R-18',
                 ],
                 'brics_manpower_rows' => [
                     ['left_label' => 'SPV SHIFT', 'left_value' => 'Andi', 'right_label' => 'SAFETY', 'right_value' => 'Budi'],

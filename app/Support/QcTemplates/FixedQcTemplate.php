@@ -465,6 +465,17 @@ class FixedQcTemplate
         ];
     }
 
+    public static function requiredBricsCustomerKeys(): array
+    {
+        return [
+            'company_name',
+            'subject',
+            'locations',
+            'install_method',
+            'installations_section',
+        ];
+    }
+
     public static function bricsTechnicalRows(): array
     {
         return [
@@ -474,6 +485,18 @@ class FixedQcTemplate
             ['key' => 'finishing_metering', 'label' => 'Finishing Metering'],
             ['key' => 'activity_date', 'label' => 'Activity Date', 'type' => 'date'],
             ['key' => 'start_finishing_ring', 'label' => 'Start & Finishing Ring'],
+        ];
+    }
+
+    public static function requiredBricsTechnicalKeys(): array
+    {
+        return [
+            'kiln_length',
+            'kiln_diameter',
+            'starting_metering',
+            'activity_date',
+            'finishing_metering',
+            'start_finishing_ring',
         ];
     }
 
