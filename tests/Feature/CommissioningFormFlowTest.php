@@ -8,6 +8,7 @@ use App\Models\CommissioningFormSubmission;
 use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
+use App\Models\MasterDataStatusHistory;
 use App\Models\User;
 use App\Services\DocumentNumberGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -393,6 +394,15 @@ class CommissioningFormFlowTest extends TestCase
         $this->assertSame('inactive', $submission->header_data['master_data_previous_status']);
         $this->assertSame('active', $inactiveMaster->status);
         $this->assertSame('ongoing', $inactiveMaster->inspection_status);
+        $this->assertDatabaseHas('master_data_status_histories', [
+            'master_data_record_id' => $inactiveMaster->id,
+            'previous_status' => 'inactive',
+            'status' => 'active',
+            'source' => 'digital_form',
+            'submission_type' => $submission->getMorphClass(),
+            'submission_id' => $submission->id,
+            'changed_by' => $user->id,
+        ]);
 
         $this->actingAs($user)
             ->delete(route('user.commissioning.submissions.destroy', $submission))
@@ -401,6 +411,16 @@ class CommissioningFormFlowTest extends TestCase
         $inactiveMaster->refresh();
         $this->assertSame('inactive', $inactiveMaster->status);
         $this->assertNull($inactiveMaster->inspection_status);
+        $this->assertSame(2, MasterDataStatusHistory::where('master_data_record_id', $inactiveMaster->id)->count());
+        $this->assertDatabaseHas('master_data_status_histories', [
+            'master_data_record_id' => $inactiveMaster->id,
+            'previous_status' => 'active',
+            'status' => 'inactive',
+            'source' => 'submission_deleted',
+            'submission_type' => $submission->getMorphClass(),
+            'submission_id' => $submission->id,
+            'changed_by' => $user->id,
+        ]);
     }
 
     public function test_public_approval_approve_advances_commissioning_flow(): void

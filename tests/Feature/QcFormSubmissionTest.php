@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ApprovalFlow;
 use App\Models\ApprovalStep;
+use App\Models\MasterDataStatusHistory;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\MasterDataRecord;
@@ -819,6 +820,15 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('inactive', $inactiveSubmission->general_info['master_data_previous_status']);
         $this->assertSame('active', $inactiveRecord->status);
         $this->assertSame('close', $inactiveRecord->inspection_status);
+        $this->assertDatabaseHas('master_data_status_histories', [
+            'master_data_record_id' => $inactiveRecord->id,
+            'previous_status' => 'inactive',
+            'status' => 'active',
+            'source' => 'digital_form',
+            'submission_type' => $inactiveSubmission->getMorphClass(),
+            'submission_id' => $inactiveSubmission->id,
+            'changed_by' => $user->id,
+        ]);
 
         $this->actingAs($user)
             ->delete(route('user.qc.submissions.destroy', $inactiveSubmission))
@@ -827,6 +837,16 @@ class QcFormSubmissionTest extends TestCase
         $inactiveRecord->refresh();
         $this->assertSame('inactive', $inactiveRecord->status);
         $this->assertNull($inactiveRecord->inspection_status);
+        $this->assertSame(2, MasterDataStatusHistory::where('master_data_record_id', $inactiveRecord->id)->count());
+        $this->assertDatabaseHas('master_data_status_histories', [
+            'master_data_record_id' => $inactiveRecord->id,
+            'previous_status' => 'active',
+            'status' => 'inactive',
+            'source' => 'submission_deleted',
+            'submission_type' => $inactiveSubmission->getMorphClass(),
+            'submission_id' => $inactiveSubmission->id,
+            'changed_by' => $user->id,
+        ]);
     }
 
     public function test_user_can_continue_fixed_qc_draft_with_saved_data(): void

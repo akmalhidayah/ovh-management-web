@@ -8,22 +8,22 @@ use App\Models\CommissioningFormSubmissionAttachment;
 use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Models\OrganizationSection;
-use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\DocumentNumberGenerator;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
+use App\Services\MasterDataStatusService;
 use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -799,7 +799,13 @@ class FormController extends Controller
         $wasAutoActivated = $previousStatus !== 'active';
 
         if ($wasAutoActivated) {
-            $record->forceFill(['status' => 'active'])->save();
+            app(MasterDataStatusService::class)->setStatus(
+                $record,
+                'active',
+                MasterDataStatusService::SOURCE_DIGITAL_FORM,
+                $request->user(),
+                $submission
+            );
         }
 
         app(MasterDataInspectionStatusService::class)->setStatus(

@@ -70,6 +70,11 @@ class MasterDataRecord extends Model
         return $this->hasMany(MasterDataInspectionStatusHistory::class);
     }
 
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(MasterDataStatusHistory::class);
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
         $search = trim((string) $search);

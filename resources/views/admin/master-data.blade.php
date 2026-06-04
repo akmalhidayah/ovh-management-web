@@ -94,9 +94,9 @@
         </div>
     @endif
 
-    @if ($errors->has('record_ids'))
+    @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ $errors->first('record_ids') }}
+            {{ $errors->first() }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -250,7 +250,7 @@
                     <button type="submit" form="bulkMasterDataForm" name="status" value="inactive" class="btn btn-sm btn-outline-secondary" data-bulk-action disabled>
                         <i class="bi bi-pause-circle"></i><span>Nonaktifkan</span>
                     </button>
-                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="aktifkan">
+                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="aktifkan" data-filtered-count="{{ $filteredRecordCount }}">
                         @csrf
                         @method('PATCH')
                         @foreach ($bulkFilterInputs as $name => $value)
@@ -260,7 +260,7 @@
                             <i class="bi bi-check-all"></i><span>Aktifkan Semua</span>
                         </button>
                     </form>
-                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="nonaktifkan">
+                    <form action="{{ route('admin.master-data.bulk-filtered-status') }}" method="POST" class="d-inline" data-filtered-bulk-form data-filtered-bulk-action="nonaktifkan" data-filtered-count="{{ $filteredRecordCount }}">
                         @csrf
                         @method('PATCH')
                         @foreach ($bulkFilterInputs as $name => $value)
@@ -404,6 +404,7 @@
             const editModal = document.getElementById('editMasterDataModal');
             const selectAll = document.querySelector('[data-master-select-all]');
             const rowChecks = Array.from(document.querySelectorAll('[data-master-row-check]'));
+            const bulkForm = document.getElementById('bulkMasterDataForm');
             const bulkActions = document.querySelectorAll('[data-bulk-action]');
             const selectedCount = document.querySelector('[data-bulk-selected-count]');
             const filteredBulkForms = document.querySelectorAll('[data-filtered-bulk-form]');
@@ -473,6 +474,34 @@
                 checkbox.addEventListener('change', syncBulkControls);
             });
 
+            bulkForm?.addEventListener('submit', async (event) => {
+                if (bulkForm.dataset.confirmed === '1') {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const submitter = event.submitter;
+                const status = submitter?.value || '';
+                const checkedCount = rowChecks.filter((checkbox) => checkbox.checked).length;
+                const isDeactivation = status === 'inactive';
+                const message = isDeactivation
+                    ? `${checkedCount} data dipilih. Equipment yang masih digunakan oleh draft/submission aktif akan dilewati. Lanjutkan?`
+                    : `${checkedCount} data dipilih dan akan diaktifkan. Lanjutkan?`;
+
+                if (await confirmAction({
+                    title: isDeactivation ? 'Nonaktifkan Data Terpilih?' : 'Aktifkan Data Terpilih?',
+                    text: message,
+                    confirmButtonText: isDeactivation ? 'Ya, nonaktifkan' : 'Ya, aktifkan',
+                })) {
+                    bulkForm.dataset.confirmed = '1';
+
+                    if (submitter) {
+                        bulkForm.requestSubmit(submitter);
+                    }
+                }
+            });
+
             filteredBulkForms.forEach((form) => {
                 form.querySelectorAll('button[type="submit"][name]').forEach((button) => {
                     button.addEventListener('click', () => {
@@ -506,11 +535,15 @@
                     const submitter = event.submitter;
                     const action = form.dataset.filteredBulkAction || 'ubah status';
                     const category = form.querySelector('[name="document_category"]')?.value || 'all';
+                    const filteredCount = Number.parseInt(form.dataset.filteredCount || '0', 10);
                     const affectsBothCategories = category === 'all';
                     const categoryLabel = category === 'qc' ? 'QC' : (category === 'commissioning' ? 'Commissioning' : '');
+                    const protectedNote = action === 'nonaktifkan'
+                        ? ' Equipment yang masih digunakan oleh draft/submission aktif akan dilewati.'
+                        : '';
                     const message = affectsBothCategories
-                        ? `Kategori masih Semua Dokumen. Aksi ini akan ${action} semua master data QC dan Commissioning yang cocok dengan filter saat ini. Lanjutkan?`
-                        : `Filter kategori ${categoryLabel} sedang aktif. Aksi ini akan ${action} semua master data ${categoryLabel} yang cocok dengan filter saat ini, termasuk data di halaman pagination lain. Lanjutkan?`;
+                        ? `${filteredCount} data QC dan Commissioning cocok dengan filter saat ini.${protectedNote} Lanjutkan?`
+                        : `${filteredCount} data ${categoryLabel} cocok dengan filter saat ini, termasuk data di halaman pagination lain.${protectedNote} Lanjutkan?`;
 
                     if (form.dataset.confirmed === '1') {
                         return;
