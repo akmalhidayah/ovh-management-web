@@ -13,13 +13,13 @@ use App\Services\DocumentNumberGenerator;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Services\MasterDataStatusService;
+use App\Services\QcPdfAttachmentMerger;
 use App\Support\AreaOwnerLabel;
 use App\Support\OrganizationSections;
 use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
-use iio\libmergepdf\Merger;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -467,20 +467,17 @@ class FormController extends Controller
         $pekerjaan = $submission->pekerjaan ?: ($submission->general_info['pekerjaan'] ?? 'Form QC');
         $safePekerjaan = trim(preg_replace('/[\\\\\/:*?"<>|]+/', '-', (string) $pekerjaan));
         $filename = 'Quality Control - '.($safePekerjaan ?: 'Form QC').'.pdf';
-        $supportPdfPaths = self::supportPdfAttachmentPaths($submission);
+        $supportPdfAttachments = self::supportPdfAttachments($submission);
 
-        if ($supportPdfPaths === []) {
+        if ($supportPdfAttachments->isEmpty()) {
             return $pdf->stream($filename);
         }
 
-        $merger = new Merger();
-        $merger->addRaw($pdf->output());
-
-        foreach ($supportPdfPaths as $path) {
-            $merger->addFile($path);
-        }
-
-        $mergedPdf = $merger->merge();
+        $mergedPdf = app(QcPdfAttachmentMerger::class)->merge(
+            $pdf->output(),
+            $supportPdfAttachments,
+            $submission->id,
+        );
         $filename = str_replace(['"', "\r", "\n"], '', $filename);
 
         return response($mergedPdf, 200, [
@@ -490,28 +487,13 @@ class FormController extends Controller
         ]);
     }
 
-    private static function supportPdfAttachmentPaths(QcFormSubmission $submission): array
+    private static function supportPdfAttachments(QcFormSubmission $submission)
     {
         return $submission->attachments
             ->where('field_key', 'dokumen_pendukung')
-            ->filter(fn (QcFormSubmissionAttachment $attachment): bool => $attachment->mime_type === 'application/pdf')
-            ->map(fn (QcFormSubmissionAttachment $attachment): ?string => self::storedAttachmentPath($attachment))
-            ->filter()
-            ->values()
-            ->all();
-    }
-
-    private static function storedAttachmentPath(QcFormSubmissionAttachment $attachment): ?string
-    {
-        if (Storage::disk('local')->exists($attachment->file_path)) {
-            return Storage::disk('local')->path($attachment->file_path);
-        }
-
-        if (Storage::disk('public')->exists($attachment->file_path)) {
-            return Storage::disk('public')->path($attachment->file_path);
-        }
-
-        return null;
+            ->filter(fn (QcFormSubmissionAttachment $attachment): bool => $attachment->mime_type === 'application/pdf'
+                || strtolower(pathinfo($attachment->original_name ?: $attachment->file_path, PATHINFO_EXTENSION)) === 'pdf')
+            ->values();
     }
 
     public static function statusLabels(): array
