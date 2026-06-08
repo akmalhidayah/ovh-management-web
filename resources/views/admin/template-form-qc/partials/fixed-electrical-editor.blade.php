@@ -1,17 +1,17 @@
 @php
     $electricalTables = [
         'stator' => [
-            'title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)',
+            'title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator) (Opsional)',
             'rows' => $electricalStatorRows,
             'fields' => ['item' => 'Parameter'],
         ],
         'rotor' => [
-            'title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)',
+            'title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor) (Opsional)',
             'rows' => $electricalRotorRows,
             'fields' => ['item' => 'Parameter'],
         ],
         'ovality' => [
-            'title' => 'Pengukuran Ovality',
+            'title' => 'Pengukuran Ovality (Opsional)',
             'rows' => $electricalOvalityRows,
             'fields' => ['ring' => 'Ring', 'standard' => 'Standar'],
         ],

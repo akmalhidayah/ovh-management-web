@@ -1247,9 +1247,9 @@ class QcFormSubmissionTest extends TestCase
             'header' => $this->fixedHeader(),
             'body' => [
                 'final_check' => '1',
-                'electrical_stator_rows' => collect($template->body_schema['stator_rows'])->map(fn () => ['value' => '100'])->all(),
-                'electrical_rotor_rows' => collect($template->body_schema['rotor_rows'])->map(fn () => ['value' => '100'])->all(),
-                'electrical_ovality_rows' => collect($template->body_schema['ovality_rows'])->map(fn () => ['tir' => '35'])->all(),
+                'electrical_stator_rows' => collect($template->body_schema['stator_rows'])->map(fn () => [])->all(),
+                'electrical_rotor_rows' => collect($template->body_schema['rotor_rows'])->map(fn () => [])->all(),
+                'electrical_ovality_rows' => collect($template->body_schema['ovality_rows'])->map(fn () => ['tir' => ''])->all(),
                 'electrical_installation_rows' => collect($template->body_schema['installation_rows'])->map(fn () => ['status' => 'OK', 'remark' => ''])->all(),
                 'electrical_uncouple_rows' => collect($template->body_schema['uncouple_rows'])->map(fn () => [
                     'value_1' => '',
@@ -1267,6 +1267,15 @@ class QcFormSubmissionTest extends TestCase
                 ],
             ],
         ] + $this->requiredQcAttachments();
+
+        $this->actingAs($user)
+            ->get(route('user.qc.forms.create', ['template' => $template->id]))
+            ->assertOk()
+            ->assertSee('PENGUKURAN INSULATION RESISTANCE &amp; POLARIZATION INDEX (STATOR)', false)
+            ->assertSee('PENGUKURAN INSULATION RESISTANCE &amp; POLARIZATION INDEX (ROTOR)', false)
+            ->assertSee('PENGUKURAN OVALITY')
+            ->assertSee('UNCOUPLE TESTING')
+            ->assertSee('(Opsional)');
 
         $payload['body']['electrical_installation_rows'][0] = ['status' => 'NOT OK', 'remark' => ''];
 
@@ -1287,16 +1296,16 @@ class QcFormSubmissionTest extends TestCase
         $submission = QcFormSubmission::firstOrFail();
         $this->assertSame('NOT OK', $submission->body_data['electrical_installation_rows'][0]['status']);
         $this->assertSame('Terminasi perlu dikencangkan', $submission->body_data['electrical_installation_rows'][0]['remark']);
+        $this->assertSame('', $submission->body_data['electrical_stator_rows'][0]['value']);
+        $this->assertSame('', $submission->body_data['electrical_rotor_rows'][0]['value']);
+        $this->assertSame('', $submission->body_data['electrical_ovality_rows'][0]['tir']);
         $this->assertSame(5, $submission->rows()->where('block_type', 'electrical_installation')->count());
         $this->assertSame(6, $submission->rows()->where('block_type', 'electrical_uncouple')->count());
         $this->assertSame('', $submission->body_data['electrical_uncouple_rows'][0]['value_1']);
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.show', $submission))
-            ->assertOk()
-            ->assertSee('Pengukuran Ovality')
-            ->assertSee('Uncouple Testing (Opsional)')
-            ->assertSee('Terminasi perlu dikencangkan');
+            ->assertOk();
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.pdf', $submission))

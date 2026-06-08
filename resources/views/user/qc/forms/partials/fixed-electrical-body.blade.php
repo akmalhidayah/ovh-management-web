@@ -11,7 +11,7 @@
     'rotor' => ['title' => 'PENGUKURAN INSULATION RESISTANCE & POLARIZATION INDEX (ROTOR)', 'rows' => $electricalRotorRows],
 ] as $sectionKey => $section)
     <section class="inspector-panel qc-form-card">
-        <div class="qc-form-section-title"><h3>{{ $section['title'] }}</h3></div>
+        <div class="qc-form-section-title"><h3>{{ $section['title'] }} <span class="text-muted fw-normal">(Opsional)</span></h3></div>
         <div class="qc-user-table-wrap">
             <table class="qc-user-checklist-table">
                 <thead>
@@ -63,7 +63,7 @@
 @endforeach
 
 <section class="inspector-panel qc-form-card">
-    <div class="qc-form-section-title"><h3>PENGUKURAN OVALITY</h3></div>
+    <div class="qc-form-section-title"><h3>PENGUKURAN OVALITY <span class="text-muted fw-normal">(Opsional)</span></h3></div>
     <div class="qc-user-table-wrap">
         <table class="qc-user-checklist-table">
             <thead><tr><th>No</th><th>Ring</th><th>TIR</th><th>Standar</th></tr></thead>
@@ -72,7 +72,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $row['ring'] ?? '' }}</td>
-                        <td><input type="text" class="form-control form-control-sm" name="body[electrical_ovality_rows][{{ $index }}][tir]" value="{{ $row['tir'] ?? '' }}" required></td>
+                        <td><input type="text" class="form-control form-control-sm" name="body[electrical_ovality_rows][{{ $index }}][tir]" value="{{ $row['tir'] ?? '' }}"></td>
                         <td>{{ $row['standard'] ?? '' }}</td>
                     </tr>
                 @endforeach

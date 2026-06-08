@@ -1047,20 +1047,6 @@ class FormController extends Controller
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_ELECTRICAL) {
-            foreach (['electrical_stator_rows', 'electrical_rotor_rows'] as $section) {
-                foreach ($body[$section] ?? [] as $index => $row) {
-                    if (collect($row)->only(['value', 'second_30', 'minute_1', 'minute_10', 'pi'])->filter(fn ($value) => $value !== '')->isEmpty()) {
-                        $errors["body.{$section}.{$index}.value"] = 'Minimal satu hasil pengukuran wajib diisi.';
-                    }
-                }
-            }
-
-            foreach ($body['electrical_ovality_rows'] ?? [] as $index => $row) {
-                if (blank($row['tir'] ?? null)) {
-                    $errors["body.electrical_ovality_rows.{$index}.tir"] = 'Nilai TIR wajib diisi.';
-                }
-            }
-
             foreach ($body['electrical_installation_rows'] ?? [] as $index => $row) {
                 if (! in_array($row['status'] ?? '', ['OK', 'NOT OK'], true)) {
                     $errors["body.electrical_installation_rows.{$index}.status"] = 'Status checklist instalasi wajib dipilih.';

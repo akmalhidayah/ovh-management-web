@@ -678,9 +678,9 @@ class FixedQcTemplate
     public static function electricalSections(): array
     {
         return [
-            'stator_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)',
-            'rotor_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)',
-            'ovality_rows' => 'Pengukuran Ovality',
+            'stator_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Stator) (Opsional)',
+            'rotor_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor) (Opsional)',
+            'ovality_rows' => 'Pengukuran Ovality (Opsional)',
             'installation_rows' => 'Checklist Instalasi',
             'uncouple_rows' => 'Uncouple Testing (Opsional)',
         ];

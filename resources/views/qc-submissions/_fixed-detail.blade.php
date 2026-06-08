@@ -186,9 +186,9 @@
         </section>
     @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
         @foreach ([
-            'electrical_stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
-            'electrical_rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
-            'electrical_ovality_rows' => ['title' => 'Pengukuran Ovality', 'fields' => ['ring' => 'Ring', 'tir' => 'TIR', 'standard' => 'Standar']],
+            'electrical_stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator) (Opsional)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor) (Opsional)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_ovality_rows' => ['title' => 'Pengukuran Ovality (Opsional)', 'fields' => ['ring' => 'Ring', 'tir' => 'TIR', 'standard' => 'Standar']],
             'electrical_installation_rows' => ['title' => 'Checklist Instalasi', 'fields' => ['activity' => 'Aktivitas', 'standard' => 'Standar', 'status' => 'OK/TIDAK', 'remark' => 'Keterangan / Remarks']],
             'electrical_uncouple_rows' => ['title' => 'Uncouple Testing (Opsional)', 'uncouple' => true, 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
         ] as $bodyKey => $section)
