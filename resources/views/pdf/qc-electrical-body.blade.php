@@ -33,17 +33,30 @@
                 <td class="center">{{ ! empty($section['measurement']) && $index >= 2 ? $index + 2 : $index + 1 }}</td>
                 @if ($isSingleMeasurement)
                     <td>{{ $row['item'] ?? '' }}</td>
-                    <td colspan="4">{{ $row['value'] ?? '' }}</td>
+                    <td colspan="4" class="center">{{ $row['value'] ?? '' }}</td>
                 @elseif ($isSpeed)
                     <td>{{ $row['item'] ?? '' }}</td>
-                    <td colspan="3">{{ $row['value_1'] ?? '' }}</td>
+                    <td colspan="3" class="center">{{ $row['value_1'] ?? '' }}</td>
                 @elseif ($isBearingTemperature)
                     <td>{{ $row['item'] ?? '' }}</td>
-                    <td>DE: {{ $row['value_1'] ?? '' }}</td>
-                    <td colspan="2">NDE: {{ $row['value_2'] ?? '' }}</td>
+                    <td class="center">DE: {{ $row['value_1'] ?? '' }}</td>
+                    <td colspan="2" class="center">NDE: {{ $row['value_2'] ?? '' }}</td>
                 @else
                     @foreach ($section['fields'] as $field => $label)
-                        <td>{{ $row[$field] ?? '' }}</td>
+                        <td @class([
+                            'center' => in_array($field, [
+                                'second_30',
+                                'minute_1',
+                                'minute_10',
+                                'pi',
+                                'ring',
+                                'tir',
+                                'status',
+                                'value_1',
+                                'value_2',
+                                'value_3',
+                            ], true),
+                        ])>{{ $row[$field] ?? '' }}</td>
                     @endforeach
                 @endif
             </tr>

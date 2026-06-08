@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Approval {{ $document['type'] }} - {{ $document['number'] }}</title>
     @include('partials.tonasa-meta')
+    @include('partials.upload-limits-meta')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f4f6f8; color: #182230; font-family: Arial, sans-serif; }
@@ -222,6 +223,8 @@
         </div>
     </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('assets/js/global-upload-guard.js') }}"></script>
 <script>
 (() => {
     const canvas = document.querySelector('[data-signature-canvas]');
