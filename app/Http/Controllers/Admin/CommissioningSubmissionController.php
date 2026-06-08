@@ -8,6 +8,7 @@ use App\Models\MasterDataRecord;
 use App\Services\ApprovalFlowService;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
+use App\Support\MasterDataIdentity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -106,8 +107,8 @@ class CommissioningSubmissionController extends Controller
             $record = (clone $query)->whereKey($header['master_data_record_id'])->first();
         } elseif (filled($submission->functional_location)) {
             $record = (clone $query)->where('func_location', $submission->functional_location)->first();
-        } elseif (filled($submission->equipment_no)) {
-            $record = (clone $query)->where('equipment_no', $submission->equipment_no)->first();
+        } elseif ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($submission->equipment_no)) {
+            $record = (clone $query)->where('equipment_no', $equipmentNo)->first();
         }
 
         if (! $record) {
@@ -142,6 +143,6 @@ class CommissioningSubmissionController extends Controller
 
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
             || (filled($submission->functional_location) && (string) $submission->functional_location === (string) $record->func_location)
-            || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
+            || MasterDataIdentity::equipmentNumbersMatch($submission->equipment_no, $record->equipment_no);
     }
 }

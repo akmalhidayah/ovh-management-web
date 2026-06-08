@@ -345,6 +345,55 @@ class UserRolePagesTest extends TestCase
             ->assertDontSee('Commissioning - ID Fan IF-02');
     }
 
+    public function test_commissioning_dashboard_does_not_match_distinct_equipment_by_zero_equipment_number(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'commissioning']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-DASH-ZERO',
+            'name' => 'Template Dashboard Zero Equipment',
+            'category' => 'Commissioning',
+            'version' => '1.0',
+            'status' => 'active',
+        ]);
+
+        $records = collect(range(1, 5))->map(fn (int $index) => MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => "ST-COM-ZERO-00{$index}",
+            'equipment_no' => '0',
+            'section_no' => "SEC-COM-ZERO-00{$index}",
+            'description' => "Zero Equipment {$index}",
+            'plant' => 'Tonasa 4',
+            'area' => 'Coal Mill 4',
+            'status' => 'active',
+        ]));
+        $matchedRecord = $records->first();
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $user->id,
+            'form_number' => '255/COM/06-2026',
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'equipment' => $matchedRecord->description,
+            'equipment_no' => '0',
+            'functional_location' => $matchedRecord->func_location,
+            'area' => $matchedRecord->area,
+            'header_data' => [
+                'master_data_record_id' => $matchedRecord->id,
+                'plant' => $matchedRecord->plant,
+                'area' => $matchedRecord->area,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.commissioning.dashboard', [
+                'equipment_area' => 'Coal Mill 4',
+            ]))
+            ->assertOk()
+            ->assertSee('Close 1 | On Going 0 | Belum Commissioning 4');
+    }
+
     public function test_qc_profile_uses_real_user_master_data_and_submission_stats(): void
     {
         $user = User::factory()->create([

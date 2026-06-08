@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CommissioningFormSubmission;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
+use App\Support\MasterDataIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -161,10 +162,11 @@ class AdminInspectionSubmissionPageData
             'equipment_no' => self::firstFilled($submission->equipment_no, $header['id_equipment'] ?? null),
             'section_no' => $submission->tag_num,
             'equipment_key' => self::firstFilled(
-                $submission->equipment_no,
-                $header['id_equipment'] ?? null,
                 $header['master_data_record_id'] ?? null,
                 $submission->functional_location,
+                $header['functional_location'] ?? null,
+                MasterDataIdentity::usableEquipmentNumber($submission->equipment_no),
+                MasterDataIdentity::usableEquipmentNumber($header['id_equipment'] ?? null),
                 $submission->tag_num
             ),
             'equipment' => self::firstFilled(
@@ -344,7 +346,11 @@ class AdminInspectionSubmissionPageData
             'functional_location' => $record->func_location,
             'equipment_no' => $record->equipment_no,
             'section_no' => $record->section_no,
-            'equipment_key' => self::firstFilled($record->equipment_no, $record->func_location, $record->id),
+            'equipment_key' => self::firstFilled(
+                $record->id,
+                $record->func_location,
+                MasterDataIdentity::usableEquipmentNumber($record->equipment_no)
+            ),
             'equipment' => $record->description,
             'user_name' => $submissionRow?->user_name,
             'user_photo_url' => $submissionRow?->user_photo_url,
@@ -376,12 +382,10 @@ class AdminInspectionSubmissionPageData
             return $rowFunctionalLocation === self::normalizeEquipmentKey($record->func_location);
         }
 
-        $rowEquipmentNo = self::normalizeEquipmentKey($row->equipment_no ?? $row->equipment_key ?? null);
-        if ($rowEquipmentNo !== null && filled($record->equipment_no)) {
-            return $rowEquipmentNo === self::normalizeEquipmentKey($record->equipment_no);
-        }
-
-        return false;
+        return MasterDataIdentity::equipmentNumbersMatch(
+            $row->equipment_no ?? $row->equipment_key ?? null,
+            $record->equipment_no
+        );
     }
 
     private static function firstFilled(mixed ...$values): mixed
@@ -608,8 +612,8 @@ class AdminInspectionSubmissionPageData
             return (clone $query)->where('func_location', $row->functional_location)->first();
         }
 
-        if (filled($row->equipment_no ?? null)) {
-            return (clone $query)->where('equipment_no', $row->equipment_no)->first();
+        if ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($row->equipment_no ?? null)) {
+            return (clone $query)->where('equipment_no', $equipmentNo)->first();
         }
 
         return null;
@@ -804,7 +808,7 @@ class AdminInspectionSubmissionPageData
     private static function recordMatchesEquipmentKeys(MasterDataRecord $record, Collection $equipmentKeys): bool
     {
         return collect([
-            $record->equipment_no,
+            MasterDataIdentity::usableEquipmentNumber($record->equipment_no),
             $record->description,
             $record->func_location,
             $record->section_no,

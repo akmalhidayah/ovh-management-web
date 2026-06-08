@@ -270,7 +270,7 @@ class UserTopbarNotifications
 
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
             || (filled($functionalLocation) && (string) $functionalLocation === (string) $record->func_location)
-            || (filled($equipmentNo) && filled($record->equipment_no) && (string) $equipmentNo === (string) $record->equipment_no);
+            || MasterDataIdentity::equipmentNumbersMatch($equipmentNo, $record->equipment_no);
     }
 
     private static function preferredProfileAreas(): array

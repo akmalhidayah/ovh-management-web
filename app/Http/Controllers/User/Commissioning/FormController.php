@@ -15,6 +15,7 @@ use App\Services\MasterDataInspectionStatusService;
 use App\Services\MasterDataStatusService;
 use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
+use App\Support\MasterDataIdentity;
 use App\Support\OrganizationSections;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
@@ -759,8 +760,8 @@ class FormController extends Controller
                     $used['functional_locations'][] = (string) $submission->functional_location;
                 }
 
-                if (filled($submission->equipment_no)) {
-                    $used['equipment_nos'][] = (string) $submission->equipment_no;
+                if ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($submission->equipment_no)) {
+                    $used['equipment_nos'][] = $equipmentNo;
                 }
             });
 
@@ -771,7 +772,8 @@ class FormController extends Controller
     {
         return in_array((string) $record->id, $used['ids'], true)
             || in_array((string) $record->func_location, $used['functional_locations'], true)
-            || (filled($record->equipment_no) && in_array((string) $record->equipment_no, $used['equipment_nos'], true));
+            || (($equipmentNo = MasterDataIdentity::usableEquipmentNumber($record->equipment_no)) !== null
+                && in_array($equipmentNo, $used['equipment_nos'], true));
     }
 
     private function currentSubmissionUsesMasterDataRecord(?CommissioningFormSubmission $submission, MasterDataRecord $record): bool
@@ -784,7 +786,7 @@ class FormController extends Controller
 
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
             || (filled($submission->functional_location) && (string) $submission->functional_location === (string) $record->func_location)
-            || (filled($submission->equipment_no) && filled($record->equipment_no) && (string) $submission->equipment_no === (string) $record->equipment_no);
+            || MasterDataIdentity::equipmentNumbersMatch($submission->equipment_no, $record->equipment_no);
     }
 
     private function syncMasterDataInspectionStatus(CommissioningFormSubmission $submission, Request $request): void
@@ -839,8 +841,8 @@ class FormController extends Controller
             return (clone $query)->where('func_location', $submission->functional_location)->first();
         }
 
-        if (filled($submission->equipment_no)) {
-            return (clone $query)->where('equipment_no', $submission->equipment_no)->first();
+        if ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($submission->equipment_no)) {
+            return (clone $query)->where('equipment_no', $equipmentNo)->first();
         }
 
         return null;

@@ -8,6 +8,7 @@ use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
 use App\Models\QcFormSubmission;
 use App\Models\User;
+use App\Support\MasterDataIdentity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -202,7 +203,7 @@ class InspectionSubmissionDeletionService
 
         return (filled($header['master_data_record_id'] ?? null) && (string) $header['master_data_record_id'] === (string) $record->id)
             || (filled($header['functional_location'] ?? null) && (string) $header['functional_location'] === (string) $record->func_location)
-            || (filled($header['id_equipment'] ?? null) && filled($record->equipment_no) && (string) $header['id_equipment'] === (string) $record->equipment_no);
+            || MasterDataIdentity::equipmentNumbersMatch($header['id_equipment'] ?? null, $record->equipment_no);
     }
 
     private function isOngoingQcStatus(?string $status): bool
@@ -224,8 +225,8 @@ class InspectionSubmissionDeletionService
             return (clone $query)->where('func_location', $header['functional_location'])->first();
         }
 
-        if (filled($header['id_equipment'] ?? null)) {
-            return (clone $query)->where('equipment_no', $header['id_equipment'])->first();
+        if ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($header['id_equipment'] ?? null)) {
+            return (clone $query)->where('equipment_no', $equipmentNo)->first();
         }
 
         return null;
@@ -245,8 +246,8 @@ class InspectionSubmissionDeletionService
             return (clone $query)->where('func_location', $submission->functional_location)->first();
         }
 
-        if (filled($submission->equipment_no)) {
-            return (clone $query)->where('equipment_no', $submission->equipment_no)->first();
+        if ($equipmentNo = MasterDataIdentity::usableEquipmentNumber($submission->equipment_no)) {
+            return (clone $query)->where('equipment_no', $equipmentNo)->first();
         }
 
         return null;
