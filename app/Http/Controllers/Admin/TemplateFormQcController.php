@@ -374,6 +374,17 @@ class TemplateFormQcController extends Controller
             ];
         }
 
+        if ($templateType === FixedQcTemplate::TYPE_ELECTRICAL) {
+            return [
+                'stator_rows' => $request->input('electrical_stator_rows', []),
+                'rotor_rows' => $request->input('electrical_rotor_rows', []),
+                'ovality_rows' => $request->input('electrical_ovality_rows', []),
+                'installation_rows' => $request->input('electrical_installation_rows', []),
+                'uncouple_rows' => $request->input('electrical_uncouple_rows', []),
+                'approval_defaults' => $request->input('approval_defaults', []),
+            ];
+        }
+
         if (FixedQcTemplate::isLockedBodyType($templateType)) {
             return [
                 'approval_defaults' => $request->input('approval_defaults', []),
@@ -419,6 +430,27 @@ class TemplateFormQcController extends Controller
                     'order_no' => $index + 1,
                     'row_data' => $row,
                 ]);
+            }
+
+            return;
+        }
+
+        if ($template->template_type === FixedQcTemplate::TYPE_ELECTRICAL) {
+            foreach (FixedQcTemplate::electricalSections() as $key => $title) {
+                $block = $template->blocks()->create([
+                    'type' => 'electrical_'.$key,
+                    'title' => $title,
+                    'order_no' => $template->blocks()->count() + 1,
+                    'config' => ['fixed' => true],
+                ]);
+
+                foreach ($schema[$key] ?? [] as $index => $row) {
+                    $block->tableRows()->create([
+                        'qc_form_template_id' => $template->id,
+                        'order_no' => $index + 1,
+                        'row_data' => $row,
+                    ]);
+                }
             }
 
             return;

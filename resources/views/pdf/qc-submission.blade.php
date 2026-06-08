@@ -789,6 +789,8 @@
                     <tr><td colspan="6">&nbsp;</td></tr>
                 @endforelse
             </table>
+        @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
+            @include('pdf.qc-electrical-body', ['bodyData' => $bodyData])
         @elseif ($type === FixedQcTemplate::TYPE_BRICS)
             @include('pdf.qc-brics-body', ['bodyData' => $bodyData])
         @else

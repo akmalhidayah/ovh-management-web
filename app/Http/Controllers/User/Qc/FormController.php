@@ -872,6 +872,44 @@ class FormController extends Controller
             ];
         }
 
+        if ($type === FixedQcTemplate::TYPE_ELECTRICAL) {
+            $schema = FixedQcTemplate::schemaForTemplate($template);
+
+            return [
+                'final_check' => (bool) ($body['final_check'] ?? false),
+                'electrical_stator_rows' => $this->electricalMeasurementData($schema['stator_rows'] ?? [], $body['electrical_stator_rows'] ?? []),
+                'electrical_rotor_rows' => $this->electricalMeasurementData($schema['rotor_rows'] ?? [], $body['electrical_rotor_rows'] ?? []),
+                'electrical_ovality_rows' => collect($schema['ovality_rows'] ?? [])->values()->map(function ($templateRow, $index) use ($body) {
+                    $row = collect($body['electrical_ovality_rows'] ?? [])->values()->get($index, []);
+
+                    return [
+                        'ring' => $templateRow['ring'] ?? '',
+                        'standard' => $templateRow['standard'] ?? '',
+                        'tir' => trim((string) ($row['tir'] ?? '')),
+                    ];
+                })->all(),
+                'electrical_installation_rows' => collect($schema['installation_rows'] ?? [])->values()->map(function ($templateRow, $index) use ($body) {
+                    $row = collect($body['electrical_installation_rows'] ?? [])->values()->get($index, []);
+
+                    return [
+                        'activity' => $templateRow['activity'] ?? '',
+                        'standard' => $templateRow['standard'] ?? '',
+                        'status' => trim((string) ($row['status'] ?? '')),
+                        'remark' => trim((string) ($row['remark'] ?? '')),
+                    ];
+                })->all(),
+                'electrical_uncouple_rows' => collect($schema['uncouple_rows'] ?? [])->values()->map(function ($templateRow, $index) use ($body) {
+                    $row = collect($body['electrical_uncouple_rows'] ?? [])->values()->get($index, []);
+
+                    return $templateRow + [
+                        'value_1' => trim((string) ($row['value_1'] ?? '')),
+                        'value_2' => trim((string) ($row['value_2'] ?? '')),
+                        'value_3' => trim((string) ($row['value_3'] ?? '')),
+                    ];
+                })->all(),
+            ];
+        }
+
         return [
             'final_check' => (bool) ($body['final_check'] ?? false),
             'general_rows' => array_key_exists('general_rows', $body)
@@ -1004,6 +1042,36 @@ class FormController extends Controller
                     $errors["body.brics_checks.{$key}.status"] = 'Status Brics wajib dipilih.';
                 }
             }
+        } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_ELECTRICAL) {
+            foreach (['electrical_stator_rows', 'electrical_rotor_rows'] as $section) {
+                foreach ($body[$section] ?? [] as $index => $row) {
+                    if (collect($row)->only(['value', 'second_30', 'minute_1', 'minute_10', 'pi'])->filter(fn ($value) => $value !== '')->isEmpty()) {
+                        $errors["body.{$section}.{$index}.value"] = 'Minimal satu hasil pengukuran wajib diisi.';
+                    }
+                }
+            }
+
+            foreach ($body['electrical_ovality_rows'] ?? [] as $index => $row) {
+                if (blank($row['tir'] ?? null)) {
+                    $errors["body.electrical_ovality_rows.{$index}.tir"] = 'Nilai TIR wajib diisi.';
+                }
+            }
+
+            foreach ($body['electrical_installation_rows'] ?? [] as $index => $row) {
+                if (! in_array($row['status'] ?? '', ['OK', 'NOT OK'], true)) {
+                    $errors["body.electrical_installation_rows.{$index}.status"] = 'Status checklist instalasi wajib dipilih.';
+                }
+
+                if (($row['status'] ?? '') === 'NOT OK' && blank($row['remark'] ?? null)) {
+                    $errors["body.electrical_installation_rows.{$index}.remark"] = 'Keterangan / Remarks wajib diisi jika status NOT OK.';
+                }
+            }
+
+            foreach ($body['electrical_uncouple_rows'] ?? [] as $index => $row) {
+                if (collect($row)->only(['value_1', 'value_2', 'value_3'])->filter(fn ($value) => $value !== '')->isEmpty()) {
+                    $errors["body.electrical_uncouple_rows.{$index}.value_1"] = 'Minimal satu hasil uncouple testing wajib diisi.';
+                }
+            }
         }
 
         if ($errors !== []) {
@@ -1122,6 +1190,29 @@ class FormController extends Controller
             return;
         }
 
+        if (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_ELECTRICAL) {
+            foreach ([
+                'electrical_stator_rows' => 'electrical_stator',
+                'electrical_rotor_rows' => 'electrical_rotor',
+                'electrical_ovality_rows' => 'electrical_ovality',
+                'electrical_installation_rows' => 'electrical_installation',
+                'electrical_uncouple_rows' => 'electrical_uncouple',
+            ] as $bodyKey => $blockType) {
+                foreach ($bodyData[$bodyKey] ?? [] as $index => $row) {
+                    $submission->rows()->create([
+                        'block_type' => $blockType,
+                        'order_no' => $index + 1,
+                        'row_data' => $row,
+                        'status_value' => $row['status'] ?? null,
+                        'catatan' => $row['remark'] ?? null,
+                        'aktual' => $row['tir'] ?? $row['value'] ?? $row['value_1'] ?? null,
+                    ]);
+                }
+            }
+
+            return;
+        }
+
         foreach ($bodyData['general_rows'] ?? [] as $index => $row) {
             $submission->rows()->create([
                 'block_type' => 'general',
@@ -1138,6 +1229,27 @@ class FormController extends Controller
     {
         return collect($values)
             ->map(fn ($value) => is_scalar($value) ? trim((string) $value) : '')
+            ->all();
+    }
+
+    private function electricalMeasurementData(array $templateRows, array $submittedRows): array
+    {
+        $submittedRows = collect($submittedRows)->values();
+
+        return collect($templateRows)
+            ->values()
+            ->map(function ($templateRow, $index) use ($submittedRows) {
+                $row = $submittedRows->get($index, []);
+
+                return [
+                    'item' => $templateRow['item'] ?? '',
+                    'value' => trim((string) ($row['value'] ?? '')),
+                    'second_30' => trim((string) ($row['second_30'] ?? '')),
+                    'minute_1' => trim((string) ($row['minute_1'] ?? '')),
+                    'minute_10' => trim((string) ($row['minute_10'] ?? '')),
+                    'pi' => trim((string) ($row['pi'] ?? '')),
+                ];
+            })
             ->all();
     }
 

@@ -1068,6 +1068,76 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame(0, QcFormSubmission::count());
     }
 
+    public function test_fixed_electrical_not_ok_requires_remark_and_saves_all_sections(): void
+    {
+        $user = User::factory()->create(['usertype' => 'user', 'role' => 'qc']);
+        $template = QcFormTemplate::create([
+            'code' => 'QCR-ELECTRICAL-SUBMIT-001',
+            'name' => 'Template QC Electrical',
+            'category' => 'Electrical',
+            'version' => '1.0',
+            'status' => 'active',
+            'layout_mode' => 'block_based',
+            'template_type' => FixedQcTemplate::TYPE_ELECTRICAL,
+            'body_schema' => FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_ELECTRICAL),
+        ]);
+
+        $payload = [
+            'template_id' => $template->id,
+            'action' => 'submit',
+            'header' => $this->fixedHeader(),
+            'body' => [
+                'final_check' => '1',
+                'electrical_stator_rows' => collect($template->body_schema['stator_rows'])->map(fn () => ['value' => '100'])->all(),
+                'electrical_rotor_rows' => collect($template->body_schema['rotor_rows'])->map(fn () => ['value' => '100'])->all(),
+                'electrical_ovality_rows' => collect($template->body_schema['ovality_rows'])->map(fn () => ['tir' => '35'])->all(),
+                'electrical_installation_rows' => collect($template->body_schema['installation_rows'])->map(fn () => ['status' => 'OK', 'remark' => ''])->all(),
+                'electrical_uncouple_rows' => collect($template->body_schema['uncouple_rows'])->map(fn () => ['value_1' => '10'])->all(),
+            ],
+            'approval' => [
+                'qc_inspector_q_c_inspektor' => [
+                    'signature' => $this->validSignatureData(),
+                    'name' => 'User QC',
+                    'date' => '2026-06-08',
+                    'role' => 'QC Inspektor',
+                    'signed_at' => now()->toISOString(),
+                ],
+            ],
+        ] + $this->requiredQcAttachments();
+
+        $payload['body']['electrical_installation_rows'][0] = ['status' => 'NOT OK', 'remark' => ''];
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertSessionHasErrors([
+                'body.electrical_installation_rows.0.remark' => 'Keterangan / Remarks wajib diisi jika status NOT OK.',
+            ]);
+
+        $payload['body']['electrical_installation_rows'][0]['remark'] = 'Terminasi perlu dikencangkan';
+        $payload['attachments'] = $this->requiredQcAttachments()['attachments'];
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $this->assertSame('NOT OK', $submission->body_data['electrical_installation_rows'][0]['status']);
+        $this->assertSame('Terminasi perlu dikencangkan', $submission->body_data['electrical_installation_rows'][0]['remark']);
+        $this->assertSame(5, $submission->rows()->where('block_type', 'electrical_installation')->count());
+        $this->assertSame(6, $submission->rows()->where('block_type', 'electrical_uncouple')->count());
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.show', $submission))
+            ->assertOk()
+            ->assertSee('Pengukuran Ovality')
+            ->assertSee('Terminasi perlu dikencangkan');
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.pdf', $submission))
+            ->assertOk();
+    }
+
     public function test_user_can_submit_fixed_brics_qc_with_dynamic_manpower_rows(): void
     {
         [$user, $template] = $this->makeFixedBricsTemplate();

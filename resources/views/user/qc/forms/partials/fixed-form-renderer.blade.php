@@ -203,6 +203,8 @@
         @include('user.qc.forms.partials.fixed-castable-body', ['oldBody' => $oldBody])
     @elseif ($type === FixedQcTemplate::TYPE_BRICS)
         @include('user.qc.forms.partials.fixed-brics-body', ['oldBody' => $oldBody])
+    @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
+        @include('user.qc.forms.partials.fixed-electrical-body')
     @else
         @include('user.qc.forms.partials.fixed-general-body')
     @endif
@@ -330,7 +332,7 @@
                     $isInspector = ($column['role'] ?? null) === 'QC Inspektor';
                     $defaultApprovalName = $approvalDefaults[$column['key']]['name'] ?? '';
                     $approvalName = $oldApproval[$column['key']]['name'] ?? ($defaultApprovalName ?: ($isInspector ? $signerName : ''));
-                    $isUnitKerjaApprover = in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING], true)
+                    $isUnitKerjaApprover = in_array($type, [FixedQcTemplate::TYPE_GENERAL, FixedQcTemplate::TYPE_WELDING, FixedQcTemplate::TYPE_ELECTRICAL], true)
                         && ($column['role'] ?? null) === 'Unit Kerja';
                     $approvalGroup = $column['group'];
                     $approvalLabel = $isUnitKerjaApprover

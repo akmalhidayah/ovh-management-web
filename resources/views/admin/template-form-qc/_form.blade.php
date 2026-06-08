@@ -8,11 +8,22 @@
         'rows' => old('general_rows', []),
         'welder_rows' => old('welding_welder_rows', []),
         'result_rows' => old('welding_result_rows', []),
+        'stator_rows' => old('electrical_stator_rows', []),
+        'rotor_rows' => old('electrical_rotor_rows', []),
+        'ovality_rows' => old('electrical_ovality_rows', []),
+        'installation_rows' => old('electrical_installation_rows', []),
+        'uncouple_rows' => old('electrical_uncouple_rows', []),
         'approval_defaults' => old('approval_defaults', []),
     ] : ($template->body_schema ?? FixedQcTemplate::defaultSchema($selectedType)));
     $generalRows = $schema['rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_GENERAL)['rows'];
     $welderRows = $schema['welder_rows'] ?? [];
     $resultRows = $schema['result_rows'] ?? FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_WELDING)['result_rows'];
+    $electricalDefaults = FixedQcTemplate::defaultSchema(FixedQcTemplate::TYPE_ELECTRICAL);
+    $electricalStatorRows = $schema['stator_rows'] ?? $electricalDefaults['stator_rows'];
+    $electricalRotorRows = $schema['rotor_rows'] ?? $electricalDefaults['rotor_rows'];
+    $electricalOvalityRows = $schema['ovality_rows'] ?? $electricalDefaults['ovality_rows'];
+    $electricalInstallationRows = $schema['installation_rows'] ?? $electricalDefaults['installation_rows'];
+    $electricalUncoupleRows = $schema['uncouple_rows'] ?? $electricalDefaults['uncouple_rows'];
     $approvalDefaults = $schema['approval_defaults'] ?? FixedQcTemplate::defaultApprovalDefaults($selectedType);
 
     if ($generalRows === []) {
@@ -267,6 +278,8 @@
         </div>
     </div>
 
+    @include('admin.template-form-qc.partials.fixed-electrical-editor')
+
     <div class="content-card" data-locked-body-editor>
         <div class="card-heading">
             <div>
@@ -394,6 +407,7 @@
             const generalEditor = document.querySelector('[data-general-editor]');
             const weldingEditor = document.querySelector('[data-welding-editor]');
             const lockedBodyEditor = document.querySelector('[data-locked-body-editor]');
+            const electricalEditor = document.querySelector('[data-electrical-editor]');
             const castableSummary = document.querySelector('[data-castable-summary]');
             const bricsSummary = document.querySelector('[data-brics-summary]');
             const approvalEditors = document.querySelectorAll('[data-approval-editor]');
@@ -405,10 +419,12 @@
                 const isWelding = typeSelect?.value === 'welding';
                 const isCastable = typeSelect?.value === 'castable';
                 const isBrics = typeSelect?.value === 'brics';
+                const isElectrical = typeSelect?.value === 'electrical';
                 const isLockedBody = isCastable || isBrics;
-                generalEditor?.classList.toggle('d-none', isWelding || isLockedBody);
+                generalEditor?.classList.toggle('d-none', isWelding || isLockedBody || isElectrical);
                 weldingEditor?.classList.toggle('d-none', !isWelding);
                 lockedBodyEditor?.classList.toggle('d-none', !isLockedBody);
+                electricalEditor?.classList.toggle('d-none', !isElectrical);
                 castableSummary?.classList.toggle('d-none', !isCastable);
                 bricsSummary?.classList.toggle('d-none', !isBrics);
                 approvalEditors.forEach((editor) => {
@@ -460,6 +476,43 @@
                     <td><input type="text" name="welding_result_rows[${index}][keterangan]" class="form-control form-control-sm"></td>
                     <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
                 </tr>`);
+            });
+
+            const electricalFields = {
+                stator: { item: 'Parameter' },
+                rotor: { item: 'Parameter' },
+                ovality: { ring: 'Ring', standard: 'Standar' },
+                installation: { activity: 'Aktivitas', standard: 'Standar' },
+                uncouple: { item: 'Item', label_1: 'Label 1', label_2: 'Label 2', label_3: 'Label 3' },
+            };
+            const nextElectricalIndex = (list, tableKey) => {
+                const indexes = Array.from(list.querySelectorAll(`[name^="electrical_${tableKey}_rows["]`))
+                    .map((input) => Number(input.name.match(/\[(\d+)]/)?.[1]))
+                    .filter(Number.isFinite);
+
+                return indexes.length ? Math.max(...indexes) + 1 : 0;
+            };
+
+            document.querySelectorAll('[data-add-electrical-row]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const tableKey = button.dataset.addElectricalRow;
+                    const list = document.querySelector(`[data-electrical-row-list="${tableKey}"]`);
+                    const index = nextElectricalIndex(list, tableKey);
+                    const rowNumber = list.querySelectorAll('[data-electrical-row]').length + 1;
+                    const inputs = Object.entries(electricalFields[tableKey] || {})
+                        .map(([field, label]) => `<td><input type="text" name="electrical_${tableKey}_rows[${index}][${field}]" class="form-control form-control-sm" placeholder="${label}"></td>`)
+                        .join('');
+                    const checklistFields = tableKey === 'installation'
+                        ? '<td class="text-center"><input type="checkbox" disabled></td><td><input type="text" class="form-control form-control-sm" disabled placeholder="Diisi user; wajib jika NOT OK"></td>'
+                        : '';
+
+                    list.insertAdjacentHTML('beforeend', `<tr data-electrical-row>
+                        <td class="text-center">${rowNumber}</td>
+                        ${inputs}
+                        ${checklistFields}
+                        <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Hapus</button></td>
+                    </tr>`);
+                });
             });
 
             document.addEventListener('click', (event) => {

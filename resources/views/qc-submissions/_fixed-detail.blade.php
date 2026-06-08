@@ -184,6 +184,28 @@
                 </table>
             </div>
         </section>
+    @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
+        @foreach ([
+            'electrical_stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)', 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_ovality_rows' => ['title' => 'Pengukuran Ovality', 'fields' => ['ring' => 'Ring', 'tir' => 'TIR', 'standard' => 'Standar']],
+            'electrical_installation_rows' => ['title' => 'Checklist Instalasi', 'fields' => ['activity' => 'Aktivitas', 'standard' => 'Standar', 'status' => 'OK/TIDAK', 'remark' => 'Keterangan / Remarks']],
+            'electrical_uncouple_rows' => ['title' => 'Uncouple Testing', 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
+        ] as $bodyKey => $section)
+            <section class="inspector-panel qc-form-card">
+                <div class="qc-form-section-title"><h3>{{ $section['title'] }}</h3></div>
+                <div class="qc-user-table-wrap">
+                    <table class="qc-user-checklist-table">
+                        <thead><tr><th>No</th>@foreach ($section['fields'] as $label)<th>{{ $label }}</th>@endforeach</tr></thead>
+                        <tbody>
+                            @foreach ($bodyData[$bodyKey] ?? [] as $row)
+                                <tr><td>{{ $loop->iteration }}</td>@foreach ($section['fields'] as $field => $label)<td>{{ $row[$field] ?? '-' }}</td>@endforeach</tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endforeach
     @else
         <section class="inspector-panel qc-form-card">
             <div><strong>Final Check:</strong> {{ ! empty($bodyData['final_check']) ? 'Ya' : 'Tidak' }}</div>

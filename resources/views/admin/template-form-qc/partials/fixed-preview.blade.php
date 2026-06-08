@@ -242,6 +242,35 @@
                 </table>
             </div>
         </section>
+    @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
+        @foreach ([
+            'stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)', 'columns' => ['item' => 'Parameter']],
+            'rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'columns' => ['item' => 'Parameter']],
+            'ovality_rows' => ['title' => 'Pengukuran Ovality', 'columns' => ['ring' => 'Ring', 'standard' => 'Standar']],
+            'installation_rows' => ['title' => 'Checklist Instalasi', 'columns' => ['activity' => 'Aktivitas', 'standard' => 'Standar']],
+            'uncouple_rows' => ['title' => 'Uncouple Testing', 'columns' => ['item' => 'Item', 'label_1' => 'Label 1', 'label_2' => 'Label 2', 'label_3' => 'Label 3']],
+        ] as $sectionKey => $section)
+            <section class="qc-preview-section">
+                <div class="qc-preview-section-head">
+                    <h2>{{ $section['title'] }}</h2>
+                    <span>Row diatur admin</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table qc-modern-table align-middle">
+                        <thead><tr><th>No</th>@foreach ($section['columns'] as $label)<th>{{ $label }}</th>@endforeach @if ($sectionKey === 'installation_rows')<th>OK/TIDAK</th><th>Keterangan / Remarks</th>@endif</tr></thead>
+                        <tbody>
+                            @foreach ($schema[$sectionKey] ?? [] as $row)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    @foreach ($section['columns'] as $field => $label)<td>{{ $row[$field] ?? '' }}</td>@endforeach
+                                    @if ($sectionKey === 'installation_rows')<td>OK / NOT OK</td><td>Wajib jika NOT OK</td>@endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endforeach
     @else
         <section class="qc-preview-section">
             <div class="qc-preview-section-head">

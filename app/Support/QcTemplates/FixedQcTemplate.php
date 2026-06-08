@@ -12,6 +12,7 @@ class FixedQcTemplate
     public const TYPE_WELDING = 'welding';
     public const TYPE_CASTABLE = 'castable';
     public const TYPE_BRICS = 'brics';
+    public const TYPE_ELECTRICAL = 'electrical';
 
     public static function types(): array
     {
@@ -20,6 +21,7 @@ class FixedQcTemplate
             self::TYPE_WELDING => 'QC Welding',
             self::TYPE_CASTABLE => 'QC Instalasi Castable',
             self::TYPE_BRICS => 'QC Instalasi BRICS',
+            self::TYPE_ELECTRICAL => 'QC Electrical',
         ];
     }
 
@@ -175,6 +177,17 @@ class FixedQcTemplate
             ];
         }
 
+        if ($type === self::TYPE_ELECTRICAL) {
+            return [
+                'stator_rows' => self::defaultElectricalStatorRows(),
+                'rotor_rows' => self::defaultElectricalRotorRows(),
+                'ovality_rows' => self::defaultElectricalOvalityRows(),
+                'installation_rows' => self::defaultElectricalInstallationRows(),
+                'uncouple_rows' => self::defaultElectricalUncoupleRows(),
+                'approval_defaults' => self::defaultApprovalDefaults($type),
+            ];
+        }
+
         return [
             'rows' => [
                 ['item_pengecekan' => '', 'standar' => '', 'urutan' => 1],
@@ -198,6 +211,17 @@ class FixedQcTemplate
 
         if (in_array($type, [self::TYPE_CASTABLE, self::TYPE_BRICS], true)) {
             return [
+                'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? [], $type),
+            ];
+        }
+
+        if ($type === self::TYPE_ELECTRICAL) {
+            return [
+                'stator_rows' => self::normalizeElectricalMeasurementRows($schema['stator_rows'] ?? []),
+                'rotor_rows' => self::normalizeElectricalMeasurementRows($schema['rotor_rows'] ?? []),
+                'ovality_rows' => self::normalizeElectricalOvalityRows($schema['ovality_rows'] ?? []),
+                'installation_rows' => self::normalizeElectricalInstallationRows($schema['installation_rows'] ?? []),
+                'uncouple_rows' => self::normalizeElectricalUncoupleRows($schema['uncouple_rows'] ?? []),
                 'approval_defaults' => self::normalizeApprovalDefaults($schema['approval_defaults'] ?? [], $type),
             ];
         }
@@ -266,7 +290,7 @@ class FixedQcTemplate
                 if ($preserveEditableBlank && $labelEditable && $hasApproval) {
                     $column['label'] = self::approvalEditableValue($type, $key, $approval['label'] ?? '');
                 } elseif (
-                    in_array($type, [self::TYPE_GENERAL, self::TYPE_WELDING], true)
+                    in_array($type, [self::TYPE_GENERAL, self::TYPE_WELDING, self::TYPE_ELECTRICAL], true)
                     && ($column['role'] ?? null) === 'Unit Kerja'
                     && trim((string) ($approval['label'] ?? '')) !== ''
                 ) {
@@ -626,5 +650,117 @@ class FixedQcTemplate
     public static function defaultCheckSteps(): array
     {
         return ['1', '2', 'Final Check'];
+    }
+
+    public static function electricalSections(): array
+    {
+        return [
+            'stator_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)',
+            'rotor_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)',
+            'ovality_rows' => 'Pengukuran Ovality',
+            'installation_rows' => 'Checklist Instalasi',
+            'uncouple_rows' => 'Uncouple Testing',
+        ];
+    }
+
+    public static function defaultElectricalStatorRows(): array
+    {
+        return [
+            ['item' => 'TEST VOLTAGE'],
+            ['item' => 'WINDING TEMP'],
+            ['item' => 'U to Earth (GΩ)'],
+            ['item' => 'V to Earth (GΩ)'],
+            ['item' => 'W to Earth (GΩ)'],
+        ];
+    }
+
+    public static function defaultElectricalRotorRows(): array
+    {
+        return [
+            ['item' => 'TEST VOLTAGE'],
+            ['item' => 'WINDING TEMP'],
+            ['item' => 'KLM to E (GΩ)'],
+        ];
+    }
+
+    public static function defaultElectricalOvalityRows(): array
+    {
+        $standard = 'Normal <40 um, fair 40 to 80 um, bad >80 um';
+
+        return [
+            ['ring' => 'K', 'standard' => $standard],
+            ['ring' => 'L', 'standard' => $standard],
+            ['ring' => 'M', 'standard' => $standard],
+        ];
+    }
+
+    public static function defaultElectricalInstallationRows(): array
+    {
+        return [
+            ['activity' => 'TERMINASI BAUT KAKI MOTOR', 'standard' => 'KENCANG/RAPAT'],
+            ['activity' => 'TERMINASI KABEL STATOR', 'standard' => 'KENCANG/RAPAT'],
+            ['activity' => 'TERMINASI KABEL ROTOR', 'standard' => 'KENCANG/RAPAT'],
+            ['activity' => 'TERMINASI KABEL SENSOR', 'standard' => 'KENCANG/RAPAT'],
+            ['activity' => 'ALIGNMENT', 'standard' => 'NORMAL'],
+        ];
+    }
+
+    public static function defaultElectricalUncoupleRows(): array
+    {
+        return [
+            ['item' => 'SPEED', 'label_1' => '', 'label_2' => '', 'label_3' => ''],
+            ['item' => 'CURRENT', 'label_1' => 'U', 'label_2' => 'V', 'label_3' => 'W'],
+            ['item' => 'TEMP BEARING DE', 'label_1' => 'DE', 'label_2' => 'NDE', 'label_3' => ''],
+            ['item' => 'TEMP WINDING', 'label_1' => 'U', 'label_2' => 'V', 'label_3' => 'W'],
+            ['item' => 'VIBRASI DE', 'label_1' => 'A', 'label_2' => 'H', 'label_3' => 'V'],
+            ['item' => 'VIBRASI NDE', 'label_1' => 'A', 'label_2' => 'H', 'label_3' => 'V'],
+        ];
+    }
+
+    public static function normalizeElectricalMeasurementRows(array $rows): array
+    {
+        return collect($rows)
+            ->map(fn ($row) => ['item' => trim((string) Arr::get($row, 'item', ''))])
+            ->filter(fn ($row) => $row['item'] !== '')
+            ->values()
+            ->all();
+    }
+
+    public static function normalizeElectricalOvalityRows(array $rows): array
+    {
+        return collect($rows)
+            ->map(fn ($row) => [
+                'ring' => trim((string) Arr::get($row, 'ring', '')),
+                'standard' => trim((string) Arr::get($row, 'standard', Arr::get($row, 'standar', ''))),
+            ])
+            ->filter(fn ($row) => $row['ring'] !== '' || $row['standard'] !== '')
+            ->values()
+            ->all();
+    }
+
+    public static function normalizeElectricalInstallationRows(array $rows): array
+    {
+        return collect($rows)
+            ->map(fn ($row) => [
+                'activity' => trim((string) Arr::get($row, 'activity', Arr::get($row, 'aktivitas', ''))),
+                'standard' => trim((string) Arr::get($row, 'standard', Arr::get($row, 'standar', ''))),
+            ])
+            ->filter(fn ($row) => $row['activity'] !== '' || $row['standard'] !== '')
+            ->values()
+            ->all();
+    }
+
+    public static function normalizeElectricalUncoupleRows(array $rows): array
+    {
+        return collect($rows)
+            ->map(fn ($row) => [
+                'item' => trim((string) Arr::get($row, 'item', '')),
+                'label_1' => trim((string) Arr::get($row, 'label_1', '')),
+                'label_2' => trim((string) Arr::get($row, 'label_2', '')),
+                'label_3' => trim((string) Arr::get($row, 'label_3', '')),
+            ])
+            ->filter(fn ($row) => collect($row)->filter()->isNotEmpty())
+            ->values()
+            ->all();
     }
 }
