@@ -15,28 +15,37 @@
         <div class="qc-user-table-wrap">
             <table class="qc-user-checklist-table">
                 <thead>
-                    <tr><th>No</th><th>Parameter</th><th>Nilai</th><th>30 detik</th><th>1 Menit</th><th>10 Menit</th><th>PI</th></tr>
+                    <tr><th>No</th><th>Parameter</th><th colspan="4">Nilai</th></tr>
                 </thead>
                 <tbody>
                     @foreach ($section['rows'] as $index => $row)
                         @php
                             $isSingleFieldMeasurement = in_array(strtoupper(trim((string) ($row['item'] ?? ''))), ['TEST VOLTAGE', 'WINDING TEMP'], true);
                         @endphp
+                        @if ($index === 2)
+                            <tr>
+                                <td>3</td>
+                                <td><strong>WAKTU</strong></td>
+                                <td class="text-center fw-semibold">30 detik</td>
+                                <td class="text-center fw-semibold">1 Menit</td>
+                                <td class="text-center fw-semibold">10 Menit</td>
+                                <td class="text-center fw-semibold">PI</td>
+                            </tr>
+                        @endif
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $index < 2 ? $index + 1 : $index + 2 }}</td>
                             <td>
                                 <input type="hidden" name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][item]" value="{{ $row['item'] ?? '' }}">
                                 <strong>{{ $row['item'] ?? '' }}</strong>
                             </td>
                             @if ($isSingleFieldMeasurement)
-                                <td colspan="5">
+                                <td colspan="4">
                                     <input type="text"
                                            class="form-control form-control-sm"
                                            name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][value]"
                                            value="{{ $row['value'] ?? '' }}">
                                 </td>
                             @else
-                                <td class="text-center text-muted">-</td>
                                 @foreach (['second_30', 'minute_1', 'minute_10', 'pi'] as $field)
                                     <td><input type="text" class="form-control form-control-sm" name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][{{ $field }}]" value="{{ $row[$field] ?? '' }}"></td>
                                 @endforeach
@@ -109,7 +118,11 @@
             <thead><tr><th>No</th><th>Item</th><th>Hasil 1</th><th>Hasil 2</th><th>Hasil 3</th></tr></thead>
             <tbody>
                 @foreach ($electricalUncoupleRows as $index => $row)
-                    @php($isSpeedRow = strtoupper(trim((string) ($row['item'] ?? ''))) === 'SPEED')
+                    @php
+                        $uncoupleItem = strtoupper(trim((string) ($row['item'] ?? '')));
+                        $isSpeedRow = $uncoupleItem === 'SPEED';
+                        $isBearingTemperatureRow = $uncoupleItem === 'TEMP BEARING DE';
+                    @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td><strong>{{ $row['item'] ?? '' }}</strong></td>
@@ -120,6 +133,15 @@
                                        name="body[electrical_uncouple_rows][{{ $index }}][value_1]"
                                        value="{{ $row['value_1'] ?? '' }}">
                             </td>
+                        @elseif ($isBearingTemperatureRow)
+                            @foreach ([1, 2] as $column)
+                                <td @if ($column === 2) colspan="2" @endif>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">{{ $row["label_{$column}"] }} :</span>
+                                        <input type="text" class="form-control" name="body[electrical_uncouple_rows][{{ $index }}][value_{{ $column }}]" value="{{ $row["value_{$column}"] ?? '' }}">
+                                    </div>
+                                </td>
+                            @endforeach
                         @else
                             @foreach ([1, 2, 3] as $column)
                                 <td>
