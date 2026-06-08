@@ -112,7 +112,7 @@
 </section>
 
 <section class="inspector-panel qc-form-card">
-    <div class="qc-form-section-title"><h3>UNCOUPLE TESTING</h3></div>
+    <div class="qc-form-section-title"><h3>UNCOUPLE TESTING <span class="text-muted fw-normal">(Opsional)</span></h3></div>
     <div class="qc-user-table-wrap">
         <table class="qc-user-checklist-table">
             <thead><tr><th>No</th><th>Item</th><th>Hasil 1</th><th>Hasil 2</th><th>Hasil 3</th></tr></thead>

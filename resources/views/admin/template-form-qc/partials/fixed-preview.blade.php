@@ -248,7 +248,7 @@
             'rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'columns' => ['item' => 'Parameter']],
             'ovality_rows' => ['title' => 'Pengukuran Ovality', 'columns' => ['ring' => 'Ring', 'standard' => 'Standar']],
             'installation_rows' => ['title' => 'Checklist Instalasi', 'columns' => ['activity' => 'Aktivitas', 'standard' => 'Standar']],
-            'uncouple_rows' => ['title' => 'Uncouple Testing', 'columns' => ['item' => 'Item', 'label_1' => 'Label 1', 'label_2' => 'Label 2', 'label_3' => 'Label 3']],
+            'uncouple_rows' => ['title' => 'Uncouple Testing (Opsional)', 'columns' => ['item' => 'Item', 'label_1' => 'Label 1', 'label_2' => 'Label 2', 'label_3' => 'Label 3']],
         ] as $sectionKey => $section)
             <section class="qc-preview-section">
                 <div class="qc-preview-section-head">

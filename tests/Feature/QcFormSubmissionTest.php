@@ -1251,7 +1251,11 @@ class QcFormSubmissionTest extends TestCase
                 'electrical_rotor_rows' => collect($template->body_schema['rotor_rows'])->map(fn () => ['value' => '100'])->all(),
                 'electrical_ovality_rows' => collect($template->body_schema['ovality_rows'])->map(fn () => ['tir' => '35'])->all(),
                 'electrical_installation_rows' => collect($template->body_schema['installation_rows'])->map(fn () => ['status' => 'OK', 'remark' => ''])->all(),
-                'electrical_uncouple_rows' => collect($template->body_schema['uncouple_rows'])->map(fn () => ['value_1' => '10'])->all(),
+                'electrical_uncouple_rows' => collect($template->body_schema['uncouple_rows'])->map(fn () => [
+                    'value_1' => '',
+                    'value_2' => '',
+                    'value_3' => '',
+                ])->all(),
             ],
             'approval' => [
                 'qc_inspector_q_c_inspektor' => [
@@ -1285,11 +1289,13 @@ class QcFormSubmissionTest extends TestCase
         $this->assertSame('Terminasi perlu dikencangkan', $submission->body_data['electrical_installation_rows'][0]['remark']);
         $this->assertSame(5, $submission->rows()->where('block_type', 'electrical_installation')->count());
         $this->assertSame(6, $submission->rows()->where('block_type', 'electrical_uncouple')->count());
+        $this->assertSame('', $submission->body_data['electrical_uncouple_rows'][0]['value_1']);
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.show', $submission))
             ->assertOk()
             ->assertSee('Pengukuran Ovality')
+            ->assertSee('Uncouple Testing (Opsional)')
             ->assertSee('Terminasi perlu dikencangkan');
 
         $this->actingAs($user)

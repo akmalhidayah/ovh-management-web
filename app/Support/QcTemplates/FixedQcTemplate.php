@@ -682,7 +682,7 @@ class FixedQcTemplate
             'rotor_rows' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)',
             'ovality_rows' => 'Pengukuran Ovality',
             'installation_rows' => 'Checklist Instalasi',
-            'uncouple_rows' => 'Uncouple Testing',
+            'uncouple_rows' => 'Uncouple Testing (Opsional)',
         ];
     }
 

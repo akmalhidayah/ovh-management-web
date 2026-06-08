@@ -1071,11 +1071,6 @@ class FormController extends Controller
                 }
             }
 
-            foreach ($body['electrical_uncouple_rows'] ?? [] as $index => $row) {
-                if (collect($row)->only(['value_1', 'value_2', 'value_3'])->filter(fn ($value) => $value !== '')->isEmpty()) {
-                    $errors["body.electrical_uncouple_rows.{$index}.value_1"] = 'Minimal satu hasil uncouple testing wajib diisi.';
-                }
-            }
         }
 
         if ($errors !== []) {

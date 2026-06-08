@@ -21,7 +21,7 @@
             'fields' => ['activity' => 'Aktivitas', 'standard' => 'Standar'],
         ],
         'uncouple' => [
-            'title' => 'Uncouple Testing',
+            'title' => 'Uncouple Testing (Opsional)',
             'rows' => $electricalUncoupleRows,
             'fields' => ['item' => 'Item', 'label_1' => 'Label 1', 'label_2' => 'Label 2', 'label_3' => 'Label 3'],
         ],

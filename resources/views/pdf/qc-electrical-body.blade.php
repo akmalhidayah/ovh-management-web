@@ -3,7 +3,7 @@
     'electrical_rotor_rows' => ['title' => 'PENGUKURAN INSULATION RESISTANCE & POLARIZATION INDEX (ROTOR)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
     'electrical_ovality_rows' => ['title' => 'PENGUKURAN OVALITY', 'fields' => ['ring' => 'Ring', 'tir' => 'TIR', 'standard' => 'Standar']],
     'electrical_installation_rows' => ['title' => 'CHECKLIST INSTALASI', 'fields' => ['activity' => 'Aktivitas', 'standard' => 'Standar', 'status' => 'OK/TIDAK', 'remark' => 'Keterangan / Remarks']],
-    'electrical_uncouple_rows' => ['title' => 'UNCOUPLE TESTING', 'uncouple' => true, 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
+    'electrical_uncouple_rows' => ['title' => 'UNCOUPLE TESTING (OPSIONAL)', 'uncouple' => true, 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
 ] as $bodyKey => $section)
     <div class="fixed-section-title {{ $loop->first ? '' : 'brics-section-gap' }}">{{ $section['title'] }}</div>
     <table class="data-table">
