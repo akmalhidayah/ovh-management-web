@@ -186,11 +186,11 @@
         </section>
     @elseif ($type === FixedQcTemplate::TYPE_ELECTRICAL)
         @foreach ([
-            'electrical_stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)', 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
-            'electrical_rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_stator_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Stator)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
+            'electrical_rotor_rows' => ['title' => 'Pengukuran Insulation Resistance & Polarization Index (Rotor)', 'measurement' => true, 'fields' => ['item' => 'Parameter', 'value' => 'Nilai', 'second_30' => '30 detik', 'minute_1' => '1 Menit', 'minute_10' => '10 Menit', 'pi' => 'PI']],
             'electrical_ovality_rows' => ['title' => 'Pengukuran Ovality', 'fields' => ['ring' => 'Ring', 'tir' => 'TIR', 'standard' => 'Standar']],
             'electrical_installation_rows' => ['title' => 'Checklist Instalasi', 'fields' => ['activity' => 'Aktivitas', 'standard' => 'Standar', 'status' => 'OK/TIDAK', 'remark' => 'Keterangan / Remarks']],
-            'electrical_uncouple_rows' => ['title' => 'Uncouple Testing', 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
+            'electrical_uncouple_rows' => ['title' => 'Uncouple Testing', 'uncouple' => true, 'fields' => ['item' => 'Item', 'value_1' => 'Hasil 1', 'value_2' => 'Hasil 2', 'value_3' => 'Hasil 3']],
         ] as $bodyKey => $section)
             <section class="inspector-panel qc-form-card">
                 <div class="qc-form-section-title"><h3>{{ $section['title'] }}</h3></div>
@@ -199,7 +199,23 @@
                         <thead><tr><th>No</th>@foreach ($section['fields'] as $label)<th>{{ $label }}</th>@endforeach</tr></thead>
                         <tbody>
                             @foreach ($bodyData[$bodyKey] ?? [] as $row)
-                                <tr><td>{{ $loop->iteration }}</td>@foreach ($section['fields'] as $field => $label)<td>{{ $row[$field] ?? '-' }}</td>@endforeach</tr>
+                                @php
+                                    $item = strtoupper(trim((string) ($row['item'] ?? '')));
+                                    $isSingleMeasurement = ! empty($section['measurement']) && in_array($item, ['TEST VOLTAGE', 'WINDING TEMP'], true);
+                                    $isSpeed = ! empty($section['uncouple']) && $item === 'SPEED';
+                                @endphp
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    @if ($isSingleMeasurement)
+                                        <td>{{ $row['item'] ?? '-' }}</td>
+                                        <td colspan="5">{{ $row['value'] ?? '-' }}</td>
+                                    @elseif ($isSpeed)
+                                        <td>{{ $row['item'] ?? '-' }}</td>
+                                        <td colspan="3">{{ $row['value_1'] ?? '-' }}</td>
+                                    @else
+                                        @foreach ($section['fields'] as $field => $label)<td>{{ $row[$field] ?? '-' }}</td>@endforeach
+                                    @endif
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>

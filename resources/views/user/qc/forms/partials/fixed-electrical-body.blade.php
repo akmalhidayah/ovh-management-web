@@ -19,15 +19,28 @@
                 </thead>
                 <tbody>
                     @foreach ($section['rows'] as $index => $row)
+                        @php
+                            $isSingleFieldMeasurement = in_array(strtoupper(trim((string) ($row['item'] ?? ''))), ['TEST VOLTAGE', 'WINDING TEMP'], true);
+                        @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>
                                 <input type="hidden" name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][item]" value="{{ $row['item'] ?? '' }}">
                                 <strong>{{ $row['item'] ?? '' }}</strong>
                             </td>
-                            @foreach (['value', 'second_30', 'minute_1', 'minute_10', 'pi'] as $field)
-                                <td><input type="text" class="form-control form-control-sm" name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][{{ $field }}]" value="{{ $row[$field] ?? '' }}"></td>
-                            @endforeach
+                            @if ($isSingleFieldMeasurement)
+                                <td colspan="5">
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][value]"
+                                           value="{{ $row['value'] ?? '' }}">
+                                </td>
+                            @else
+                                <td class="text-center text-muted">-</td>
+                                @foreach (['second_30', 'minute_1', 'minute_10', 'pi'] as $field)
+                                    <td><input type="text" class="form-control form-control-sm" name="body[electrical_{{ $sectionKey }}_rows][{{ $index }}][{{ $field }}]" value="{{ $row[$field] ?? '' }}"></td>
+                                @endforeach
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>
@@ -96,19 +109,29 @@
             <thead><tr><th>No</th><th>Item</th><th>Hasil 1</th><th>Hasil 2</th><th>Hasil 3</th></tr></thead>
             <tbody>
                 @foreach ($electricalUncoupleRows as $index => $row)
+                    @php($isSpeedRow = strtoupper(trim((string) ($row['item'] ?? ''))) === 'SPEED')
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td><strong>{{ $row['item'] ?? '' }}</strong></td>
-                        @foreach ([1, 2, 3] as $column)
-                            <td>
-                                <div class="input-group input-group-sm">
-                                    @if (filled($row["label_{$column}"] ?? ''))
-                                        <span class="input-group-text">{{ $row["label_{$column}"] }} :</span>
-                                    @endif
-                                    <input type="text" class="form-control" name="body[electrical_uncouple_rows][{{ $index }}][value_{{ $column }}]" value="{{ $row["value_{$column}"] ?? '' }}">
-                                </div>
+                        @if ($isSpeedRow)
+                            <td colspan="3">
+                                <input type="text"
+                                       class="form-control"
+                                       name="body[electrical_uncouple_rows][{{ $index }}][value_1]"
+                                       value="{{ $row['value_1'] ?? '' }}">
                             </td>
-                        @endforeach
+                        @else
+                            @foreach ([1, 2, 3] as $column)
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        @if (filled($row["label_{$column}"] ?? ''))
+                                            <span class="input-group-text">{{ $row["label_{$column}"] }} :</span>
+                                        @endif
+                                        <input type="text" class="form-control" name="body[electrical_uncouple_rows][{{ $index }}][value_{{ $column }}]" value="{{ $row["value_{$column}"] ?? '' }}">
+                                    </div>
+                                </td>
+                            @endforeach
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
