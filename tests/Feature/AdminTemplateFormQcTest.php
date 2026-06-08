@@ -192,6 +192,43 @@ class AdminTemplateFormQcTest extends TestCase
         $this->assertSame('Visual welding', $template->body_schema['result_rows'][0]['deskripsi']);
     }
 
+    public function test_admin_can_create_qc_electrical_template_with_dynamic_rows(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.template-form-qc.store'), [
+            'code' => 'ELECTRICAL',
+            'name' => 'Template QC Electrical',
+            'category' => 'Electrical',
+            'version' => '1.0',
+            'status' => 'active',
+            'template_type' => FixedQcTemplate::TYPE_ELECTRICAL,
+            'electrical_stator_rows' => [
+                ['item' => 'TEST VOLTAGE'],
+                ['item' => 'U to Earth (GΩ)'],
+            ],
+            'electrical_rotor_rows' => [['item' => 'KLM to E (GΩ)']],
+            'electrical_ovality_rows' => [['ring' => 'K', 'standard' => 'Normal <40 um']],
+            'electrical_installation_rows' => [['activity' => 'ALIGNMENT', 'standard' => 'NORMAL']],
+            'electrical_uncouple_rows' => [['item' => 'CURRENT', 'label_1' => 'U', 'label_2' => 'V', 'label_3' => 'W']],
+        ]);
+
+        $template = QcFormTemplate::where('code', 'QCR-ELECTRICAL-001')->firstOrFail();
+
+        $response->assertRedirect(route('admin.template-form-qc.preview', $template));
+        $this->assertSame(FixedQcTemplate::TYPE_ELECTRICAL, $template->template_type);
+        $this->assertCount(2, $template->body_schema['stator_rows']);
+        $this->assertSame('ALIGNMENT', $template->body_schema['installation_rows'][0]['activity']);
+        $this->assertSame(5, $template->blocks()->count());
+        $this->assertSame(6, $template->tableRows()->count());
+
+        $this->actingAs($admin)
+            ->get(route('admin.template-form-qc.edit', $template))
+            ->assertOk()
+            ->assertSee('Body QC Electrical')
+            ->assertSee('Keterangan / Remarks');
+    }
+
     public function test_admin_can_save_blank_welder_rows_for_qc_welding_template(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
