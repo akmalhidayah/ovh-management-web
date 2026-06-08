@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\MasterDataRecord;
 use App\Models\OrganizationSection;
 use App\Services\MasterDataInspectionStatusService;
+use App\Services\MasterDataStatusService;
+use App\Services\MasterDataUsageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -17,8 +20,10 @@ class MasterDataController extends Controller
     public function index(Request $request): View
     {
         $filters = $this->filtersFromRequest($request);
+        $filteredQuery = $this->filteredRecordsQuery($filters);
+        $filteredRecordCount = (clone $filteredQuery)->count();
 
-        $records = $this->filteredRecordsQuery($filters)
+        $records = $filteredQuery
             ->with('organizationSection')
             ->orderByRaw("case when status = 'active' then 0 else 1 end")
             ->orderBy('document_category')
@@ -41,6 +46,7 @@ class MasterDataController extends Controller
             'statusOptions' => MasterDataRecord::statuses(),
             'organizationSectionOptions' => $this->organizationSectionOptions(),
             'summary' => $this->summary(),
+            'filteredRecordCount' => $filteredRecordCount,
         ]);
     }
 
@@ -56,17 +62,46 @@ class MasterDataController extends Controller
             ->with('success', 'Master data berhasil ditambahkan.');
     }
 
-    public function update(Request $request, MasterDataRecord $masterDataRecord): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        MasterDataRecord $masterDataRecord,
+        MasterDataStatusService $statusService,
+        MasterDataUsageService $usageService
+    ): RedirectResponse {
         $validated = $this->validateRecord($request, $masterDataRecord);
+        $status = $validated['status'];
+        unset($validated['status']);
 
-        $masterDataRecord->update($validated);
+        if (
+            $masterDataRecord->status !== 'inactive'
+            && $status === 'inactive'
+            && $usageService->isInUse($masterDataRecord)
+        ) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'status' => 'Equipment tidak dapat dinonaktifkan karena masih digunakan oleh draft/submission aktif.',
+                ]);
+        }
+
+        DB::transaction(function () use ($masterDataRecord, $validated, $status, $statusService, $request): void {
+            $masterDataRecord->fill($validated)->save();
+            $statusService->setStatus(
+                $masterDataRecord,
+                $status,
+                MasterDataStatusService::SOURCE_MANUAL_ADMIN,
+                $request->user()
+            );
+        });
 
         return back()->with('success', 'Master data berhasil diperbarui.');
     }
 
-    public function bulkStatus(Request $request): RedirectResponse
-    {
+    public function bulkStatus(
+        Request $request,
+        MasterDataStatusService $statusService,
+        MasterDataUsageService $usageService
+    ): RedirectResponse {
         $validated = $request->validate([
             'record_ids' => ['required', 'array', 'min:1'],
             'record_ids.*' => ['integer', 'exists:master_data_records,id'],
@@ -76,16 +111,39 @@ class MasterDataController extends Controller
             'record_ids.min' => 'Pilih minimal satu functional location terlebih dahulu.',
         ]);
 
-        $updated = MasterDataRecord::whereIn('id', $validated['record_ids'])
-            ->update(['status' => $validated['status']]);
-
+        $records = MasterDataRecord::whereIn('id', $validated['record_ids'])->get();
+        $partition = $validated['status'] === 'inactive'
+            ? $usageService->partition($records)
+            : ['eligible' => $records, 'protected' => collect()];
+        $recordsToUpdate = $partition['eligible']
+            ->filter(fn (MasterDataRecord $record) => $record->status !== $validated['status']);
+        $skipped = $partition['protected']->count();
         $label = MasterDataRecord::statuses()[$validated['status']];
 
-        return back()->with('success', "{$updated} master data berhasil diubah menjadi {$label}.");
+        DB::transaction(function () use ($recordsToUpdate, $validated, $statusService, $request): void {
+            $recordsToUpdate->each(function (MasterDataRecord $record) use ($validated, $statusService, $request): void {
+                $statusService->setStatus(
+                    $record,
+                    $validated['status'],
+                    MasterDataStatusService::SOURCE_BULK_SELECTED,
+                    $request->user()
+                );
+            });
+        });
+
+        $message = "{$recordsToUpdate->count()} master data berhasil diubah menjadi {$label}.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} dilewati karena masih digunakan oleh draft/submission aktif.";
+        }
+
+        return back()->with('success', $message);
     }
 
-    public function bulkFilteredStatus(Request $request): RedirectResponse
-    {
+    public function bulkFilteredStatus(
+        Request $request,
+        MasterDataStatusService $statusService,
+        MasterDataUsageService $usageService
+    ): RedirectResponse {
         $validated = $request->validate([
             'status' => ['required', Rule::in(array_keys(MasterDataRecord::statuses()))],
             'document_category' => ['nullable', Rule::in(['all', ...array_keys(MasterDataRecord::documentCategories())])],
@@ -105,17 +163,38 @@ class MasterDataController extends Controller
             'search' => $validated['search'] ?? null,
         ];
 
-        $query = $this->filteredRecordsQuery($filters);
-        $matched = (clone $query)->count();
+        $records = $this->filteredRecordsQuery($filters)->get();
+        $matched = $records->count();
         $label = MasterDataRecord::statuses()[$validated['status']];
 
         if ($matched === 0) {
             return back()->with('success', 'Tidak ada master data yang cocok dengan filter saat ini.');
         }
 
-        $query->update(['status' => $validated['status']]);
+        $partition = $validated['status'] === 'inactive'
+            ? $usageService->partition($records)
+            : ['eligible' => $records, 'protected' => collect()];
+        $recordsToUpdate = $partition['eligible']
+            ->filter(fn (MasterDataRecord $record) => $record->status !== $validated['status']);
+        $skipped = $partition['protected']->count();
 
-        return back()->with('success', "{$matched} master data hasil filter berhasil diubah menjadi {$label}.");
+        DB::transaction(function () use ($recordsToUpdate, $validated, $statusService, $request): void {
+            $recordsToUpdate->each(function (MasterDataRecord $record) use ($validated, $statusService, $request): void {
+                $statusService->setStatus(
+                    $record,
+                    $validated['status'],
+                    MasterDataStatusService::SOURCE_BULK_FILTERED,
+                    $request->user()
+                );
+            });
+        });
+
+        $message = "{$recordsToUpdate->count()} master data hasil filter berhasil diubah menjadi {$label}.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} dilewati karena masih digunakan oleh draft/submission aktif.";
+        }
+
+        return back()->with('success', $message);
     }
 
     public function updateInspectionStatus(

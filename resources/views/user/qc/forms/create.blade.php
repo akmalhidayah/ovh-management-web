@@ -550,6 +550,22 @@
         })();
 
         (() => {
+            document.querySelectorAll('[data-existing-attachment-remove]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const item = button.closest('[data-existing-attachment-item]');
+                    const input = item?.querySelector('[data-existing-attachment-remove-input]');
+
+                    if (!item || !input) {
+                        return;
+                    }
+
+                    input.disabled = false;
+                    item.classList.add('d-none');
+                });
+            });
+        })();
+
+        (() => {
             const MAX_IMAGE_BYTES = 1.4 * 1024 * 1024;
             const MAX_TOTAL_UPLOAD_BYTES = 24 * 1024 * 1024;
             const MAX_IMAGE_DIMENSION = 1800;

@@ -448,10 +448,10 @@
                         <div class="admin-remarks-list">
                             @foreach ($remarks as $remark)
                                 @php
-                                    $remarkResult = strtoupper(trim((string) ($remark['result'] ?? '')));
-                                    $remarkResultClass = match ($remarkResult) {
-                                        'YES' => 'is-yes',
-                                        'NO' => 'is-no',
+                                    $remarkResult = strtoupper(preg_replace('/\s+/', ' ', trim((string) ($remark['result'] ?? ''))));
+                                    $remarkResultClass = match (true) {
+                                        in_array($remarkResult, ['YES', 'OK', 'BAIK'], true) => 'is-yes',
+                                        in_array($remarkResult, ['NO', 'NOT OK', 'NOT OKAY', 'PERLU PERBAIKAN', 'TIDAK LAYAK'], true) => 'is-no',
                                         default => '',
                                     };
                                 @endphp
@@ -1444,12 +1444,13 @@
             margin-bottom: .35rem;
             color: #0f172a;
             font-size: .86rem;
-            font-weight: 800;
+            font-weight: 400;
         }
 
         .admin-remarks-item-text {
-            color: #334155;
+            color: #0f172a;
             font-size: .86rem;
+            font-weight: 800;
             line-height: 1.45;
             overflow-wrap: anywhere;
         }

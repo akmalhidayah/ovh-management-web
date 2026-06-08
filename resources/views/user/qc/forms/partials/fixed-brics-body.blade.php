@@ -28,6 +28,8 @@
 
     $bricsWeather = $oldBody['brics_weather'] ?? [];
     $bricsChecks = $oldBody['brics_checks'] ?? [];
+    $requiredCustomerKeys = FixedQcTemplate::requiredBricsCustomerKeys();
+    $requiredTechnicalKeys = FixedQcTemplate::requiredBricsTechnicalKeys();
 @endphp
 
 <section class="inspector-panel qc-form-card">
@@ -45,12 +47,18 @@
                 @foreach (FixedQcTemplate::bricsCustomerRows() as $row)
                     <tr>
                         <td class="text-center" data-label="No">{{ $row['no'] }}</td>
-                        <td data-label="Item">{{ $row['label'] }}</td>
+                        <td data-label="Item">
+                            {{ $row['label'] }}
+                            @if (in_array($row['key'], $requiredCustomerKeys, true))
+                                <span class="text-danger">*</span>
+                            @endif
+                        </td>
                         <td data-label="Data">
                             <input type="text"
                                    name="body[brics_customer][{{ $row['key'] }}]"
                                    value="{{ $bricsCustomer[$row['key']] ?? ($row['default'] ?? '') }}"
-                                   class="form-control form-control-sm">
+                                   class="form-control form-control-sm"
+                                   @if (in_array($row['key'], $requiredCustomerKeys, true)) required @endif>
                         </td>
                         @if ($loop->first)
                             <td rowspan="2" class="text-center fw-semibold" data-label="Meta">OWNER</td>
@@ -89,18 +97,24 @@
     <div class="qc-user-field-grid">
         @foreach (FixedQcTemplate::bricsTechnicalRows() as $row)
             <label class="qc-user-field">
-                <span>{{ $row['label'] }}</span>
+                <span>
+                    {{ $row['label'] }}
+                    @if (in_array($row['key'], $requiredTechnicalKeys, true))
+                        <span class="text-danger">*</span>
+                    @endif
+                </span>
                 <input type="{{ $row['type'] ?? 'text' }}"
                        name="body[brics_technical][{{ $row['key'] }}]"
                        value="{{ $bricsTechnical[$row['key']] ?? '' }}"
-                       class="form-control">
+                       class="form-control"
+                       @if (in_array($row['key'], $requiredTechnicalKeys, true)) required @endif>
             </label>
         @endforeach
     </div>
 </section>
 
 <section class="inspector-panel qc-form-card">
-    <div class="qc-form-section-title"><h3>Manpower & Weather</h3></div>
+    <div class="qc-form-section-title"><h3>Manpower & Weather <span class="text-muted fw-normal">(Opsional)</span></h3></div>
     <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-manpower-wrap mb-3">
         <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-manpower-table">
             <colgroup>
@@ -235,7 +249,7 @@
 @endpush
 
 <section class="inspector-panel qc-form-card">
-    <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List</h3></div>
+    <div class="qc-form-section-title"><h3>Installation Record / Inspection Check List <span class="text-muted fw-normal">(Opsional)</span></h3></div>
     <div class="qc-user-table-wrap qc-mobile-card-wrap qc-brics-check-wrap">
         <table class="qc-user-checklist-table qc-user-fixed-table qc-mobile-card-table qc-brics-check-table">
             <colgroup>

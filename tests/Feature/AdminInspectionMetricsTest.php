@@ -305,7 +305,35 @@ class AdminInspectionMetricsTest extends TestCase
                 'order_no' => 4,
                 'row_data' => ['item_pengecekan' => 'Cleanliness'],
                 'status_value' => 'Ok',
-                'catatan' => '',
+                'catatan' => 'Area bersih',
+            ],
+            [
+                'block_type' => 'welding_result',
+                'order_no' => 5,
+                'row_data' => ['deskripsi' => 'Visual welding'],
+                'status_value' => 'Baik',
+                'catatan' => 'Hasil las baik',
+            ],
+            [
+                'block_type' => 'welding_result',
+                'order_no' => 6,
+                'row_data' => ['deskripsi' => 'Undercut'],
+                'status_value' => 'Perlu Perbaikan',
+                'catatan' => 'Undercut perlu diperbaiki',
+            ],
+            [
+                'block_type' => 'welding_result',
+                'order_no' => 7,
+                'row_data' => ['deskripsi' => 'Crack inspection'],
+                'status_value' => 'Tidak Layak',
+                'catatan' => 'Ditemukan crack',
+            ],
+            [
+                'block_type' => 'brics_check',
+                'order_no' => 8,
+                'row_data' => ['key' => 'joint_condition', 'label' => 'Joint condition'],
+                'status_value' => 'OK',
+                'catatan' => 'Joint baik',
             ],
         ]);
 
@@ -321,12 +349,19 @@ class AdminInspectionMetricsTest extends TestCase
 
         $this->assertSame(1, $data['inspectionMetrics']['remarkForms']);
         $this->assertSame('010/QC/05-2026', $row->form_number);
-        $this->assertSame(3, $row->remarks_count);
-        $this->assertCount(3, $row->remarks);
+        $this->assertSame(8, $row->remarks_count);
+        $this->assertCount(8, $row->remarks);
         $this->assertSame('QC Brics', $row->remarks[0]['section']);
         $this->assertSame('Surface condition', $row->remarks[0]['item']);
         $this->assertSame('QC General', $row->remarks[2]['section']);
         $this->assertSame('Alignment belum sesuai', $row->remarks[2]['text']);
+
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $this->actingAs($admin);
+        $html = view('modules.qc-content', $data)->render();
+
+        $this->assertSame(3, substr_count($html, 'admin-remarks-item is-yes'));
+        $this->assertSame(4, substr_count($html, 'admin-remarks-item is-no'));
     }
 
     public function test_qc_admin_status_dropdown_can_return_to_default_status(): void

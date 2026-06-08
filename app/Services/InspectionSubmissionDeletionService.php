@@ -63,7 +63,12 @@ class InspectionSubmissionDeletionService
         }
 
         if ($remainingStatus === null) {
-            $this->restoreAutoActivatedMasterStatus($record, $submission->general_info ?? []);
+            $this->restoreAutoActivatedMasterStatus(
+                $record,
+                $submission->general_info ?? [],
+                $submission,
+                $actor
+            );
         }
     }
 
@@ -85,7 +90,12 @@ class InspectionSubmissionDeletionService
             );
         }
 
-        $this->restoreAutoActivatedMasterStatus($record, $submission->header_data ?? []);
+        $this->restoreAutoActivatedMasterStatus(
+            $record,
+            $submission->header_data ?? [],
+            $submission,
+            $actor
+        );
     }
 
     private function deleteStoredFiles(Model $submission): void
@@ -132,14 +142,24 @@ class InspectionSubmissionDeletionService
             ->where('approvable_id', $submission->getKey());
     }
 
-    private function restoreAutoActivatedMasterStatus(MasterDataRecord $record, array $metadata): void
-    {
+    private function restoreAutoActivatedMasterStatus(
+        MasterDataRecord $record,
+        array $metadata,
+        Model $submission,
+        ?User $actor
+    ): void {
         if (! (bool) ($metadata['master_data_auto_activated'] ?? false)) {
             return;
         }
 
         $previousStatus = $metadata['master_data_previous_status'] ?? null;
-        $record->forceFill(['status' => filled($previousStatus) ? $previousStatus : 'inactive'])->save();
+        app(MasterDataStatusService::class)->setStatus(
+            $record,
+            filled($previousStatus) ? $previousStatus : 'inactive',
+            MasterDataStatusService::SOURCE_SUBMISSION_DELETED,
+            $actor,
+            $submission
+        );
     }
 
     private function submissionChangedMasterDataInspectionStatus(MasterDataRecord $record, Model $submission): bool

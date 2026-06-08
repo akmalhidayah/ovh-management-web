@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Models\MasterDataRecord;
+use App\Models\CommissioningFormSubmission;
+use App\Models\CommissioningFormTemplate;
 use App\Models\MasterDataInspectionStatusHistory;
+use App\Models\MasterDataRecord;
+use App\Models\MasterDataStatusHistory;
 use App\Models\OrganizationSection;
+use App\Models\QcFormSubmission;
+use App\Models\QcFormTemplate;
 use App\Models\User;
 use Database\Seeders\Crusher4MasterDataRecordSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,6 +213,267 @@ class AdminMasterDataTest extends TestCase
         foreach ($records as $record) {
             $this->assertDatabaseHas('master_data_records', ['id' => $record->id, 'status' => 'active']);
         }
+    }
+
+    public function test_bulk_deactivation_skips_qc_equipment_used_by_active_draft_and_records_history(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-GUARD-001',
+            'name' => 'QC Guard Template',
+            'category' => 'QC',
+            'status' => 'active',
+        ]);
+        $protectedRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-GUARD-PROTECTED',
+            'equipment_no' => 'EQ-QC-GUARD-PROTECTED',
+            'description' => 'QC PROTECTED EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+        $eligibleRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-GUARD-ELIGIBLE',
+            'equipment_no' => 'EQ-QC-GUARD-ELIGIBLE',
+            'description' => 'QC ELIGIBLE EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $admin->id,
+            'form_number' => '001/QC/06-2026',
+            'status' => 'draft',
+            'general_info' => [
+                'master_data_record_id' => $protectedRecord->id,
+                'functional_location' => $protectedRecord->func_location,
+                'id_equipment' => $protectedRecord->equipment_no,
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-status'), [
+                'record_ids' => [$protectedRecord->id, $eligibleRecord->id],
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas(
+                'success',
+                '1 master data berhasil diubah menjadi Nonaktif. 1 dilewati karena masih digunakan oleh draft/submission aktif.'
+            );
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $protectedRecord->id,
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $eligibleRecord->id,
+            'status' => 'inactive',
+        ]);
+        $this->assertDatabaseHas('master_data_status_histories', [
+            'master_data_record_id' => $eligibleRecord->id,
+            'previous_status' => 'active',
+            'status' => 'inactive',
+            'source' => 'bulk_selected',
+            'changed_by' => $admin->id,
+        ]);
+        $this->assertDatabaseMissing('master_data_status_histories', [
+            'master_data_record_id' => $protectedRecord->id,
+        ]);
+    }
+
+    public function test_single_update_cannot_deactivate_equipment_used_by_active_submission(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = QcFormTemplate::create([
+            'code' => 'QC-GUARD-002',
+            'name' => 'QC Single Guard Template',
+            'category' => 'QC',
+            'status' => 'active',
+        ]);
+        $record = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_QC,
+            'year' => '2026',
+            'func_location' => 'ST-QC-SINGLE-GUARD',
+            'equipment_no' => 'EQ-QC-SINGLE-GUARD',
+            'description' => 'QC SINGLE PROTECTED EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'RAW MILL',
+            'status' => 'active',
+        ]);
+
+        QcFormSubmission::create([
+            'qc_form_template_id' => $template->id,
+            'user_id' => $admin->id,
+            'form_number' => '002/QC/06-2026',
+            'status' => 'pending_approval',
+            'general_info' => [
+                'master_data_record_id' => $record->id,
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.master-data.update', $record), [
+                'document_category' => $record->document_category,
+                'year' => $record->year,
+                'func_location' => $record->func_location,
+                'equipment_no' => $record->equipment_no,
+                'section_no' => $record->section_no,
+                'description' => 'SHOULD NOT BE UPDATED',
+                'plant' => $record->plant,
+                'area' => $record->area,
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('status');
+
+        $record->refresh();
+        $this->assertSame('active', $record->status);
+        $this->assertSame('QC SINGLE PROTECTED EQUIPMENT', $record->description);
+        $this->assertDatabaseCount('master_data_status_histories', 0);
+    }
+
+    public function test_filtered_deactivation_skips_commissioning_equipment_used_by_active_submission(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-GUARD-001',
+            'name' => 'Commissioning Guard Template',
+            'category' => 'Commissioning',
+            'status' => 'active',
+        ]);
+        $protectedRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-GUARD-PROTECTED',
+            'equipment_no' => 'EQ-COM-GUARD-PROTECTED',
+            'description' => 'COMMISSIONING FILTER GUARD',
+            'plant' => 'TONASA 4',
+            'area' => 'KILN 4',
+            'status' => 'active',
+        ]);
+        $eligibleRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-GUARD-ELIGIBLE',
+            'equipment_no' => 'EQ-COM-GUARD-ELIGIBLE',
+            'description' => 'COMMISSIONING FILTER GUARD',
+            'plant' => 'TONASA 4',
+            'area' => 'KILN 4',
+            'status' => 'active',
+        ]);
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $admin->id,
+            'form_number' => '001/COM/06-2026',
+            'status' => 'pending_approval',
+            'year' => '2026',
+            'area' => 'KILN 4',
+            'equipment_no' => $protectedRecord->equipment_no,
+            'functional_location' => $protectedRecord->func_location,
+            'header_data' => [
+                'master_data_record_id' => $protectedRecord->id,
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-filtered-status'), [
+                'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+                'year' => '2026',
+                'plant' => 'TONASA 4',
+                'area' => 'KILN 4',
+                'current_status' => 'active',
+                'search' => 'COMMISSIONING FILTER GUARD',
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas(
+                'success',
+                '1 master data hasil filter berhasil diubah menjadi Nonaktif. 1 dilewati karena masih digunakan oleh draft/submission aktif.'
+            );
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $protectedRecord->id,
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $eligibleRecord->id,
+            'status' => 'inactive',
+        ]);
+
+        $history = MasterDataStatusHistory::firstOrFail();
+        $this->assertSame($eligibleRecord->id, $history->master_data_record_id);
+        $this->assertSame('bulk_filtered', $history->source);
+        $this->assertSame($admin->id, $history->changed_by);
+        $this->assertSame('ST-COM-GUARD-ELIGIBLE', $history->snapshot['master_data']['func_location']);
+    }
+
+    public function test_legacy_submission_uses_functional_location_before_duplicate_equipment_number(): void
+    {
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+        $template = CommissioningFormTemplate::create([
+            'code' => 'COM-LEGACY-GUARD',
+            'name' => 'Commissioning Legacy Guard',
+            'category' => 'Commissioning',
+            'status' => 'active',
+        ]);
+        $usedRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-LEGACY-USED',
+            'equipment_no' => 'EQ-DUPLICATE-001',
+            'description' => 'LEGACY USED EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL 4',
+            'status' => 'active',
+        ]);
+        $unusedRecord = MasterDataRecord::create([
+            'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+            'year' => '2026',
+            'func_location' => 'ST-COM-LEGACY-UNUSED',
+            'equipment_no' => 'EQ-DUPLICATE-001',
+            'description' => 'LEGACY UNUSED EQUIPMENT',
+            'plant' => 'TONASA 4',
+            'area' => 'COAL MILL 4',
+            'status' => 'active',
+        ]);
+
+        CommissioningFormSubmission::create([
+            'commissioning_form_template_id' => $template->id,
+            'user_id' => $admin->id,
+            'form_number' => '002/COM/06-2026',
+            'status' => 'draft',
+            'equipment_no' => 'EQ-DUPLICATE-001',
+            'functional_location' => $usedRecord->func_location,
+            'header_data' => [],
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.master-data.bulk-status'), [
+                'record_ids' => [$usedRecord->id, $unusedRecord->id],
+                'status' => 'inactive',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas(
+                'success',
+                '1 master data berhasil diubah menjadi Nonaktif. 1 dilewati karena masih digunakan oleh draft/submission aktif.'
+            );
+
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $usedRecord->id,
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('master_data_records', [
+            'id' => $unusedRecord->id,
+            'status' => 'inactive',
+        ]);
     }
 
     public function test_admin_can_bulk_update_all_filtered_master_data_across_pages(): void

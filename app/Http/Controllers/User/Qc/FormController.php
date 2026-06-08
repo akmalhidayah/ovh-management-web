@@ -8,23 +8,24 @@ use App\Models\OrganizationSection;
 use App\Models\QcFormSubmission;
 use App\Models\QcFormSubmissionAttachment;
 use App\Models\QcFormTemplate;
-use App\Services\DocumentNumberGenerator;
 use App\Services\ApprovalFlowService;
+use App\Services\DocumentNumberGenerator;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
+use App\Services\MasterDataStatusService;
+use App\Services\QcPdfAttachmentMerger;
 use App\Support\AreaOwnerLabel;
-use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\OrganizationSections;
+use App\Support\QcTemplates\FixedQcTemplate;
 use App\Support\TemplateSnapshot;
 use App\Support\UserRoleUiData;
 use Barryvdh\DomPDF\Facade\Pdf;
-use iio\libmergepdf\Merger;
-use Illuminate\Support\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -296,6 +297,7 @@ class FormController extends Controller
                     $this->storeRows($submission, $template, $request->input('rows', []));
                 }
 
+                $this->deleteRequestedOrReplacedAttachments($submission, $request);
                 $this->storeAttachments($submission, $template, $request->file('attachments', []), $request->input('temporary_attachments', []));
                 $this->syncMasterDataInspectionStatus($submission, $request);
 
@@ -465,20 +467,17 @@ class FormController extends Controller
         $pekerjaan = $submission->pekerjaan ?: ($submission->general_info['pekerjaan'] ?? 'Form QC');
         $safePekerjaan = trim(preg_replace('/[\\\\\/:*?"<>|]+/', '-', (string) $pekerjaan));
         $filename = 'Quality Control - '.($safePekerjaan ?: 'Form QC').'.pdf';
-        $supportPdfPaths = self::supportPdfAttachmentPaths($submission);
+        $supportPdfAttachments = self::supportPdfAttachments($submission);
 
-        if ($supportPdfPaths === []) {
+        if ($supportPdfAttachments->isEmpty()) {
             return $pdf->stream($filename);
         }
 
-        $merger = new Merger();
-        $merger->addRaw($pdf->output());
-
-        foreach ($supportPdfPaths as $path) {
-            $merger->addFile($path);
-        }
-
-        $mergedPdf = $merger->merge();
+        $mergedPdf = app(QcPdfAttachmentMerger::class)->merge(
+            $pdf->output(),
+            $supportPdfAttachments,
+            $submission->id,
+        );
         $filename = str_replace(['"', "\r", "\n"], '', $filename);
 
         return response($mergedPdf, 200, [
@@ -488,28 +487,13 @@ class FormController extends Controller
         ]);
     }
 
-    private static function supportPdfAttachmentPaths(QcFormSubmission $submission): array
+    private static function supportPdfAttachments(QcFormSubmission $submission)
     {
         return $submission->attachments
             ->where('field_key', 'dokumen_pendukung')
-            ->filter(fn (QcFormSubmissionAttachment $attachment): bool => $attachment->mime_type === 'application/pdf')
-            ->map(fn (QcFormSubmissionAttachment $attachment): ?string => self::storedAttachmentPath($attachment))
-            ->filter()
-            ->values()
-            ->all();
-    }
-
-    private static function storedAttachmentPath(QcFormSubmissionAttachment $attachment): ?string
-    {
-        if (Storage::disk('local')->exists($attachment->file_path)) {
-            return Storage::disk('local')->path($attachment->file_path);
-        }
-
-        if (Storage::disk('public')->exists($attachment->file_path)) {
-            return Storage::disk('public')->path($attachment->file_path);
-        }
-
-        return null;
+            ->filter(fn (QcFormSubmissionAttachment $attachment): bool => $attachment->mime_type === 'application/pdf'
+                || strtolower(pathinfo($attachment->original_name ?: $attachment->file_path, PATHINFO_EXTENSION)) === 'pdf')
+            ->values();
     }
 
     public static function statusLabels(): array
@@ -548,6 +532,8 @@ class FormController extends Controller
             'temporary_attachments' => ['nullable', 'array'],
             'temporary_attachments.*' => ['nullable', 'array'],
             'temporary_attachments.*.*' => ['string'],
+            'remove_existing_attachments' => ['nullable', 'array'],
+            'remove_existing_attachments.*' => ['integer'],
         ], [
             'attachments.*.*.uploaded' => 'Lampiran gagal diupload. Ukuran file kemungkinan terlalu besar atau koneksi terputus. Coba pilih file yang lebih kecil.',
             'attachments.*.*.file' => 'Lampiran harus berupa file.',
@@ -1037,9 +1023,27 @@ class FormController extends Controller
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_BRICS) {
-            foreach ($body['brics_checks'] ?? [] as $key => $row) {
-                if (blank($row['status'] ?? null)) {
-                    $errors["body.brics_checks.{$key}.status"] = 'Status Brics wajib dipilih.';
+            foreach (FixedQcTemplate::bricsCustomerRows() as $definition) {
+                $key = $definition['key'];
+
+                if (! in_array($key, FixedQcTemplate::requiredBricsCustomerKeys(), true)) {
+                    continue;
+                }
+
+                if (blank($body['brics_customer'][$key] ?? null)) {
+                    $errors["body.brics_customer.{$key}"] = "{$definition['label']} wajib diisi.";
+                }
+            }
+
+            foreach (FixedQcTemplate::bricsTechnicalRows() as $definition) {
+                $key = $definition['key'];
+
+                if (! in_array($key, FixedQcTemplate::requiredBricsTechnicalKeys(), true)) {
+                    continue;
+                }
+
+                if (blank($body['brics_technical'][$key] ?? null)) {
+                    $errors["body.brics_technical.{$key}"] = "{$definition['label']} wajib diisi.";
                 }
             }
         } elseif (FixedQcTemplate::normalizeType($template->template_type) === FixedQcTemplate::TYPE_ELECTRICAL) {
@@ -1112,7 +1116,83 @@ class FormController extends Controller
             }
         }
 
-        return (bool) $submission?->attachments()->where('field_key', $fieldKey)->exists();
+        $removedIds = $this->attachmentRemovalIds($request);
+        $query = $submission?->attachments()->where('field_key', $fieldKey);
+
+        if (! $query) {
+            return false;
+        }
+
+        if ($removedIds !== []) {
+            $query->whereNotIn('id', $removedIds);
+        }
+
+        return (bool) $query->exists();
+    }
+
+    private function attachmentRemovalIds(Request $request): array
+    {
+        return collect($request->input('remove_existing_attachments', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function incomingAttachmentFieldKeys(Request $request): array
+    {
+        $fieldKeys = [];
+
+        foreach ($request->file('attachments', []) as $fieldKey => $files) {
+            foreach ((array) $files as $file) {
+                if ($file instanceof UploadedFile) {
+                    $fieldKeys[] = (string) $fieldKey;
+                    break;
+                }
+            }
+        }
+
+        foreach ($request->input('temporary_attachments', []) as $fieldKey => $tokens) {
+            foreach ((array) $tokens as $token) {
+                if ($this->temporaryAttachmentExists($token, (string) $fieldKey)) {
+                    $fieldKeys[] = (string) $fieldKey;
+                    break;
+                }
+            }
+        }
+
+        return collect($fieldKeys)->unique()->values()->all();
+    }
+
+    private function deleteRequestedOrReplacedAttachments(QcFormSubmission $submission, Request $request): void
+    {
+        $removedIds = $this->attachmentRemovalIds($request);
+        $replacementFields = $this->incomingAttachmentFieldKeys($request);
+
+        if ($removedIds === [] && $replacementFields === []) {
+            return;
+        }
+
+        $attachments = $submission->attachments()
+            ->where(function ($query) use ($removedIds, $replacementFields) {
+                if ($removedIds !== []) {
+                    $query->whereIn('id', $removedIds);
+                }
+
+                if ($replacementFields !== []) {
+                    $method = $removedIds !== [] ? 'orWhereIn' : 'whereIn';
+                    $query->{$method}('field_key', $replacementFields);
+                }
+            })
+            ->get();
+
+        if ($attachments->isEmpty()) {
+            return;
+        }
+
+        $this->deleteAttachmentFiles($attachments);
+        $submission->attachments()->whereKey($attachments->pluck('id'))->delete();
     }
 
     private function temporaryAttachmentExists(mixed $token, string $fieldKey): bool
@@ -1631,7 +1711,13 @@ class FormController extends Controller
         $wasAutoActivated = $previousStatus !== 'active';
 
         if ($wasAutoActivated) {
-            $record->forceFill(['status' => 'active'])->save();
+            app(MasterDataStatusService::class)->setStatus(
+                $record,
+                'active',
+                MasterDataStatusService::SOURCE_DIGITAL_FORM,
+                $request->user(),
+                $submission
+            );
         }
 
         app(MasterDataInspectionStatusService::class)->setStatus(
