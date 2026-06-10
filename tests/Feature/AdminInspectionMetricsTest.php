@@ -618,6 +618,34 @@ class AdminInspectionMetricsTest extends TestCase
         );
     }
 
+    public function test_commissioning_metrics_put_kiln_4_last_in_table_and_chart(): void
+    {
+        foreach (['RAW MILL 4', 'KILN 4', 'COAL MILL 4'] as $index => $area) {
+            MasterDataRecord::create([
+                'document_category' => MasterDataRecord::CATEGORY_COMMISSIONING,
+                'year' => '2026',
+                'func_location' => 'LOC-COM-AREA-ORDER-'.$index,
+                'equipment_no' => 'EQ-COM-AREA-ORDER-'.$index,
+                'section_no' => 'SEC-COM-AREA-ORDER-'.$index,
+                'description' => 'Area Order Equipment '.$index,
+                'plant' => 'TONASA 4',
+                'area' => $area,
+                'status' => 'active',
+                'inspection_status' => 'close',
+            ]);
+        }
+
+        $data = AdminInspectionSubmissionPageData::make(
+            Request::create(route('admin.commissioning'), 'GET'),
+            'commissioning'
+        );
+
+        $expectedAreas = ['COAL MILL 4', 'RAW MILL 4', 'KILN 4'];
+
+        $this->assertSame($expectedAreas, $data['inspectionMetrics']['areaRows']->pluck('area')->all());
+        $this->assertSame($expectedAreas, $data['inspectionMetrics']['chart']['labels']->all());
+    }
+
     public function test_commissioning_search_by_master_equipment_field_keeps_submission_actions(): void
     {
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);

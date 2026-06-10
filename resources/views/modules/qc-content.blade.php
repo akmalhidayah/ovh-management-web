@@ -633,7 +633,7 @@
                                 max: 100,
                                 border: { display: false },
                                 ticks: {
-                                    stepSize: 20,
+                                    stepSize: 10,
                                     precision: 0,
                                     color: '#64748b',
                                     padding: 8,
@@ -990,7 +990,7 @@
         }
 
         .qc-area-chart-wrap {
-            height: 235px;
+            height: 330px;
         }
 
         .qc-area-progress-table {
