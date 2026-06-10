@@ -634,6 +634,8 @@
                                 border: { display: false },
                                 ticks: {
                                     stepSize: 10,
+                                    autoSkip: false,
+                                    maxTicksLimit: 11,
                                     precision: 0,
                                     color: '#64748b',
                                     padding: 8,
