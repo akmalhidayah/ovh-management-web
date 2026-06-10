@@ -581,7 +581,7 @@
                             borderWidth: 1,
                             borderRadius: 7,
                             borderSkipped: false,
-                            maxBarThickness: 34,
+                            maxBarThickness: 44,
                             categoryPercentage: .72,
                             barPercentage: .78,
                         }],
@@ -992,7 +992,7 @@
         }
 
         .qc-area-chart-wrap {
-            height: 330px;
+            height: 285px;
         }
 
         .qc-area-progress-table {
