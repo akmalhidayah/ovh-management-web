@@ -992,7 +992,7 @@
         }
 
         .qc-area-chart-wrap {
-            height: 235px;
+            height: 430px;
         }
 
         .qc-area-progress-table {
