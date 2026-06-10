@@ -703,15 +703,7 @@ class AdminInspectionSubmissionPageData
                     'progress' => $equipmentCount > 0 ? round(($processCount / $equipmentCount) * 100, 1) : 0,
                 ];
             })
-            ->values();
-
-        $areaRows = $areaRows
-            ->sortBy(function (array $row): string {
-                $area = trim((string) ($row['area'] ?? ''));
-                $isKiln4 = mb_strtoupper($area) === 'KILN 4';
-
-                return ($isKiln4 ? '1' : '0').'|'.mb_strtolower($area);
-            }, SORT_NATURAL | SORT_FLAG_CASE)
+            ->sortKeys()
             ->values();
 
         $process = $areaRows->sum('process');
