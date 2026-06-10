@@ -107,7 +107,7 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-12 col-xl-6">
+        <div class="col-12 col-xl-5">
             <div class="content-card qc-area-detail-card">
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle qc-area-progress-table">
@@ -147,7 +147,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-xl-6">
+        <div class="col-12 col-xl-7">
             <div class="content-card qc-area-chart-card">
                 <div class="qc-area-chart-wrap">
                     <canvas data-qc-area-progress-chart='@json($inspectionMetrics['chart'])'></canvas>
@@ -540,6 +540,35 @@
                 }
 
                 const chartData = JSON.parse(canvas.dataset.qcAreaProgressChart || '{"labels":[],"data":[]}');
+                const percentageLabelPlugin = {
+                    id: 'qcAreaPercentageLabels',
+                    afterDatasetsDraw: function (chart) {
+                        const context = chart.ctx;
+                        const dataset = chart.data.datasets[0];
+                        const meta = chart.getDatasetMeta(0);
+
+                        context.save();
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+                        context.font = '700 11px "Plus Jakarta Sans", sans-serif';
+
+                        meta.data.forEach(function (bar, index) {
+                            const value = Number(dataset.data[index] || 0);
+                            const barHeight = Math.abs(bar.base - bar.y);
+                            const isInside = barHeight >= 24;
+
+                            context.fillStyle = isInside ? '#ffffff' : '#1e3a8a';
+                            context.fillText(
+                                `${Number.isInteger(value) ? value : value.toFixed(1)}%`,
+                                bar.x,
+                                isInside ? bar.y + 14 : chart.chartArea.bottom - 9
+                            );
+                        });
+
+                        context.restore();
+                    },
+                };
+
                 new Chart(canvas, {
                     type: 'bar',
                     data: {
@@ -552,12 +581,18 @@
                             borderWidth: 1,
                             borderRadius: 7,
                             borderSkipped: false,
-                            maxBarThickness: 46,
+                            maxBarThickness: 34,
+                            categoryPercentage: .72,
+                            barPercentage: .78,
                         }],
                     },
+                    plugins: [percentageLabelPlugin],
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: {
+                            padding: { top: 2, right: 4, bottom: 0, left: 0 },
+                        },
                         animation: {
                             duration: 900,
                             easing: 'easeOutCubic',
@@ -613,10 +648,11 @@
                                 grid: { display: false },
                                 ticks: {
                                     color: '#475569',
-                                    font: { size: 12, weight: 600 },
+                                    font: { size: 10, weight: 650 },
+                                    autoSkip: false,
                                     maxRotation: 0,
                                     minRotation: 0,
-                                    padding: 10,
+                                    padding: 7,
                                     callback: function (value) {
                                         const label = this.getLabelForValue(value);
                                         const words = String(label).split(' ');
@@ -633,7 +669,7 @@
                                             lines.push(word);
                                         });
 
-                                        return lines.slice(0, 2);
+                                        return lines.slice(0, 3);
                                     },
                                 },
                             },
@@ -954,7 +990,7 @@
         }
 
         .qc-area-chart-wrap {
-            height: 270px;
+            height: 235px;
         }
 
         .qc-area-progress-table {
