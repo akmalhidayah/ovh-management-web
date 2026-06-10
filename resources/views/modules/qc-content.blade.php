@@ -1001,7 +1001,7 @@
             table-layout: fixed;
             margin-bottom: 0;
             color: #0f172a;
-            font-size: .8rem;
+            font-size: .72rem;
             border-collapse: separate;
             border-spacing: 0;
         }
@@ -1009,7 +1009,7 @@
         .qc-area-progress-table th {
             background: #1e40af;
             color: #ffffff;
-            font-size: .68rem;
+            font-size: .62rem;
             font-weight: 750;
             letter-spacing: 0;
             text-transform: uppercase;
@@ -1022,7 +1022,7 @@
 
         .qc-area-progress-table td,
         .qc-area-progress-table th {
-            padding: .56rem .54rem;
+            padding: .46rem .42rem;
             border-color: #e2e8f0;
         }
 
