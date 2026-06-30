@@ -169,6 +169,64 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .procurement-table {
     min-width: 1040px;
 }
+.procurement-overview { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.procurement-kpi-group { display: grid; gap: .65rem; }
+.procurement-kpi-group h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: .98rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+.procurement-kpi-grid { display: grid; gap: .7rem; }
+.procurement-kpi-grid-cost { grid-template-columns: repeat(5, minmax(130px, 1fr)); }
+.procurement-overview-lower { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .95fr); gap: 1rem; align-items: start; }
+.procurement-kpi-grid-process { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+.procurement-kpi-card,
+.procurement-budget-card {
+    background: #fff;
+    border: 1px solid var(--ovh-border);
+    border-radius: .55rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+}
+.procurement-kpi-card {
+    display: grid;
+    gap: .3rem;
+    min-height: 82px;
+    padding: .68rem .75rem .62rem;
+}
+.procurement-kpi-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-width: 0; }
+.procurement-kpi-head span { overflow-wrap: anywhere; font-size: .82rem; font-weight: 800; line-height: 1.15; }
+.procurement-kpi-head i { color: #94a3b8; font-size: .95rem; flex: 0 0 auto; }
+.procurement-kpi-card strong {
+    display: block;
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+}
+.procurement-kpi-line { height: 4px; border-radius: 999px; background: currentColor; opacity: .95; }
+.procurement-kpi-card.is-blue { color: #0875c9; }
+.procurement-kpi-card.is-amber { color: #eab308; }
+.procurement-kpi-card.is-olive { color: #3f7d2a; }
+.procurement-kpi-card.is-green-dark { color: #166534; }
+.procurement-kpi-card.is-green { color: #00a651; }
+.procurement-kpi-card.is-green-light { color: #22c55e; }
+.procurement-kpi-card.is-red { color: #ef0000; }
+.procurement-budget-card {
+    display: grid;
+    align-content: center;
+    gap: .55rem;
+    min-height: 186px;
+    padding: 1rem 1.2rem;
+    color: #00a651;
+}
+.procurement-budget-card span { color: #64748b; font-size: .82rem; font-weight: 800; text-transform: uppercase; }
+.procurement-budget-card strong { font-size: clamp(3rem, 6vw, 4.5rem); font-weight: 900; line-height: .95; text-align: center; }
+.procurement-budget-card p { margin: 0; color: #64748b; font-size: .82rem; text-align: center; }
+.procurement-budget-bar { height: 5px; border-radius: 999px; background: #dbeafe; overflow: hidden; }
+.procurement-budget-bar span { display: block; height: 100%; border-radius: inherit; background: #00a651; }
 .placeholder-panel { min-height: 320px; border: 1px dashed #cbd5e1; border-radius: .75rem; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 1rem; overflow: hidden; }
 .placeholder-panel img { width: min(100%, 760px); max-height: 360px; object-fit: contain; }
 .master-card { display: flex; align-items: center; gap: 1rem; padding: 1rem; height: 100%; }
@@ -381,6 +439,9 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .qc-info-grid { grid-template-columns: 1fr; }
     .qc-approval-grid { grid-template-columns: 1fr; }
     .qc-preview-attachment-grid { grid-template-columns: 1fr; }
+    .procurement-kpi-grid-cost { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .procurement-overview-lower { grid-template-columns: 1fr; }
+    .procurement-kpi-grid-process { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 575.98px) {
@@ -399,4 +460,8 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .login-card { border-radius: 1rem; background: rgba(255, 255, 255, .94); }
     .register-shell { width: min(100%, 560px); }
     .user-menu { padding-inline: .55rem; }
+    .procurement-kpi-grid-cost,
+    .procurement-kpi-grid-process { grid-template-columns: 1fr; }
+    .procurement-kpi-card { min-height: 76px; }
+    .procurement-budget-card { min-height: 160px; }
 }
