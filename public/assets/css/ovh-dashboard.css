@@ -193,6 +193,8 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .procurement-kpi-grid-cost { grid-template-columns: repeat(5, minmax(130px, 1fr)); }
 .procurement-overview-lower { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .9fr); gap: .95rem; align-items: start; }
 .procurement-kpi-grid-process { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+.procurement-service-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr); gap: .95rem; align-items: stretch; }
+.procurement-kpi-grid-service { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
 .procurement-kpi-card {
     --card-accent: #0d6efd;
     min-height: 76px;
@@ -241,11 +243,29 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 }
 .procurement-kpi-card.is-blue { --card-accent: #0d6efd; }
 .procurement-kpi-card.is-amber { --card-accent: #f59e0b; }
+.procurement-kpi-card.is-orange { --card-accent: #c2410c; }
+.procurement-kpi-card.is-purple { --card-accent: #6f42c1; }
 .procurement-kpi-card.is-olive,
 .procurement-kpi-card.is-green-dark { --card-accent: #198754; }
 .procurement-kpi-card.is-green,
 .procurement-kpi-card.is-green-light { --card-accent: #0f766e; }
 .procurement-kpi-card.is-red { --card-accent: #dc3545; }
+.procurement-invoice-card {
+    display: grid;
+    align-content: center;
+    gap: .55rem;
+    min-height: 168px;
+    padding: .9rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .65rem;
+    background: #ffffff;
+    box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .055);
+}
+.procurement-invoice-card span { color: #64748b; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+.procurement-invoice-card strong { display: block; color: #b91c1c; font-size: clamp(2.65rem, 4.8vw, 3.9rem); font-weight: 900; line-height: .95; text-align: center; }
+.procurement-invoice-card p { margin: 0; color: #64748b; font-size: .8rem; text-align: center; }
+.procurement-invoice-bar { height: 5px; border-radius: 999px; background: #fee2e2; overflow: hidden; }
+.procurement-invoice-bar span { display: block; height: 100%; border-radius: inherit; background: #b91c1c; }
 .procurement-budget-card {
     display: grid;
     align-content: center;
@@ -477,6 +497,8 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .procurement-kpi-grid-cost { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .procurement-overview-lower { grid-template-columns: 1fr; }
     .procurement-kpi-grid-process { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .procurement-service-main { grid-template-columns: 1fr; }
+    .procurement-kpi-grid-service { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 575.98px) {
@@ -496,7 +518,9 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .register-shell { width: min(100%, 560px); }
     .user-menu { padding-inline: .55rem; }
     .procurement-kpi-grid-cost,
-    .procurement-kpi-grid-process { grid-template-columns: 1fr; }
+    .procurement-kpi-grid-process,
+    .procurement-kpi-grid-service { grid-template-columns: 1fr; }
     .procurement-kpi-card { min-height: 76px; }
-    .procurement-budget-card { min-height: 160px; }
+    .procurement-budget-card,
+    .procurement-invoice-card { min-height: 160px; }
 }
