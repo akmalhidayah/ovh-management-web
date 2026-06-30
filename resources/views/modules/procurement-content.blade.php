@@ -79,34 +79,12 @@
     ];
 
     $data = $datasets[$section];
-    $barangCostCards = [
-        ['label' => 'Plan', 'value' => '87,6 M', 'tone' => 'blue', 'icon' => 'bi-clipboard-data'],
-        ['label' => 'Proses', 'value' => '77,3 M', 'tone' => 'amber', 'icon' => 'bi-arrow-repeat'],
-        ['label' => 'PO', 'value' => '75,0 M', 'tone' => 'olive', 'icon' => 'bi-file-earmark-check'],
-        ['label' => 'Ready Gudang', 'value' => '0,94 M', 'tone' => 'green-dark', 'icon' => 'bi-box-seam'],
-        ['label' => 'Goods Issue', 'value' => '71,7 M', 'tone' => 'green', 'icon' => 'bi-truck'],
-    ];
-    $barangProcessCards = [
-        ['label' => 'Total Item', 'value' => '1250', 'tone' => 'blue', 'icon' => 'bi-collection'],
-        ['label' => 'Cancel', 'value' => '563', 'tone' => 'red', 'icon' => 'bi-x-circle'],
-        ['label' => 'Proses Pengadaan', 'value' => '11', 'tone' => 'blue', 'icon' => 'bi-cart-check'],
-        ['label' => 'PO/Delivery', 'value' => '25', 'tone' => 'green-dark', 'icon' => 'bi-file-earmark-arrow-down'],
-        ['label' => 'Ready Gudang', 'value' => '20', 'tone' => 'green-light', 'icon' => 'bi-box2-heart'],
-        ['label' => 'Good Issue', 'value' => '631', 'tone' => 'green', 'icon' => 'bi-check2-square'],
-    ];
-    $jasaCostCards = [
-        ['label' => 'Plan', 'value' => '36,7 M', 'tone' => 'blue', 'icon' => 'bi-clipboard-data'],
-        ['label' => 'PGO', 'value' => '3,1 M', 'tone' => 'purple', 'icon' => 'bi-diagram-3'],
-        ['label' => 'Proses', 'value' => '87,6 M', 'tone' => 'orange', 'icon' => 'bi-arrow-repeat'],
-        ['label' => 'Purchase Order', 'value' => '14,1 M', 'tone' => 'green-dark', 'icon' => 'bi-file-earmark-check'],
-        ['label' => 'Invoice', 'value' => '10,1 M', 'tone' => 'green', 'icon' => 'bi-receipt'],
-        ['label' => 'Purchase Order', 'value' => '4,0 M', 'tone' => 'red', 'icon' => 'bi-exclamation-circle'],
-    ];
-    $summary = [
-        ['label' => 'Total Item', 'value' => count($data['rows']), 'icon' => 'bi-collection', 'tone' => 'primary'],
-        ['label' => 'Open / Review', 'value' => collect($data['rows'])->filter(fn ($row) => ! in_array($row[5], ['Selesai'], true) && ! in_array($row[6], ['Selesai'], true))->count(), 'icon' => 'bi-hourglass-split', 'tone' => 'warning'],
-        ['label' => 'Selesai', 'value' => collect($data['rows'])->filter(fn ($row) => in_array('Selesai', $row, true))->count(), 'icon' => 'bi-check2-circle', 'tone' => 'success'],
-        ['label' => 'Progress Rata-rata', 'value' => round(collect($data['rows'])->avg(fn ($row) => (int) $row[6])).'%', 'icon' => 'bi-graph-up-arrow', 'tone' => 'info'],
+    $sectionViews = [
+        'barang' => 'modules.procurement.sections.barang',
+        'jasa' => 'modules.procurement.sections.jasa',
+        'capex' => 'modules.procurement.sections.capex',
+        'action-log' => 'modules.procurement.sections.action-log',
+        'minutes-of-meeting' => 'modules.procurement.sections.minutes-of-meeting',
     ];
 @endphp
 
@@ -144,91 +122,7 @@
     </x-filter-card>
 </form>
 
-@if ($section === 'barang')
-    <section class="procurement-overview" aria-label="Ringkasan pengadaan barang">
-        <div class="procurement-kpi-group">
-            <h2>Cost Overhaul</h2>
-            <div class="procurement-kpi-grid procurement-kpi-grid-cost">
-                @foreach ($barangCostCards as $item)
-                    <div class="procurement-kpi-card is-{{ $item['tone'] }}">
-                        <div class="procurement-kpi-icon"><i class="bi {{ $item['icon'] }}"></i></div>
-                        <div class="procurement-kpi-body">
-                            <span>{{ $item['label'] }}</span>
-                            <strong>{{ $item['value'] }}</strong>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="procurement-overview-lower">
-            <div class="procurement-kpi-group">
-                <h2>Proses Pengadaan</h2>
-                <div class="procurement-kpi-grid procurement-kpi-grid-process">
-                    @foreach ($barangProcessCards as $item)
-                        <div class="procurement-kpi-card is-{{ $item['tone'] }}">
-                            <div class="procurement-kpi-icon"><i class="bi {{ $item['icon'] }}"></i></div>
-                            <div class="procurement-kpi-body">
-                                <span>{{ $item['label'] }}</span>
-                                <strong>{{ $item['value'] }}</strong>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="procurement-kpi-group procurement-budget-group">
-                <h2>Pemanfaatan Budget</h2>
-                <div class="procurement-budget-card">
-                    <span>Budget Utilization</span>
-                    <strong>96%</strong>
-                    <p>Rp 84,1 M dari plan sudah termanfaatkan</p>
-                    <div class="procurement-budget-bar">
-                        <span style="width: 96%"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-@elseif ($section === 'jasa')
-    <section class="procurement-overview procurement-service-overview" aria-label="Ringkasan pengadaan jasa">
-        <div class="procurement-kpi-group">
-            <h2>Cost Overhaul</h2>
-            <div class="procurement-service-main">
-                <div class="procurement-kpi-grid procurement-kpi-grid-service">
-                    @foreach ($jasaCostCards as $item)
-                        <div class="procurement-kpi-card is-{{ $item['tone'] }}">
-                            <div class="procurement-kpi-icon"><i class="bi {{ $item['icon'] }}"></i></div>
-                            <div class="procurement-kpi-body">
-                                <span>{{ $item['label'] }}</span>
-                                <strong>{{ $item['value'] }}</strong>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="procurement-invoice-card">
-                    <div>
-                        <span>Invoice</span>
-                        <strong>80%</strong>
-                    </div>
-                    <p>Progress invoice jasa overhaul</p>
-                    <div class="procurement-invoice-bar">
-                        <span style="width: 80%"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-@else
-    <div class="row g-3 mb-3">
-        @foreach ($summary as $item)
-            <div class="col-12 col-sm-6 col-xl-3">
-                <x-stat-card :title="$item['label']" :value="$item['value']" :icon="$item['icon']" :tone="$item['tone']" subtitle="Data dummy" />
-            </div>
-        @endforeach
-    </div>
-@endif
+@include($sectionViews[$section])
 
 <div class="content-card">
     <div class="card-heading">
