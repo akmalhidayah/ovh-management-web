@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
-@section('title', 'Procurement')
-@section('page_title', 'Procurement')
+@section('title', 'Pengadaan')
+@section('page_title', 'Pengadaan')
 @section('content')
     @include('modules.procurement-content')
 @endsection

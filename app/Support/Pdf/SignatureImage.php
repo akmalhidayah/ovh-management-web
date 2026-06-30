@@ -163,9 +163,7 @@ class SignatureImage
 
         self::makeWhiteTransparent($crop);
 
-        ob_start();
-        imagepng($crop);
-        $png = ob_get_clean();
+        $png = self::pngBinary($crop);
 
         imagedestroy($crop);
         imagedestroy($image);
@@ -173,6 +171,27 @@ class SignatureImage
         return is_string($png) && $png !== ''
             ? self::dataUri($png, 'image/png')
             : $fallback;
+    }
+
+    private static function pngBinary($image): ?string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'ovh-signature-');
+
+        if ($path === false) {
+            return null;
+        }
+
+        try {
+            if (! @imagepng($image, $path)) {
+                return null;
+            }
+
+            $binary = @file_get_contents($path);
+
+            return is_string($binary) && $binary !== '' ? $binary : null;
+        } finally {
+            @unlink($path);
+        }
     }
 
     private static function makeWhiteTransparent($image): void

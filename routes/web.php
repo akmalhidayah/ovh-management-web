@@ -138,7 +138,12 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
     Route::get('/notifications/qc/{submission}/open', [AdminNotificationController::class, 'openQc'])->name('notifications.qc.open');
     Route::get('/notifications/commissioning/{submission}/open', [AdminNotificationController::class, 'openCommissioning'])->name('notifications.commissioning.open');
     Route::get('/overview', [AdminDashboardController::class, 'overview'])->name('overview');
-    Route::get('/procurement', [AdminDashboardController::class, 'procurement'])->name('procurement');
+    Route::redirect('/procurement', '/admin/procurement/barang')->name('procurement');
+    Route::get('/procurement/barang', [AdminDashboardController::class, 'procurementBarang'])->name('procurement.barang');
+    Route::get('/procurement/jasa', [AdminDashboardController::class, 'procurementJasa'])->name('procurement.jasa');
+    Route::get('/procurement/capex', [AdminDashboardController::class, 'procurementCapex'])->name('procurement.capex');
+    Route::get('/procurement/action-log', [AdminDashboardController::class, 'procurementActionLog'])->name('procurement.action-log');
+    Route::get('/procurement/minutes-of-meeting', [AdminDashboardController::class, 'procurementMinutesOfMeeting'])->name('procurement.minutes-of-meeting');
     Route::get('/kalender-overhaul', [AdminDashboardController::class, 'kalenderOverhaul'])->name('kalender-overhaul');
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');

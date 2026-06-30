@@ -56,17 +56,13 @@ class AdminMenuPermissions
                 ],
             ],
             'procurement' => [
-                'label' => 'Procurement',
+                'label' => 'Pengadaan',
                 'children' => [
-                    'procurement.index' => 'Procurement',
-                ],
-            ],
-            'asset_records' => [
-                'label' => 'Asset & Records',
-                'children' => [
-                    'asset_records.equipment' => 'Equipment',
-                    'asset_records.mom' => 'MoM',
-                    'asset_records.dokumen' => 'Dokumen',
+                    'procurement.barang' => 'Barang',
+                    'procurement.jasa' => 'Jasa',
+                    'procurement.capex' => 'Capex',
+                    'procurement.action-log' => 'Action Log',
+                    'procurement.minutes-of-meeting' => 'Minutes of Meeting',
                 ],
             ],
             'master_data' => [
@@ -104,7 +100,6 @@ class AdminMenuPermissions
                 'dashboard.dashboard',
                 'qc_commissioning.qc',
                 'qc_commissioning.commissioning',
-                'asset_records.dokumen',
             ],
         ];
     }

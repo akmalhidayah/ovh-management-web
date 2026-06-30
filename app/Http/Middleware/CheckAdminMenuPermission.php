@@ -18,10 +18,11 @@ class CheckAdminMenuPermission
         'qc_commissioning.commissioning' => 'admin.commissioning',
         'qc_commissioning.template-qc' => 'admin.template-form-qc.index',
         'qc_commissioning.template-commissioning' => 'admin.template-form-commissioning.index',
-        'procurement.index' => 'admin.procurement',
-        'asset_records.equipment' => 'admin.equipment',
-        'asset_records.mom' => 'admin.mom',
-        'asset_records.dokumen' => 'admin.dokumen',
+        'procurement.barang' => 'admin.procurement.barang',
+        'procurement.jasa' => 'admin.procurement.jasa',
+        'procurement.capex' => 'admin.procurement.capex',
+        'procurement.action-log' => 'admin.procurement.action-log',
+        'procurement.minutes-of-meeting' => 'admin.procurement.minutes-of-meeting',
         'master_data.equipment' => 'admin.master-data',
         'master_data.unit-kerja' => 'admin.organization-sections.index',
         'userpanel.management' => 'admin.user-panel',
@@ -76,20 +77,14 @@ class CheckAdminMenuPermission
             return 'planning.schedule';
         }
 
-        if ($routeName === 'admin.procurement') {
-            return 'procurement.index';
-        }
-
-        if ($routeName === 'admin.equipment') {
-            return 'asset_records.equipment';
-        }
-
-        if ($routeName === 'admin.mom') {
-            return 'asset_records.mom';
-        }
-
-        if ($routeName === 'admin.dokumen') {
-            return 'asset_records.dokumen';
+        if ($routeName === 'admin.procurement' || str_starts_with($routeName, 'admin.procurement.')) {
+            return match ($routeName) {
+                'admin.procurement.jasa' => 'procurement.jasa',
+                'admin.procurement.capex' => 'procurement.capex',
+                'admin.procurement.action-log' => 'procurement.action-log',
+                'admin.procurement.minutes-of-meeting' => 'procurement.minutes-of-meeting',
+                default => 'procurement.barang',
+            };
         }
 
         if (str_starts_with($routeName, 'admin.template-form-qc.')) {

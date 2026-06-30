@@ -19,9 +19,29 @@ class DashboardController extends Controller
         return view('admin.overview');
     }
 
-    public function procurement(): View
+    public function procurementBarang(): View
     {
-        return view('admin.procurement');
+        return $this->procurementView('barang');
+    }
+
+    public function procurementJasa(): View
+    {
+        return $this->procurementView('jasa');
+    }
+
+    public function procurementCapex(): View
+    {
+        return $this->procurementView('capex');
+    }
+
+    public function procurementActionLog(): View
+    {
+        return $this->procurementView('action-log');
+    }
+
+    public function procurementMinutesOfMeeting(): View
+    {
+        return $this->procurementView('minutes-of-meeting');
     }
 
     public function kalenderOverhaul(): View
@@ -61,6 +81,13 @@ class DashboardController extends Controller
     public function dokumen(): View
     {
         return view('admin.dokumen');
+    }
+
+    private function procurementView(string $section): View
+    {
+        return view('admin.procurement', [
+            'section' => $section,
+        ]);
     }
 
 }

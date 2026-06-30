@@ -53,16 +53,23 @@
                 ]),
             ],
         ],
-        ['key' => 'procurement.index', 'label' => 'Procurement', 'icon' => 'bi-cart-check', 'route' => "{$role}.procurement"],
         [
-            'key' => 'asset_records',
-            'label' => 'Asset & Records',
-            'icon' => 'bi-archive',
-            'routes' => ["{$role}.equipment", "{$role}.mom", "{$role}.dokumen"],
+            'key' => 'procurement',
+            'label' => 'Pengadaan',
+            'icon' => 'bi-cart-check',
+            'routes' => $role === 'admin'
+                ? ['admin.procurement', 'admin.procurement.*']
+                : ["{$role}.procurement"],
             'items' => [
-                ['key' => 'asset_records.equipment', 'label' => 'Equipment', 'route' => "{$role}.equipment"],
-                ['key' => 'asset_records.mom', 'label' => 'MoM', 'route' => "{$role}.mom"],
-                ['key' => 'asset_records.dokumen', 'label' => 'Dokumen', 'route' => "{$role}.dokumen"],
+                ...($role === 'admin' ? [
+                    ['key' => 'procurement.barang', 'label' => 'Barang', 'route' => 'admin.procurement.barang'],
+                    ['key' => 'procurement.jasa', 'label' => 'Jasa', 'route' => 'admin.procurement.jasa'],
+                    ['key' => 'procurement.capex', 'label' => 'Capex', 'route' => 'admin.procurement.capex'],
+                    ['key' => 'procurement.action-log', 'label' => 'Action Log', 'route' => 'admin.procurement.action-log'],
+                    ['key' => 'procurement.minutes-of-meeting', 'label' => 'Minutes of Meeting', 'route' => 'admin.procurement.minutes-of-meeting'],
+                ] : [
+                    ['key' => 'procurement.barang', 'label' => 'Pengadaan', 'route' => "{$role}.procurement"],
+                ]),
             ],
         ],
     ];

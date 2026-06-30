@@ -166,6 +166,43 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .status-badge { min-width: 78px; }
 .responsive-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .25rem; }
 .responsive-tabs .nav-link { white-space: nowrap; }
+.procurement-menu-card { padding: .75rem; }
+.procurement-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: .55rem;
+}
+.procurement-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 44px;
+    padding: .55rem .7rem;
+    border: 1px solid #dbe3ef;
+    border-radius: .55rem;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    text-decoration: none;
+    text-align: center;
+}
+.procurement-tab:hover,
+.procurement-tab.active {
+    border-color: #0f5f7f;
+    background: #e8f6fb;
+    color: #0f5f7f;
+}
+.procurement-tab i {
+    font-size: 1rem;
+    flex: 0 0 auto;
+}
+.procurement-tab span {
+    overflow-wrap: anywhere;
+}
+.procurement-table {
+    min-width: 1040px;
+}
 .placeholder-panel { min-height: 320px; border: 1px dashed #cbd5e1; border-radius: .75rem; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 1rem; overflow: hidden; }
 .placeholder-panel img { width: min(100%, 760px); max-height: 360px; object-fit: contain; }
 .master-card { display: flex; align-items: center; gap: 1rem; padding: 1rem; height: 100%; }
@@ -373,6 +410,7 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .excel-signatures { grid-template-columns: 1fr; }
     .template-toolbar { align-items: stretch; flex-direction: column; }
     .template-search { width: 100%; }
+    .procurement-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .import-steps { grid-template-columns: 1fr; }
     .qc-excel-sheet-wrap { padding: .5rem; }
     .qc-info-grid { grid-template-columns: 1fr; }
@@ -385,6 +423,7 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .content-card, .filter-card { padding: .85rem; }
     .placeholder-panel { min-height: 240px; }
     .template-preview-header { padding-top: 1rem; }
+    .procurement-tabs { grid-template-columns: 1fr; }
     .qc-modern-table { min-width: 680px; font-size: .8rem; }
     .qc-radio-inline { flex-direction: column; align-items: flex-start; gap: .25rem; }
     .qc-radio-option { width: 100%; justify-content: flex-start; }
