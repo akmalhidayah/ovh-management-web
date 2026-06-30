@@ -127,10 +127,10 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-xl-2">
-            <label class="form-label">&nbsp;</label>
-            <button class="btn btn-primary w-100" type="button">
-                <i class="bi bi-arrow-repeat me-2"></i>Update Progress
+        <div class="col-12 col-md-auto ms-xl-auto">
+            <button class="btn btn-primary procurement-update-btn" type="button">
+                <i class="bi bi-arrow-repeat"></i>
+                <span>Update Progress</span>
             </button>
         </div>
     </x-filter-card>
@@ -143,12 +143,11 @@
             <div class="procurement-kpi-grid procurement-kpi-grid-cost">
                 @foreach ($barangCostCards as $item)
                     <div class="procurement-kpi-card is-{{ $item['tone'] }}">
-                        <div class="procurement-kpi-head">
+                        <div class="procurement-kpi-icon"><i class="bi {{ $item['icon'] }}"></i></div>
+                        <div class="procurement-kpi-body">
                             <span>{{ $item['label'] }}</span>
-                            <i class="bi {{ $item['icon'] }}"></i>
+                            <strong>{{ $item['value'] }}</strong>
                         </div>
-                        <strong>{{ $item['value'] }}</strong>
-                        <div class="procurement-kpi-line"></div>
                     </div>
                 @endforeach
             </div>
@@ -160,12 +159,11 @@
                 <div class="procurement-kpi-grid procurement-kpi-grid-process">
                     @foreach ($barangProcessCards as $item)
                         <div class="procurement-kpi-card is-{{ $item['tone'] }}">
-                            <div class="procurement-kpi-head">
+                            <div class="procurement-kpi-icon"><i class="bi {{ $item['icon'] }}"></i></div>
+                            <div class="procurement-kpi-body">
                                 <span>{{ $item['label'] }}</span>
-                                <i class="bi {{ $item['icon'] }}"></i>
+                                <strong>{{ $item['value'] }}</strong>
                             </div>
-                            <strong>{{ $item['value'] }}</strong>
-                            <div class="procurement-kpi-line"></div>
                         </div>
                     @endforeach
                 </div>
