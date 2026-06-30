@@ -87,17 +87,6 @@
     <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>{{ $data['button'] }}</button>
 </x-page-header>
 
-<div class="content-card procurement-menu-card">
-    <div class="procurement-tabs" role="navigation" aria-label="Menu Pengadaan">
-        @foreach ($sections as $key => $item)
-            <a href="{{ route($item['route']) }}" class="procurement-tab {{ $section === $key ? 'active' : '' }}">
-                <i class="bi {{ $item['icon'] }}"></i>
-                <span>{{ $item['label'] }}</span>
-            </a>
-        @endforeach
-    </div>
-</div>
-
 <div class="row g-3 mb-3">
     @foreach ($summary as $item)
         <div class="col-12 col-sm-6 col-xl-3">
