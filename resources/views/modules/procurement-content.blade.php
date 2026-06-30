@@ -127,7 +127,7 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-12 col-md-auto ms-xl-auto">
+        <div class="col-12 col-md-6 col-xl-2 d-grid">
             <button class="btn btn-primary procurement-update-btn" type="button">
                 <i class="bi bi-arrow-repeat"></i>
                 <span>Update Progress</span>
