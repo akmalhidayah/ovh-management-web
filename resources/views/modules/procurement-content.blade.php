@@ -1,5 +1,9 @@
 @php
     $section = $section ?? 'barang';
+    $plantOptions = collect($plantOptions ?? []);
+    $yearOptions = collect($yearOptions ?? [(string) now()->year])->prepend((string) ($currentYear ?? now()->year))->unique()->values();
+    $selectedYear = (string) request('year', $currentYear ?? now()->year);
+    $selectedPlant = (string) request('plant', 'all');
     $sections = [
         'barang' => ['label' => 'Barang', 'route' => 'admin.procurement.barang', 'icon' => 'bi-box-seam'],
         'jasa' => ['label' => 'Jasa', 'route' => 'admin.procurement.jasa', 'icon' => 'bi-person-gear'],
@@ -83,9 +87,39 @@
     ];
 @endphp
 
-<x-page-header :title="$data['title']" :subtitle="$data['subtitle']">
-    <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>{{ $data['button'] }}</button>
-</x-page-header>
+<x-page-header :title="$data['title']" :subtitle="$data['subtitle']"></x-page-header>
+
+<form method="GET" action="{{ route($active['route']) }}">
+    <x-filter-card>
+        <div class="col-12 col-xl-5">
+            <label class="form-label">Search</label>
+            <input type="search" class="form-control" name="search" value="{{ request('search') }}" placeholder="Cari nomor, item, vendor, atau PIC">
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <label class="form-label">Plant</label>
+            <select class="form-select" name="plant">
+                <option value="all" @selected($selectedPlant === 'all')>Semua Plant</option>
+                @foreach ($plantOptions as $plant)
+                    <option value="{{ $plant }}" @selected($selectedPlant === (string) $plant)>{{ $plant }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label class="form-label">Tahun</label>
+            <select class="form-select" name="year">
+                @foreach ($yearOptions as $year)
+                    <option value="{{ $year }}" @selected($selectedYear === (string) $year)>{{ $year }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-xl-2">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary w-100" type="button">
+                <i class="bi bi-arrow-repeat me-2"></i>Update Progress
+            </button>
+        </div>
+    </x-filter-card>
+</form>
 
 <div class="row g-3 mb-3">
     @foreach ($summary as $item)
@@ -94,25 +128,6 @@
         </div>
     @endforeach
 </div>
-
-<x-filter-card>
-    <div class="col-12 col-md-3">
-        <label class="form-label">Tahun</label>
-        <select class="form-select"><option>2026</option><option>2025</option></select>
-    </div>
-    <div class="col-12 col-md-3">
-        <label class="form-label">Plant</label>
-        <select class="form-select"><option>Semua Plant</option><option>Tonasa 4</option><option>Tonasa 5</option></select>
-    </div>
-    <div class="col-12 col-md-3">
-        <label class="form-label">Status</label>
-        <select class="form-select"><option>Semua Status</option><option>Open</option><option>Review</option><option>Selesai</option></select>
-    </div>
-    <div class="col-12 col-md-3">
-        <label class="form-label">Cari</label>
-        <input type="search" class="form-control" placeholder="Nomor, item, vendor, PIC">
-    </div>
-</x-filter-card>
 
 <div class="content-card">
     <div class="card-heading">

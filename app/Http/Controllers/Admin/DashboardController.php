@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MasterDataRecord;
 use App\Support\AdminInspectionSubmissionPageData;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -87,6 +88,30 @@ class DashboardController extends Controller
     {
         return view('admin.procurement', [
             'section' => $section,
+            'plantOptions' => MasterDataRecord::query()
+                ->whereIn('document_category', [
+                    MasterDataRecord::CATEGORY_QC,
+                    MasterDataRecord::CATEGORY_COMMISSIONING,
+                ])
+                ->whereNotNull('plant')
+                ->where('plant', '<>', '')
+                ->distinct()
+                ->orderBy('plant')
+                ->pluck('plant'),
+            'yearOptions' => MasterDataRecord::query()
+                ->whereIn('document_category', [
+                    MasterDataRecord::CATEGORY_QC,
+                    MasterDataRecord::CATEGORY_COMMISSIONING,
+                ])
+                ->whereNotNull('year')
+                ->where('year', '<>', '')
+                ->distinct()
+                ->orderByDesc('year')
+                ->pluck('year')
+                ->prepend((string) now()->year)
+                ->unique()
+                ->values(),
+            'currentYear' => (string) now()->year,
         ]);
     }
 

@@ -2,7 +2,7 @@
     $statusLabels = $statusLabels ?? [];
     $inspectionMetrics = $inspectionMetrics ?? ($qcMetrics ?? null);
     $filterOptions = $filterOptions ?? ['years' => collect(), 'plants' => collect(), 'areas' => collect(), 'approvalProgress' => collect()];
-    $filters = $filters ?? ['type' => 'all', 'year' => 'all', 'plant' => 'all', 'area' => 'all', 'work_status' => 'all', 'approval_progress' => 'all', 'sort' => 'default', 'search' => ''];
+    $filters = $filters ?? ['type' => 'all', 'year' => (string) now()->year, 'plant' => 'all', 'area' => 'all', 'work_status' => 'all', 'approval_progress' => 'all', 'sort' => 'default', 'search' => ''];
     $statusClasses = [
         'draft' => 'text-bg-secondary',
         'submitted' => 'text-bg-info',
@@ -31,7 +31,6 @@
         <div class="col-12 col-md-6 col-xl-3">
             <label class="form-label">Tahun</label>
             <select class="form-select" name="year">
-                <option value="all">Semua Tahun</option>
                 @foreach ($filterOptions['years'] as $year)
                     <option value="{{ $year }}" @selected($filters['year'] == $year)>{{ $year }}</option>
                 @endforeach

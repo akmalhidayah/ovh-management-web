@@ -16,7 +16,7 @@ class AdminInspectionSubmissionPageData
     {
         $filters = [
             'type' => self::validType($request->input('type', $defaultType)),
-            'year' => $request->input('year', 'all') ?: 'all',
+            'year' => $request->input('year', (string) now()->year) ?: (string) now()->year,
             'plant' => $request->input('plant', 'all') ?: 'all',
             'area' => $request->input('area', 'all') ?: 'all',
             'work_status' => $request->input('work_status', 'all') ?: 'all',
@@ -625,7 +625,7 @@ class AdminInspectionSubmissionPageData
         $masterRows = self::masterDataRows();
 
         return [
-            'years' => $rows->pluck('year')->merge($masterRows->pluck('year'))->filter()->unique()->sortDesc()->values(),
+            'years' => $rows->pluck('year')->merge($masterRows->pluck('year'))->push((string) now()->year)->filter()->unique()->sortDesc()->values(),
             'plants' => $rows->pluck('plant')->merge($masterRows->pluck('plant'))->filter()->unique()->sort()->values(),
             'areas' => $rows->pluck('area')->merge($masterRows->pluck('area'))->filter()->unique()->sort()->values(),
             'approvalProgress' => $rows
