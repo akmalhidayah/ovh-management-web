@@ -11,6 +11,14 @@
 @section('title', $workTypeLabel)
 @section('page_title', $workTypeLabel)
 @section('breadcrumb_parent', 'Rencana Kerja')
+@if ($workType === 'barang')
+    @section('breadcrumb_actions')
+        <button class="btn btn-primary work-plan-update-btn" type="button">
+            <i class="bi bi-plus-lg"></i>
+            <span>Tambah Rencana</span>
+        </button>
+    @endsection
+@endif
 @section('content')
     @include('modules.schedule-content', [
         'workType' => $workType,

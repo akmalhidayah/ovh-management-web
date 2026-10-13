@@ -136,6 +136,7 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .ovh-content { flex: 1; padding: 1.5rem; }
 .ovh-footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 1.5rem; font-size: .875rem; background: #fff; border-top: 1px solid var(--ovh-border); }
 .page-breadcrumb { display: flex; align-items: center; gap: .5rem; color: #64748b; font-size: .875rem; margin-bottom: 1rem; }
+.page-breadcrumb-actions { display: flex; align-items: center; margin-left: auto; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .page-header-actions-only { justify-content: flex-end; }
 .page-header h1 { margin: 0; font-size: clamp(1.35rem, 2vw, 1.8rem); font-weight: 800; }
@@ -157,18 +158,6 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .card-heading h2 { margin: 0; font-size: 1rem; font-weight: 800; }
 .chart-wrap { position: relative; height: 320px; width: 100%; }
 .chart-small { height: 260px; }
-.work-plan-toolbar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    min-height: 62px;
-    margin-bottom: 1rem;
-    padding: .75rem 1rem;
-    border: 1px solid var(--ovh-border);
-    border-radius: .75rem;
-    background: #fff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
-}
 .work-plan-update-btn {
     display: inline-flex;
     align-items: center;
@@ -652,7 +641,8 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 @media (max-width: 575.98px) {
     .ovh-footer { flex-direction: column; }
     .content-card, .filter-card { padding: .85rem; }
-    .work-plan-toolbar { align-items: stretch; }
+    .page-breadcrumb { flex-wrap: wrap; }
+    .page-breadcrumb-actions { width: 100%; margin-left: 0; }
     .work-plan-update-btn { width: 100%; }
     .work-plan-chart-card { padding: 0; }
     .work-plan-chart-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }

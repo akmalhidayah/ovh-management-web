@@ -2,14 +2,7 @@
     $isBarang = ($workType ?? 'barang') === 'barang';
 @endphp
 
-@if ($isBarang)
-    <div class="work-plan-toolbar">
-        <button class="btn btn-primary work-plan-update-btn" type="button">
-            <i class="bi bi-plus-lg"></i>
-            <span>Update Data</span>
-        </button>
-    </div>
-@else
+@if (! $isBarang)
     <x-page-header :title="$workTypeLabel ?? 'Rencana Kerja'" subtitle="Kurva S, gantt chart, dan action log sementara untuk rancangan frontend.">
         <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tambah Rencana Kerja</button>
     </x-page-header>
