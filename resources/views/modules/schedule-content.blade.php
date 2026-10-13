@@ -1,5 +1,16 @@
 @php
-    $isBarang = ($workType ?? 'barang') === 'barang';
+    $requestedWorkType = $workType ?? 'barang';
+    $workType = in_array($requestedWorkType, ['barang', 'jasa', 'capex'], true) ? $requestedWorkType : 'barang';
+    $tableTitle = match ($workType) {
+        'jasa' => 'Daftar Rencana Kerja Jasa',
+        'capex' => 'Daftar Rencana Kerja Capex',
+        default => 'Daftar Rencana Kerja Barang',
+    };
+    $searchPlaceholder = match ($workType) {
+        'jasa' => 'Cari plant, lingkup jasa, PIC...',
+        'capex' => 'Cari plant, program capex, PIC...',
+        default => 'Cari plant, unit kerja, PIC...',
+    };
     $barangRows = [
         ['Plant 5', 'Kiln Utama (BTA 86 Meter)', 'Auliya Sahara', '1 Set', 'OEM', true, '-'],
         ['Plant 4', 'Raw Mill 4 (Tyre Kiln Pondasi)', 'Budi Santoso', '2 Pcs', 'Fabrikasi', true, '-'],
@@ -25,77 +36,109 @@
         ['Plant 3', 'Silo Discharge 3', 'Yuni Kartika', '7 Pcs', 'Casting', true, '-'],
         ['Plant 4', 'Air Slide 4', 'Akbar Firmansyah', '5 Set', 'Fabrikasi', true, '-'],
     ];
+    $jasaRows = [
+        ['Plant 5', 'Kiln Utama', 'Auliya Sahara', 'Refractory kiln shutdown', 'PT Teknik Prima', '30 Hari', 'Siap', '-'],
+        ['Plant 4', 'Finish Mill 4', 'Budi Santoso', 'Alignment girth gear', 'PT Mitra Rotasi', '18 Hari', 'Siap', '-'],
+        ['Plant 3', 'Raw Mill 3', 'Siti Rahma', 'Overhaul gearbox utama', 'PT Gearindo', '21 Hari', 'Proses', 'Finalisasi metode kerja'],
+        ['Plant 2', 'Crusher 2', 'Rahmat Hidayat', 'Major inspection crusher', 'PT Rekayasa Mesin', '14 Hari', 'Siap', '-'],
+        ['Plant 5', 'Coal Mill 5', 'Andi Pratama', 'Balancing dynamic fan', 'PT Presisi Teknik', '10 Hari', 'Proses', 'Menunggu jadwal vendor'],
+        ['Plant 4', 'Clinker Cooler 4', 'Nur Aisyah', 'Penggantian cooler plate', 'PT Karya Industri', '20 Hari', 'Siap', '-'],
+        ['Plant 3', 'Preheater 3', 'Fajar Akbar', 'Cleaning cyclone dan ducting', 'PT Bersih Plant', '12 Hari', 'Siap', '-'],
+        ['Plant 5', 'Cement Mill 5', 'Dewi Lestari', 'NDT shell dan trunnion', 'PT Uji Material', '8 Hari', 'Proses', 'Review penawaran'],
+        ['Plant 2', 'Packing Plant 2', 'Irfan Maulana', 'Kalibrasi packer', 'PT Kalibrasi Nusantara', '7 Hari', 'Siap', '-'],
+        ['Plant 4', 'ID Fan 4', 'Rizal Fahmi', 'Repair impeller fan', 'PT Fabrikasi Jaya', '16 Hari', 'Siap', '-'],
+        ['Plant 3', 'Belt Conveyor 3', 'Maya Putri', 'Hot splicing belt conveyor', 'PT Conveyor Mandiri', '6 Hari', 'Proses', 'Konfirmasi material belt'],
+        ['Plant 5', 'Silo 5', 'Arman Yusuf', 'Inspeksi struktur silo', 'PT Struktur Cipta', '9 Hari', 'Siap', '-'],
+        ['Plant 2', 'Workshop', 'Nadia Amelia', 'Load test overhead crane', 'PT Angkat Aman', '5 Hari', 'Siap', '-'],
+        ['Plant 4', 'Power House', 'Agus Salim', 'Major service generator', 'PT Daya Teknik', '11 Hari', 'Proses', 'Menunggu spare part'],
+        ['Plant 3', 'Dust Collector 3', 'Wahyu Ramadhan', 'Performance test bag filter', 'PT Emisi Bersih', '4 Hari', 'Siap', '-'],
+    ];
+    $capexRows = [
+        ['Plant 5', 'Upgrade sistem burner kiln', 'Auliya Sahara', 'Rp 8,50 M', '2027', 'Strategis', 'Disetujui', '-'],
+        ['Plant 4', 'Revitalisasi Finish Mill 4', 'Budi Santoso', 'Rp 12,75 M', '2027', 'Strategis', 'Review', 'Validasi business case'],
+        ['Plant 3', 'Penggantian main drive Raw Mill', 'Siti Rahma', 'Rp 6,20 M', '2027', 'Replacement', 'Disetujui', '-'],
+        ['Plant 2', 'Modernisasi Crusher 2', 'Rahmat Hidayat', 'Rp 4,80 M', '2027', 'Improvement', 'Review', 'Revisi estimasi biaya'],
+        ['Plant 5', 'Instalasi online vibration monitoring', 'Andi Pratama', 'Rp 2,35 M', '2027', 'Digitalisasi', 'Disetujui', '-'],
+        ['Plant 4', 'Upgrade dedusting system', 'Nur Aisyah', 'Rp 5,10 M', '2027', 'Lingkungan', 'Disetujui', '-'],
+        ['Plant 3', 'Penggantian refractory preheater', 'Fajar Akbar', 'Rp 3,65 M', '2027', 'Replacement', 'Review', 'Finalisasi spesifikasi'],
+        ['Plant 5', 'Optimasi separator Cement Mill', 'Dewi Lestari', 'Rp 7,40 M', '2028', 'Improvement', 'Disetujui', '-'],
+        ['Plant 2', 'Automasi Packing Plant', 'Irfan Maulana', 'Rp 9,25 M', '2028', 'Digitalisasi', 'Review', 'Kajian integrasi sistem'],
+        ['Plant 4', 'Pengadaan high efficiency ID Fan', 'Rizal Fahmi', 'Rp 4,95 M', '2027', 'Efisiensi', 'Disetujui', '-'],
+        ['Plant 3', 'Perkuatan struktur conveyor', 'Maya Putri', 'Rp 1,85 M', '2027', 'Reliability', 'Review', 'Menunggu hasil inspeksi'],
+        ['Plant 5', 'Ekspansi kapasitas silo', 'Arman Yusuf', 'Rp 15,30 M', '2028', 'Strategis', 'Disetujui', '-'],
+        ['Plant 2', 'Revitalisasi workshop maintenance', 'Nadia Amelia', 'Rp 3,10 M', '2028', 'Improvement', 'Review', 'Penyusunan desain awal'],
+        ['Plant 4', 'Upgrade proteksi Power House', 'Agus Salim', 'Rp 2,70 M', '2027', 'Reliability', 'Disetujui', '-'],
+        ['Plant 3', 'Continuous emission monitoring', 'Wahyu Ramadhan', 'Rp 5,85 M', '2027', 'Lingkungan', 'Review', 'Evaluasi vendor'],
+    ];
+    $ganttRows = match ($workType) {
+        'jasa' => [
+            ['Refractory Kiln Tonasa 5', '30 Hari', 0, 100, 'blue'],
+            ['Alignment Finish Mill Tonasa 4', '18 Hari', 12, 72, 'green'],
+            ['Overhaul Raw Mill Tonasa 3', '21 Hari', 30, 62, 'orange'],
+            ['Inspection Crusher Tonasa 2', '14 Hari', 48, 46, 'slate'],
+        ],
+        'capex' => [
+            ['Upgrade Burner Kiln Tonasa 5', '30 Hari', 0, 100, 'blue'],
+            ['Revitalisasi Finish Mill Tonasa 4', '25 Hari', 8, 86, 'green'],
+            ['Main Drive Raw Mill Tonasa 3', '20 Hari', 28, 65, 'orange'],
+            ['Modernisasi Crusher Tonasa 2', '16 Hari', 46, 52, 'slate'],
+        ],
+        default => [
+            ['Tonasa 5 (Kiln, RM, CM & Crusher)', '30 Hari', 0, 100, 'blue'],
+            ['Tonasa 4 (Finish Mill 420)', '25 Hari', 8, 86, 'green'],
+            ['Tonasa 4 (Kiln, RM, CM) & FM 419', '20 Hari', 28, 65, 'orange'],
+            ['Tonasa 2 & 3 (Finish Mill 2, 3 & Crusher)', '16 Hari', 46, 52, 'slate'],
+        ],
+    };
 @endphp
-
-@if (! $isBarang)
-    <x-page-header :title="$workTypeLabel ?? 'Rencana Kerja'" subtitle="Kurva S, gantt chart, dan action log sementara untuk rancangan frontend.">
-        <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tambah Rencana Kerja</button>
-    </x-page-header>
-@endif
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-xl-5">
-        <div class="content-card h-100 {{ $isBarang ? 'work-plan-chart-card' : '' }}">
-            @if ($isBarang)
-                <div class="work-plan-chart-heading">
-                    <h2>Kurva S - Progress</h2>
-                </div>
-            @else
-                <div class="card-heading"><h2>Kurva S</h2><span class="text-muted">Plan vs Actual</span></div>
-            @endif
-            <div class="chart-wrap {{ $isBarang ? 'work-plan-curve' : '' }}"><canvas data-chart="line"></canvas></div>
+        <div class="content-card h-100 work-plan-chart-card">
+            <div class="work-plan-chart-heading">
+                <h2>Kurva S - Progress</h2>
+            </div>
+            <div class="chart-wrap work-plan-curve"><canvas data-chart="line"></canvas></div>
         </div>
     </div>
     <div class="col-12 col-xl-7">
-        <div class="content-card h-100 {{ $isBarang ? 'work-plan-chart-card' : '' }}">
-            @if ($isBarang)
-                <div class="work-plan-chart-heading">
-                    <h2>Gantt Chart - Progress</h2>
-                    <span>Jadwal Overhaul - 2027</span>
-                </div>
-                <div class="work-plan-gantt" role="img" aria-label="Gantt chart jadwal overhaul Rencana Kerja Barang">
-                    @foreach ([
-                        ['Tonasa 5 (Kiln, RM, CM & Crusher)', '30 Hari', 0, 100, 'blue'],
-                        ['Tonasa 4 (Finish Mill 420)', '25 Hari', 8, 86, 'green'],
-                        ['Tonasa 4 (Kiln, RM, CM) & FM 419', '20 Hari', 28, 65, 'orange'],
-                        ['Tonasa 2 & 3 (Finish Mill 2, 3 & Crusher)', '16 Hari', 46, 52, 'slate'],
-                    ] as [$label, $duration, $start, $length, $color])
-                        <div class="work-plan-gantt-row">
-                            <span class="work-plan-gantt-label">{{ $label }}</span>
-                            <span class="work-plan-gantt-track">
-                                <span class="work-plan-gantt-bar is-{{ $color }}" style="--bar-start: {{ $start }}%; --bar-length: {{ $length }}%;"></span>
-                            </span>
-                            <strong class="work-plan-gantt-duration is-{{ $color }}">{{ $duration }}</strong>
-                        </div>
-                    @endforeach
-                    <div class="work-plan-gantt-axis" aria-hidden="true">
-                        <span>Hari 1</span><span>Hari 8</span><span>Hari 15</span><span>Hari 22</span><span>Hari 30</span>
+        <div class="content-card h-100 work-plan-chart-card">
+            <div class="work-plan-chart-heading">
+                <h2>Gantt Chart - Progress</h2>
+                <span>Jadwal Overhaul - 2027</span>
+            </div>
+            <div class="work-plan-gantt" role="img" aria-label="Gantt chart jadwal overhaul {{ $workTypeLabel ?? $tableTitle }}">
+                @foreach ($ganttRows as [$label, $duration, $start, $length, $color])
+                    <div class="work-plan-gantt-row">
+                        <span class="work-plan-gantt-label">{{ $label }}</span>
+                        <span class="work-plan-gantt-track">
+                            <span class="work-plan-gantt-bar is-{{ $color }}" style="--bar-start: {{ $start }}%; --bar-length: {{ $length }}%;"></span>
+                        </span>
+                        <strong class="work-plan-gantt-duration is-{{ $color }}">{{ $duration }}</strong>
                     </div>
+                @endforeach
+                <div class="work-plan-gantt-axis" aria-hidden="true">
+                    <span>Hari 1</span><span>Hari 8</span><span>Hari 15</span><span>Hari 22</span><span>Hari 30</span>
                 </div>
-            @else
-                <div class="card-heading"><h2>Gantt Chart</h2><span class="text-muted">Placeholder</span></div>
-                <div class="placeholder-panel gantt-placeholder">
-                    <img src="{{ asset('assets/images/placeholders/gantt-placeholder.svg') }}" alt="Gantt placeholder">
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
 
-@if ($isBarang)
-    <section class="content-card work-plan-table-card" data-work-plan-table data-per-page="10">
-        <div class="work-plan-table-toolbar">
-            <div>
-                <h2>Daftar Rencana Kerja Barang</h2>
-            </div>
-            <label class="work-plan-search">
-                <i class="bi bi-search"></i>
-                <input type="search" class="form-control" placeholder="Cari plant, unit kerja, PIC..." data-work-plan-search>
-            </label>
+<section class="content-card work-plan-table-card" data-work-plan-table data-per-page="10">
+    <div class="work-plan-table-toolbar">
+        <div>
+            <h2>{{ $tableTitle }}</h2>
         </div>
+        <label class="work-plan-search">
+            <i class="bi bi-search"></i>
+            <input type="search" class="form-control" placeholder="{{ $searchPlaceholder }}" data-work-plan-search>
+        </label>
+    </div>
 
-        <div class="table-responsive">
-            <table class="table align-middle work-plan-table">
+    <div class="table-responsive">
+        <table class="table align-middle work-plan-table">
+            @if ($workType === 'barang')
                 <thead>
                     <tr>
                         <th scope="col">No</th>
@@ -130,30 +173,83 @@
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
-        </div>
-
-        <div class="work-plan-empty" data-work-plan-empty hidden>
-            <i class="bi bi-search"></i>
-            <span>Data yang dicari tidak ditemukan.</span>
-        </div>
-
-        <div class="work-plan-pagination-bar">
-            <p data-work-plan-summary aria-live="polite"></p>
-            <nav class="work-plan-pagination" data-work-plan-pagination aria-label="Pagination Rencana Kerja Barang"></nav>
-        </div>
-    </section>
-@else
-    <div class="content-card">
-        <div class="table-responsive">
-            <table class="table align-middle ovh-table">
-                <thead><tr><th>No</th><th>Action Item</th><th>PIC</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+            @elseif ($workType === 'jasa')
+                <thead>
+                    <tr>
+                        <th scope="col">No</th>
+                        <th scope="col">Plant</th>
+                        <th scope="col">Unit Kerja</th>
+                        <th scope="col">PIC ST</th>
+                        <th scope="col">Lingkup Jasa</th>
+                        <th scope="col">Vendor</th>
+                        <th scope="col">Durasi</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Ket</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    @foreach ([['Finalisasi scope pekerjaan', 'Andi', '2026-05-10', 'Proses'], ['Review spare critical', 'Sinta', '2026-05-14', 'Open'], ['Close punch list area boiler', 'Rudi', '2026-05-21', 'Terlambat']] as $i => $row)
-                        <tr><td>{{ $i + 1 }}</td><td>{{ $row[0] }}</td><td>{{ $row[1] }}</td><td>{{ $row[2] }}</td><td><x-status-badge :status="$row[3]" /></td><td><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></button></td></tr>
+                    @foreach ($jasaRows as $index => [$plant, $unitKerja, $pic, $scope, $vendor, $duration, $status, $note])
+                        <tr data-work-plan-row>
+                            <td class="work-plan-number">{{ $index + 1 }}</td>
+                            <td><strong>{{ $plant }}</strong></td>
+                            <td>{{ $unitKerja }}</td>
+                            <td>{{ $pic }}</td>
+                            <td>{{ $scope }}</td>
+                            <td>{{ $vendor }}</td>
+                            <td class="text-center"><strong>{{ $duration }}</strong></td>
+                            <td class="text-center">
+                                <span class="work-plan-bom {{ $status === 'Siap' ? 'is-ready' : 'is-pending' }}">
+                                    <i class="bi {{ $status === 'Siap' ? 'bi-check-lg' : 'bi-clock' }}"></i><span>{{ $status }}</span>
+                                </span>
+                            </td>
+                            <td class="work-plan-note">{{ $note }}</td>
+                        </tr>
                     @endforeach
                 </tbody>
-            </table>
-        </div>
+            @else
+                <thead>
+                    <tr>
+                        <th scope="col">No</th>
+                        <th scope="col">Plant</th>
+                        <th scope="col">Program Capex</th>
+                        <th scope="col">PIC ST</th>
+                        <th scope="col">Anggaran</th>
+                        <th scope="col">Periode</th>
+                        <th scope="col">Kategori</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Ket</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($capexRows as $index => [$plant, $program, $pic, $budget, $period, $category, $status, $note])
+                        <tr data-work-plan-row>
+                            <td class="work-plan-number">{{ $index + 1 }}</td>
+                            <td><strong>{{ $plant }}</strong></td>
+                            <td>{{ $program }}</td>
+                            <td>{{ $pic }}</td>
+                            <td class="text-end"><strong>{{ $budget }}</strong></td>
+                            <td class="text-center">{{ $period }}</td>
+                            <td class="text-center"><span class="work-plan-category">{{ $category }}</span></td>
+                            <td class="text-center">
+                                <span class="work-plan-bom {{ $status === 'Disetujui' ? 'is-ready' : 'is-pending' }}">
+                                    <i class="bi {{ $status === 'Disetujui' ? 'bi-check-lg' : 'bi-clock' }}"></i><span>{{ $status }}</span>
+                                </span>
+                            </td>
+                            <td class="work-plan-note">{{ $note }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            @endif
+        </table>
     </div>
-@endif
+
+    <div class="work-plan-empty" data-work-plan-empty hidden>
+        <i class="bi bi-search"></i>
+        <span>Data yang dicari tidak ditemukan.</span>
+    </div>
+
+    <div class="work-plan-pagination-bar">
+        <p data-work-plan-summary aria-live="polite"></p>
+        <nav class="work-plan-pagination" data-work-plan-pagination aria-label="Pagination {{ $tableTitle }}"></nav>
+    </div>
+</section>
