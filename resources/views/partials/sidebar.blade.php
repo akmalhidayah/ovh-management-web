@@ -10,14 +10,10 @@
         || \App\Support\AdminMenuPermissions::canSee($currentUser, $key);
     $groups = [
         [
-            'key' => 'dashboard',
+            'key' => 'dashboard.dashboard',
             'label' => 'Dashboard',
             'icon' => 'bi-speedometer2',
-            'routes' => ["{$role}.dashboard", "{$role}.overview"],
-            'items' => [
-                ['key' => 'dashboard.dashboard', 'label' => 'Dashboard', 'route' => "{$role}.dashboard"],
-                ['key' => 'dashboard.overview', 'label' => 'Overview', 'route' => "{$role}.overview"],
-            ],
+            'route' => "{$role}.dashboard",
         ],
         [
             'key' => 'planning.kalender-overhaul',
@@ -36,6 +32,43 @@
                 ['key' => 'planning.schedule', 'label' => 'Rencana Kerja Capex', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'capex']],
             ],
         ],
+        [
+            'key' => 'procurement',
+            'label' => 'Pengadaan',
+            'icon' => 'bi-cart-check',
+            'routes' => $role === 'admin'
+                ? ['admin.procurement', 'admin.procurement.barang', 'admin.procurement.jasa', 'admin.procurement.capex']
+                : ["{$role}.procurement"],
+            'items' => [
+                ...($role === 'admin' ? [
+                    ['key' => 'procurement.barang', 'label' => 'Barang', 'route' => 'admin.procurement.barang'],
+                    ['key' => 'procurement.jasa', 'label' => 'Jasa', 'route' => 'admin.procurement.jasa'],
+                    ['key' => 'procurement.capex', 'label' => 'Capex', 'route' => 'admin.procurement.capex'],
+                ] : [
+                    ['key' => 'procurement.barang', 'label' => 'Pengadaan', 'route' => "{$role}.procurement"],
+                ]),
+            ],
+        ],
+        ...($role === 'admin' ? [
+            [
+                'key' => 'dashboard.overview',
+                'label' => 'Progress Overhaul',
+                'icon' => 'bi-clipboard-data',
+                'route' => 'admin.overview',
+            ],
+            [
+                'key' => 'procurement.action-log',
+                'label' => 'Action Log',
+                'icon' => 'bi-card-checklist',
+                'route' => 'admin.procurement.action-log',
+            ],
+            [
+                'key' => 'procurement.minutes-of-meeting',
+                'label' => 'MOM',
+                'icon' => 'bi-clipboard2-check',
+                'route' => 'admin.procurement.minutes-of-meeting',
+            ],
+        ] : []),
         [
             'key' => 'qc_commissioning',
             'label' => 'QC & Commissioning',
@@ -60,39 +93,16 @@
                 ]),
             ],
         ],
-        [
-            'key' => 'procurement',
-            'label' => 'Pengadaan',
-            'icon' => 'bi-cart-check',
-            'routes' => $role === 'admin'
-                ? ['admin.procurement', 'admin.procurement.*']
-                : ["{$role}.procurement"],
-            'items' => [
-                ...($role === 'admin' ? [
-                    ['key' => 'procurement.barang', 'label' => 'Barang', 'route' => 'admin.procurement.barang'],
-                    ['key' => 'procurement.jasa', 'label' => 'Jasa', 'route' => 'admin.procurement.jasa'],
-                    ['key' => 'procurement.capex', 'label' => 'Capex', 'route' => 'admin.procurement.capex'],
-                    ['key' => 'procurement.action-log', 'label' => 'Action Log', 'route' => 'admin.procurement.action-log'],
-                    ['key' => 'procurement.minutes-of-meeting', 'label' => 'Minutes of Meeting', 'route' => 'admin.procurement.minutes-of-meeting'],
-                ] : [
-                    ['key' => 'procurement.barang', 'label' => 'Pengadaan', 'route' => "{$role}.procurement"],
-                ]),
+        ...($role === 'admin' ? [
+            [
+                'label' => 'MAC',
+                'icon' => 'bi-tools',
+                'route' => 'admin.equipment',
             ],
-        ],
+        ] : []),
     ];
 
     if ($role === 'admin') {
-        $groups[] = ['section' => 'Lainnya'];
-        $groups[] = [
-            'key' => 'master_data',
-            'label' => 'Master Data',
-            'icon' => 'bi-database-gear',
-            'routes' => ['admin.master-data*', 'admin.organization-sections*'],
-            'items' => [
-                ['key' => 'master_data.equipment', 'label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
-                ['key' => 'master_data.unit-kerja', 'label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
-            ],
-        ];
         $groups[] = [
             'key' => 'userpanel',
             'label' => 'Userpanel',
@@ -101,6 +111,16 @@
             'items' => [
                 ['key' => 'userpanel.management', 'label' => 'Manajemen User', 'route' => 'admin.user-panel', 'active' => 'admin.user-panel'],
                 ['key' => 'userpanel.role-permission', 'label' => 'Role & Permission', 'route' => 'admin.user-panel.role-permission', 'active' => 'admin.user-panel.role-permission'],
+            ],
+        ];
+        $groups[] = [
+            'key' => 'master_data',
+            'label' => 'Master Data',
+            'icon' => 'bi-database-gear',
+            'routes' => ['admin.master-data*', 'admin.organization-sections*'],
+            'items' => [
+                ['key' => 'master_data.equipment', 'label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
+                ['key' => 'master_data.unit-kerja', 'label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
             ],
         ];
     }

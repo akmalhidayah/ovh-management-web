@@ -36,7 +36,7 @@ class AdminMenuPermissions
                 'label' => 'Dashboard',
                 'children' => [
                     'dashboard.dashboard' => 'Dashboard',
-                    'dashboard.overview' => 'Overview',
+                    'dashboard.overview' => 'Progress Overhaul',
                 ],
             ],
             'planning' => [
