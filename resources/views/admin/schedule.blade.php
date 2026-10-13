@@ -10,6 +10,10 @@
 @extends('layouts.dashboard')
 @section('title', $workTypeLabel)
 @section('page_title', $workTypeLabel)
+@section('breadcrumb_parent', 'Rencana Kerja')
 @section('content')
-    @include('modules.schedule-content', ['workTypeLabel' => $workTypeLabel])
+    @include('modules.schedule-content', [
+        'workType' => $workType,
+        'workTypeLabel' => $workTypeLabel,
+    ])
 @endsection

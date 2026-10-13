@@ -157,6 +157,111 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 .card-heading h2 { margin: 0; font-size: 1rem; font-weight: 800; }
 .chart-wrap { position: relative; height: 320px; width: 100%; }
 .chart-small { height: 260px; }
+.work-plan-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 62px;
+    margin-bottom: 1rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--ovh-border);
+    border-radius: .75rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+}
+.work-plan-update-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    min-width: 138px;
+    font-weight: 600;
+}
+.work-plan-chart-card {
+    min-height: 300px;
+    padding: 0;
+    overflow: hidden;
+}
+.work-plan-chart-heading {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .58rem .85rem;
+    color: #fff;
+    background: #46658e;
+}
+.work-plan-chart-heading h2 {
+    margin: 0;
+    font-size: .9rem;
+    font-weight: 800;
+}
+.work-plan-chart-heading span {
+    font-size: .78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.work-plan-curve {
+    height: 250px;
+    padding: .9rem .85rem .55rem;
+}
+.work-plan-gantt {
+    display: grid;
+    align-content: center;
+    gap: .45rem;
+    min-height: 250px;
+    padding: .85rem 1rem .6rem;
+}
+.work-plan-gantt-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.2fr) minmax(230px, 2fr) 58px;
+    align-items: center;
+    gap: .7rem;
+}
+.work-plan-gantt-label {
+    color: #334155;
+    font-size: .72rem;
+    line-height: 1.25;
+}
+.work-plan-gantt-track {
+    position: relative;
+    display: block;
+    height: 28px;
+    border-inline: 1px solid #dbe4ef;
+    background: repeating-linear-gradient(to right, transparent 0, transparent calc(25% - 1px), #e2e8f0 calc(25% - 1px), #e2e8f0 25%);
+}
+.work-plan-gantt-bar {
+    position: absolute;
+    top: 50%;
+    left: var(--bar-start);
+    width: var(--bar-length);
+    height: 17px;
+    border-radius: 999px;
+    transform: translateY(-50%);
+}
+.work-plan-gantt-bar.is-blue { background: #3478ec; }
+.work-plan-gantt-bar.is-green { background: #72c291; }
+.work-plan-gantt-bar.is-orange { background: #f59e0b; }
+.work-plan-gantt-bar.is-slate { background: #718096; }
+.work-plan-gantt-duration {
+    font-size: .68rem;
+    text-align: right;
+    white-space: nowrap;
+}
+.work-plan-gantt-duration.is-blue { color: #2563eb; }
+.work-plan-gantt-duration.is-green { color: #2f9e62; }
+.work-plan-gantt-duration.is-orange { color: #d97706; }
+.work-plan-gantt-duration.is-slate { color: #475569; }
+.work-plan-gantt-axis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    margin-left: 38%;
+    margin-right: 58px;
+    color: #94a3b8;
+    font-size: .65rem;
+}
+.work-plan-gantt-axis span { text-align: center; }
 .inspection-chart-card { padding: .85rem; margin-bottom: 0; }
 .inspection-chart-wrap { position: relative; height: 150px; width: 100%; }
 .ovh-table { min-width: 760px; margin-bottom: 0; }
@@ -518,6 +623,8 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .page-actions { width: 100%; justify-content: stretch; }
     .page-actions .btn { flex: 1 1 160px; }
     .chart-wrap { height: 260px; }
+    .work-plan-chart-card { min-height: auto; }
+    .work-plan-curve { height: 260px; }
     .builder-block-head { flex-direction: column; }
     .manual-guide-head { flex-direction: column; }
     .manual-guide-grid, .manual-guide-notes { grid-template-columns: 1fr; }
@@ -545,6 +652,14 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
 @media (max-width: 575.98px) {
     .ovh-footer { flex-direction: column; }
     .content-card, .filter-card { padding: .85rem; }
+    .work-plan-toolbar { align-items: stretch; }
+    .work-plan-update-btn { width: 100%; }
+    .work-plan-chart-card { padding: 0; }
+    .work-plan-chart-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }
+    .work-plan-gantt { min-height: 0; padding-inline: .75rem; }
+    .work-plan-gantt-row { grid-template-columns: minmax(0, 1fr) 58px; gap: .4rem .6rem; }
+    .work-plan-gantt-label { grid-column: 1 / -1; }
+    .work-plan-gantt-axis { margin-left: 0; margin-right: 58px; }
     .placeholder-panel { min-height: 240px; }
     .template-preview-header { padding-top: 1rem; }
     .qc-modern-table { min-width: 680px; font-size: .8rem; }
