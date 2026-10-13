@@ -87,7 +87,6 @@
         <div class="work-plan-table-toolbar">
             <div>
                 <h2>Daftar Rencana Kerja Barang</h2>
-                <p>Daftar barang yang telah diajukan ke Tim Overhaul.</p>
             </div>
             <label class="work-plan-search">
                 <i class="bi bi-search"></i>
