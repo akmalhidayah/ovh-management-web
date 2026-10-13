@@ -26,7 +26,16 @@
             'routes' => ["{$role}.kalender-overhaul", "{$role}.schedule"],
             'items' => [
                 ['key' => 'planning.kalender-overhaul', 'label' => 'Kalender Overhaul', 'route' => "{$role}.kalender-overhaul"],
-                ['key' => 'planning.schedule', 'label' => 'Schedule', 'route' => "{$role}.schedule"],
+                [
+                    'key' => 'planning.schedule',
+                    'label' => 'Rencana Kerja',
+                    'active' => "{$role}.schedule",
+                    'children' => [
+                        ['label' => 'Rencana Kerja Barang', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'barang']],
+                        ['label' => 'Rencana Kerja Jasa', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'jasa']],
+                        ['label' => 'Rencana Kerja Capex', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'capex']],
+                    ],
+                ],
             ],
         ],
         [
@@ -162,14 +171,46 @@
                         <i class="bi bi-chevron-down group-chevron"></i>
                     </button>
                     <div class="sidebar-submenu" id="{{ $groupId }}">
-                        @foreach ($item['items'] as $child)
+                        @foreach ($item['items'] as $childIndex => $child)
                             @php
-                                $href = route($child['route']).(isset($child['hash']) ? '#'.$child['hash'] : '');
-                                $activeRoutes = (array) ($child['active'] ?? $child['route']);
+                                $hasNestedChildren = isset($child['children']);
+                                $activeRoutes = (array) ($child['active'] ?? ($child['route'] ?? []));
+                                $isChildActive = $activeRoutes !== [] && request()->routeIs(...$activeRoutes);
+                                $nestedId = $groupId.'Nested'.$childIndex;
                             @endphp
-                            <a href="{{ $href }}" class="sidebar-sublink {{ request()->routeIs(...$activeRoutes) && ! isset($child['hash']) ? 'active' : '' }}">
-                                {{ $child['label'] }}
-                            </a>
+
+                            @if ($hasNestedChildren)
+                                <div class="sidebar-nested-group {{ $isChildActive ? 'open' : '' }}" data-sidebar-group>
+                                    <button class="sidebar-nested-toggle {{ $isChildActive ? 'active' : '' }}" type="button" aria-expanded="{{ $isChildActive ? 'true' : 'false' }}" aria-controls="{{ $nestedId }}">
+                                        <span>{{ $child['label'] }}</span>
+                                        <i class="bi bi-chevron-right group-chevron"></i>
+                                    </button>
+                                    <div class="sidebar-nested-submenu" id="{{ $nestedId }}">
+                                        @foreach ($child['children'] as $nestedChild)
+                                            @php
+                                                $nestedQuery = $nestedChild['query'] ?? [];
+                                                $nestedHref = route($nestedChild['route'], $nestedQuery).(isset($nestedChild['hash']) ? '#'.$nestedChild['hash'] : '');
+                                                $nestedActiveRoutes = (array) ($nestedChild['active'] ?? $nestedChild['route']);
+                                                $expectedWorkType = $nestedQuery['work_type'] ?? null;
+                                                $currentWorkType = request()->query('work_type', 'barang');
+                                                $isNestedActive = request()->routeIs(...$nestedActiveRoutes)
+                                                    && ($expectedWorkType === null || $currentWorkType === $expectedWorkType);
+                                            @endphp
+                                            <a href="{{ $nestedHref }}" class="sidebar-nested-link {{ $isNestedActive ? 'active' : '' }}">
+                                                <span>{{ $nestedChild['label'] }}</span>
+                                                <i class="bi bi-chevron-right"></i>
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @else
+                                @php
+                                    $href = route($child['route'], $child['query'] ?? []).(isset($child['hash']) ? '#'.$child['hash'] : '');
+                                @endphp
+                                <a href="{{ $href }}" class="sidebar-sublink {{ $isChildActive && ! isset($child['hash']) ? 'active' : '' }}">
+                                    {{ $child['label'] }}
+                                </a>
+                            @endif
                         @endforeach
                     </div>
                 </div>

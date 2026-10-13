@@ -1,5 +1,5 @@
-<x-page-header title="Schedule" subtitle="Kurva S, gantt chart, dan action log dummy.">
-    <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tambah Action Log</button>
+<x-page-header :title="$workTypeLabel ?? 'Rencana Kerja Barang'" subtitle="Kurva S, gantt chart, dan action log sementara untuk rancangan frontend.">
+    <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tambah Rencana Kerja</button>
 </x-page-header>
 
 <div class="row g-3 mb-4">

@@ -1,8 +1,8 @@
 (function () {
     const body = document.body;
     const toggle = document.querySelector('[data-sidebar-toggle]');
-    const closeTargets = document.querySelectorAll('[data-sidebar-close], .sidebar-link:not(.sidebar-group-toggle), .sidebar-sublink');
-    const groupToggles = document.querySelectorAll('.sidebar-group-toggle');
+    const closeTargets = document.querySelectorAll('[data-sidebar-close], .sidebar-link:not(.sidebar-group-toggle), .sidebar-sublink, .sidebar-nested-link');
+    const groupToggles = document.querySelectorAll('.sidebar-group-toggle, .sidebar-nested-toggle');
     const desktopQuery = window.matchMedia('(min-width: 992px)');
 
     function isDesktop() {

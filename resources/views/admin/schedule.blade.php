@@ -1,6 +1,15 @@
+@php
+    $workType = request()->query('work_type', 'barang');
+    $workTypeLabel = match ($workType) {
+        'jasa' => 'Rencana Kerja Jasa',
+        'capex' => 'Rencana Kerja Capex',
+        default => 'Rencana Kerja Barang',
+    };
+@endphp
+
 @extends('layouts.dashboard')
-@section('title', 'Schedule')
-@section('page_title', 'Schedule')
+@section('title', $workTypeLabel)
+@section('page_title', $workTypeLabel)
 @section('content')
-    @include('modules.schedule-content')
+    @include('modules.schedule-content', ['workTypeLabel' => $workTypeLabel])
 @endsection
