@@ -58,6 +58,83 @@
         }
     });
 
+    document.querySelectorAll('[data-work-plan-table]').forEach(function (container) {
+        const rows = Array.from(container.querySelectorAll('[data-work-plan-row]'));
+        const search = container.querySelector('[data-work-plan-search]');
+        const pagination = container.querySelector('[data-work-plan-pagination]');
+        const summary = container.querySelector('[data-work-plan-summary]');
+        const empty = container.querySelector('[data-work-plan-empty]');
+        const perPage = Math.max(1, Number(container.dataset.perPage) || 10);
+        let currentPage = 1;
+        let query = '';
+
+        function button(label, page, options) {
+            const element = document.createElement('button');
+            element.type = 'button';
+            element.className = 'work-plan-page-btn';
+            element.textContent = label;
+            element.disabled = Boolean(options && options.disabled);
+
+            if (options && options.active) {
+                element.classList.add('active');
+                element.setAttribute('aria-current', 'page');
+            }
+
+            element.addEventListener('click', function () {
+                currentPage = page;
+                render();
+            });
+
+            return element;
+        }
+
+        function render() {
+            const filteredRows = rows.filter(function (row) {
+                return row.textContent.toLowerCase().includes(query);
+            });
+            const pageCount = Math.max(1, Math.ceil(filteredRows.length / perPage));
+            currentPage = Math.min(currentPage, pageCount);
+            const startIndex = (currentPage - 1) * perPage;
+            const endIndex = Math.min(startIndex + perPage, filteredRows.length);
+            const visibleRows = new Set(filteredRows.slice(startIndex, endIndex));
+
+            rows.forEach(function (row) {
+                row.hidden = !visibleRows.has(row);
+            });
+
+            empty.hidden = filteredRows.length !== 0;
+            summary.textContent = filteredRows.length === 0
+                ? '0 data ditemukan'
+                : `Menampilkan ${startIndex + 1}-${endIndex} dari ${filteredRows.length} data`;
+
+            pagination.replaceChildren();
+            pagination.appendChild(button('Sebelumnya', Math.max(1, currentPage - 1), {
+                disabled: currentPage === 1 || filteredRows.length === 0,
+            }));
+
+            for (let page = 1; page <= pageCount; page += 1) {
+                pagination.appendChild(button(String(page), page, {
+                    active: page === currentPage,
+                    disabled: filteredRows.length === 0,
+                }));
+            }
+
+            pagination.appendChild(button('Berikutnya', Math.min(pageCount, currentPage + 1), {
+                disabled: currentPage === pageCount || filteredRows.length === 0,
+            }));
+        }
+
+        if (search) {
+            search.addEventListener('input', function () {
+                query = search.value.trim().toLowerCase();
+                currentPage = 1;
+                render();
+            });
+        }
+
+        render();
+    });
+
     if (!window.Chart) {
         return;
     }

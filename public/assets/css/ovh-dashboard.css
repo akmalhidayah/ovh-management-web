@@ -251,6 +251,106 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     font-size: .65rem;
 }
 .work-plan-gantt-axis span { text-align: center; }
+.work-plan-table-card { padding: 0; overflow: hidden; }
+.work-plan-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #dbe3ee;
+}
+.work-plan-table-toolbar h2 { margin: 0; color: #1e293b; font-size: 1rem; font-weight: 800; }
+.work-plan-table-toolbar p { margin: .2rem 0 0; color: #64748b; font-size: .8rem; }
+.work-plan-search { position: relative; width: min(320px, 100%); }
+.work-plan-search i {
+    position: absolute;
+    top: 50%;
+    left: .8rem;
+    z-index: 1;
+    color: #94a3b8;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+.work-plan-search .form-control { min-height: 40px; padding-left: 2.35rem; font-size: .82rem; }
+.work-plan-table { min-width: 1080px; margin: 0; border-collapse: separate; border-spacing: 0; }
+.work-plan-table thead th {
+    padding: .72rem .75rem;
+    border-right: 1px solid #cfd8e5;
+    border-bottom: 1px solid #c8d2df;
+    background: #e4eaf2;
+    color: #273449;
+    font-size: .72rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+.work-plan-table thead th:last-child { border-right: 0; }
+.work-plan-table tbody td {
+    padding: .78rem .75rem;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    color: #42526a;
+    font-size: .8rem;
+    line-height: 1.3;
+}
+.work-plan-table tbody td:last-child { border-right: 0; }
+.work-plan-table tbody tr:last-child td { border-bottom: 0; }
+.work-plan-table tbody tr:hover td { background: #f8fafc; }
+.work-plan-number { width: 54px; color: #64748b !important; text-align: center; }
+.work-plan-category {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    padding: .28rem .52rem;
+    border-radius: .4rem;
+    background: #eef3f8;
+    color: #53657d;
+    font-size: .7rem;
+    font-weight: 800;
+}
+.work-plan-category.is-oem { background: #eaf2ff; color: #285ea8; }
+.work-plan-category.is-fabrikasi { background: #edf7f0; color: #287348; }
+.work-plan-category.is-casting { background: #fff4df; color: #a15c00; }
+.work-plan-bom { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; font-size: .72rem; font-weight: 800; }
+.work-plan-bom i { font-size: 1rem; }
+.work-plan-bom.is-ready { color: #2f9e62; }
+.work-plan-bom.is-pending { color: #d97706; }
+.work-plan-note { color: #64748b !important; }
+.work-plan-empty { display: grid; place-items: center; gap: .35rem; padding: 2rem 1rem; color: #64748b; text-align: center; }
+.work-plan-empty[hidden] { display: none; }
+.work-plan-empty i { font-size: 1.35rem; }
+.work-plan-pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .85rem 1rem;
+    border-top: 1px solid #dbe3ee;
+    background: #fff;
+}
+.work-plan-pagination-bar p { margin: 0; color: #64748b; font-size: .78rem; }
+.work-plan-pagination { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
+.work-plan-page-btn {
+    min-width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d5deea;
+    border-radius: .45rem;
+    padding: 0 .6rem;
+    background: #fff;
+    color: #475569;
+    font-size: .76rem;
+    font-weight: 700;
+}
+.work-plan-page-btn:hover:not(:disabled) { border-color: #1d4ed8; color: #1d4ed8; }
+.work-plan-page-btn.active { border-color: #1d4ed8; background: #1d4ed8; color: #fff; }
+.work-plan-page-btn:disabled { cursor: not-allowed; opacity: .45; }
 .inspection-chart-card { padding: .85rem; margin-bottom: 0; }
 .inspection-chart-wrap { position: relative; height: 150px; width: 100%; }
 .ovh-table { min-width: 760px; margin-bottom: 0; }
@@ -650,6 +750,11 @@ body { background: var(--ovh-bg); color: var(--ovh-text); }
     .work-plan-gantt-row { grid-template-columns: minmax(0, 1fr) 58px; gap: .4rem .6rem; }
     .work-plan-gantt-label { grid-column: 1 / -1; }
     .work-plan-gantt-axis { margin-left: 0; margin-right: 58px; }
+    .work-plan-table-card { padding: 0; }
+    .work-plan-table-toolbar { align-items: stretch; flex-direction: column; }
+    .work-plan-search { width: 100%; }
+    .work-plan-pagination-bar { align-items: stretch; flex-direction: column; }
+    .work-plan-pagination { justify-content: flex-start; }
     .placeholder-panel { min-height: 240px; }
     .template-preview-header { padding-top: 1rem; }
     .qc-modern-table { min-width: 680px; font-size: .8rem; }
