@@ -70,6 +70,7 @@ class AdminMenuPermissions
                 'children' => [
                     'master_data.equipment' => 'Equipment',
                     'master_data.unit-kerja' => 'Unit Kerja',
+                    'master_data.woms-organization' => 'Struktur Organisasi WOMS',
                 ],
             ],
             'userpanel' => [

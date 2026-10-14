@@ -25,6 +25,7 @@ class CheckAdminMenuPermission
         'procurement.minutes-of-meeting' => 'admin.procurement.minutes-of-meeting',
         'master_data.equipment' => 'admin.master-data',
         'master_data.unit-kerja' => 'admin.organization-sections.index',
+        'master_data.woms-organization' => 'admin.woms-organization.index',
         'userpanel.management' => 'admin.user-panel',
         'userpanel.role-permission' => 'admin.user-panel.role-permission',
     ];
@@ -109,6 +110,10 @@ class CheckAdminMenuPermission
 
         if (str_starts_with($routeName, 'admin.organization-sections')) {
             return 'master_data.unit-kerja';
+        }
+
+        if (str_starts_with($routeName, 'admin.woms-organization')) {
+            return 'master_data.woms-organization';
         }
 
         if (str_starts_with($routeName, 'admin.user-panel.role-permission')) {

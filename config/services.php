@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'woms_organization' => [
+        'base_url' => env('WOMS_ORGANIZATION_BASE_URL', 'https://workshop.dept-pmms.com'),
+        'token' => env('WOMS_ORGANIZATION_TOKEN'),
+        'sync_enabled' => env('WOMS_ORGANIZATION_SYNC_ENABLED', false),
+        'sync_interval_minutes' => env('WOMS_ORGANIZATION_SYNC_INTERVAL_MINUTES', 30),
+        'timeout_seconds' => env('WOMS_ORGANIZATION_TIMEOUT_SECONDS', 15),
+        'max_reduction_percent' => env('WOMS_ORGANIZATION_MAX_REDUCTION_PERCENT', 25),
+        'lock_seconds' => env('WOMS_ORGANIZATION_LOCK_SECONDS', 300),
+    ],
+
 ];

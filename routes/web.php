@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\QcSubmissionController as AdminQcSubmissionContro
 use App\Http\Controllers\Admin\TemplateFormCommissioningController;
 use App\Http\Controllers\Admin\TemplateFormQcController;
 use App\Http\Controllers\Admin\UserPanelController;
+use App\Http\Controllers\Admin\WomsOrganizationController;
 use App\Http\Controllers\Auth\AccessModeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -197,6 +198,8 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
     Route::put('/master-data/{masterDataRecord}', [MasterDataController::class, 'update'])->name('master-data.update');
     Route::delete('/master-data/{masterDataRecord}', [MasterDataController::class, 'destroy'])->name('master-data.destroy');
     Route::resource('organization-sections', OrganizationSectionController::class)->except(['show', 'create', 'edit']);
+    Route::get('/woms-organization', [WomsOrganizationController::class, 'index'])->name('woms-organization.index');
+    Route::post('/woms-organization/sync', [WomsOrganizationController::class, 'sync'])->name('woms-organization.sync');
     Route::get('/user-panel', [UserPanelController::class, 'index'])->name('user-panel');
     Route::post('/user-panel', [UserPanelController::class, 'store'])->name('user-panel.store');
     Route::patch('/user-panel/registration-access', [UserPanelController::class, 'toggleRegistration'])->name('user-panel.registration-access');
