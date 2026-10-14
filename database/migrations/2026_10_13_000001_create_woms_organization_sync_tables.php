@@ -97,7 +97,8 @@ return new class extends Migration
             $table->string('error_category', 64)->nullable();
             $table->string('sanitized_error_message', 500)->nullable();
             $table->string('triggered_by_type', 32);
-            $table->foreignId('triggered_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            // Logical reference to the legacy MyISAM users table.
+            $table->unsignedBigInteger('triggered_by_user_id')->nullable()->index();
             $table->timestamps();
 
             $table->index(['status', 'finished_at'], 'woms_sync_runs_status_finished_index');
@@ -105,14 +106,14 @@ return new class extends Migration
 
         Schema::create('organization_section_mappings', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('organization_section_id')
-                ->constrained('organization_sections')
-                ->cascadeOnDelete();
+            // Logical reference to the legacy MyISAM organization_sections table.
+            $table->unsignedBigInteger('organization_section_id');
             $table->foreignId('woms_section_id')
                 ->constrained('woms_sections')
                 ->cascadeOnDelete();
             $table->string('mapping_status', 24)->default('pending')->index();
-            $table->foreignId('verified_by')->nullable()->constrained('users')->nullOnDelete();
+            // Logical reference to the legacy MyISAM users table.
+            $table->unsignedBigInteger('verified_by')->nullable()->index();
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
 
