@@ -40,6 +40,23 @@ class WomsOrganizationCutoverTest extends TestCase
         $this->assertSame('Production', $resolved['department']);
     }
 
+    public function test_resolver_accepts_canonical_positive_integer_string(): void
+    {
+        $section = $this->createWomsHierarchy();
+
+        $resolved = app(WomsOrganizationResolver::class)->resolvePresent((string) $section->id);
+
+        $this->assertSame($section->id, $resolved['woms_section_id']);
+    }
+
+    public function test_resolver_rejects_fractional_id_without_coercion(): void
+    {
+        $this->createWomsHierarchy();
+        $this->expectException(ValidationException::class);
+
+        app(WomsOrganizationResolver::class)->resolvePresent('1.5');
+    }
+
     public function test_resolver_rejects_missing_section_or_parent(): void
     {
         $section = $this->createWomsHierarchy();

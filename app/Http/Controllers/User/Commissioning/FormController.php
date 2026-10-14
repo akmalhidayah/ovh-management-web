@@ -452,7 +452,7 @@ class FormController extends Controller
             }
         }
 
-        if ($this->requestUsesWomsOrganization($request, $submission) && blank($header['woms_section_id'] ?? null)) {
+        if ($this->requestUsesWomsOrganization($submission) && blank($header['woms_section_id'] ?? null)) {
             $errors['header.woms_section_id'] = 'Area Owner WOMS wajib dipilih.';
         }
 
@@ -511,7 +511,7 @@ class FormController extends Controller
             $header['id_equipment'] = $record->equipment_no;
         }
 
-        if ($this->requestUsesWomsOrganization($request, $currentSubmission)) {
+        if ($this->requestUsesWomsOrganization($currentSubmission)) {
             $header = $this->withResolvedWomsOrganization($request, $header, $record, $currentSubmission);
         } else {
             $header['department'] = $request->input('header.department');
@@ -751,13 +751,19 @@ class FormController extends Controller
     private function validateMasterDataRecordAvailable(Request $request, ?CommissioningFormSubmission $currentSubmission = null): void
     {
         if (! $request->input('header.master_data_record_id')) {
+            if ($this->requestUsesWomsOrganization($currentSubmission)) {
+                throw ValidationException::withMessages([
+                    'header.master_data_record_id' => 'Equipment Commissioning wajib dipilih untuk menggunakan organisasi WOMS.',
+                ]);
+            }
+
             return;
         }
 
         if ($record = $this->selectedMasterDataRecord($request, $currentSubmission)) {
             if (
                 $request->input('action') === 'submit'
-                && $this->requestUsesWomsOrganization($request, $currentSubmission)
+                && $this->requestUsesWomsOrganization($currentSubmission)
                 && blank($record->woms_section_id)
             ) {
                 throw ValidationException::withMessages([
@@ -884,9 +890,9 @@ class FormController extends Controller
         return null;
     }
 
-    private function requestUsesWomsOrganization(Request $request, ?CommissioningFormSubmission $submission = null): bool
+    private function requestUsesWomsOrganization(?CommissioningFormSubmission $submission = null): bool
     {
-        if (filled($request->input('header.woms_section_id')) || filled(data_get($submission?->header_data, 'woms_section_id'))) {
+        if (filled(data_get($submission?->header_data, 'woms_section_id'))) {
             return true;
         }
 

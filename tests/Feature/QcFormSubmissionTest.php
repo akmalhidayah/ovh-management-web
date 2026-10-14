@@ -1732,6 +1732,62 @@ class QcFormSubmissionTest extends TestCase
         $this->assertDatabaseCount('qc_form_submissions', 0);
     }
 
+    public function test_qc_woms_request_stays_on_legacy_path_while_feature_flag_is_disabled(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        config()->set('services.woms_organization.qc_enabled', false);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header'] = array_replace($payload['header'], [
+            'woms_section_id' => $section->id,
+            'department' => 'Legacy Department',
+            'work_unit' => 'Legacy Work Unit',
+            'unit_kerja' => 'Legacy Area Owner',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $this->assertArrayNotHasKey('woms_section_id', $submission->general_info);
+        $this->assertSame('Legacy Department', $submission->general_info['department']);
+        $this->assertSame('Legacy Work Unit', $submission->general_info['work_unit']);
+        $this->assertSame('Legacy Area Owner', $submission->general_info['unit_kerja']);
+    }
+
+    public function test_existing_woms_qc_draft_remains_compatible_when_feature_flag_is_disabled(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        config()->set('services.woms_organization.qc_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $draftPayload = $this->fixedGeneralPayload($template);
+        $draftPayload['action'] = 'draft';
+        $draftPayload['header']['woms_section_id'] = $section->id;
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $draftPayload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        config()->set('services.woms_organization.qc_enabled', false);
+        $submitPayload = $this->fixedGeneralPayload($template);
+        $submitPayload['header']['woms_section_id'] = $section->id;
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission), $submitPayload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission->refresh();
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertSame($section->id, $submission->general_info['woms_section_id']);
+        $this->assertSame('Kiln Operation', $submission->general_info['unit_kerja']);
+    }
+
     public function test_legacy_qc_draft_remains_editable_and_submittable_after_woms_cutover(): void
     {
         Storage::fake('local');
@@ -1749,6 +1805,7 @@ class QcFormSubmissionTest extends TestCase
 
         $submission = QcFormSubmission::firstOrFail();
         config()->set('services.woms_organization.qc_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
 
         $this->actingAs($user)
             ->get(route('user.qc.submissions.edit', $submission))
@@ -1759,6 +1816,7 @@ class QcFormSubmissionTest extends TestCase
         $submitPayload['header']['unit_kerja'] = 'Legacy Area Owner';
         $submitPayload['header']['department'] = 'Legacy Department';
         $submitPayload['header']['work_unit'] = 'Legacy Work Unit';
+        $submitPayload['header']['woms_section_id'] = $section->id;
 
         $this->actingAs($user)
             ->patch(route('user.qc.submissions.update', $submission), $submitPayload)

@@ -755,7 +755,7 @@ class FormController extends Controller
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_qc'] = $request->user()?->name;
-        if ($this->requestUsesWomsOrganization($request, $currentSubmission)) {
+        if ($this->requestUsesWomsOrganization($currentSubmission)) {
             $header = $this->withResolvedWomsOrganization($request, $header, $currentSubmission);
         } else {
             $header['department'] = $request->input('header.department');
@@ -960,7 +960,7 @@ class FormController extends Controller
             }
         }
 
-        if ($this->requestUsesWomsOrganization($request, $submission) && blank($headerData['woms_section_id'] ?? null)) {
+        if ($this->requestUsesWomsOrganization($submission) && blank($headerData['woms_section_id'] ?? null)) {
             $errors['header.woms_section_id'] = 'Area Owner WOMS wajib dipilih.';
         }
 
@@ -1693,9 +1693,9 @@ class FormController extends Controller
             ->values();
     }
 
-    private function requestUsesWomsOrganization(Request $request, ?QcFormSubmission $submission = null): bool
+    private function requestUsesWomsOrganization(?QcFormSubmission $submission = null): bool
     {
-        if (filled($request->input('header.woms_section_id')) || filled(data_get($submission?->general_info, 'woms_section_id'))) {
+        if (filled(data_get($submission?->general_info, 'woms_section_id'))) {
             return true;
         }
 

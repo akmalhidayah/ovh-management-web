@@ -21,13 +21,21 @@ class WomsOrganizationResolver
      */
     public function resolvePresent(mixed $localSectionId, string $attribute = 'woms_section_id'): array
     {
-        if (! is_numeric($localSectionId) || (int) $localSectionId < 1) {
+        if (is_int($localSectionId) && $localSectionId > 0) {
+            $sectionId = $localSectionId;
+        } elseif (
+            is_string($localSectionId)
+            && preg_match('/^[1-9][0-9]*$/D', $localSectionId) === 1
+            && (string) (int) $localSectionId === $localSectionId
+        ) {
+            $sectionId = (int) $localSectionId;
+        } else {
             $this->invalid($attribute, 'Seksi WOMS yang dipilih tidak valid.');
         }
 
         $section = WomsSection::query()
             ->with('unit.department')
-            ->find((int) $localSectionId);
+            ->find($sectionId);
 
         if (! $section) {
             $this->invalid($attribute, 'Seksi WOMS yang dipilih tidak ditemukan.');
