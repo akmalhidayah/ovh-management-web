@@ -25,6 +25,7 @@ class MasterDataRecord extends Model
         'plant',
         'area',
         'organization_section_id',
+        'woms_section_id',
         'status',
         'inspection_status',
         'notes',
@@ -63,6 +64,11 @@ class MasterDataRecord extends Model
     public function organizationSection(): BelongsTo
     {
         return $this->belongsTo(OrganizationSection::class);
+    }
+
+    public function womsSection(): BelongsTo
+    {
+        return $this->belongsTo(WomsSection::class, 'woms_section_id');
     }
 
     public function inspectionStatusHistories(): HasMany

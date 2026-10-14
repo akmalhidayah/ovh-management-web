@@ -120,7 +120,7 @@
             'routes' => ['admin.master-data*', 'admin.organization-sections*', 'admin.woms-organization*'],
             'items' => [
                 ['key' => 'master_data.equipment', 'label' => 'Equipment', 'route' => 'admin.master-data', 'active' => 'admin.master-data*'],
-                ['key' => 'master_data.unit-kerja', 'label' => 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
+                ['key' => 'master_data.unit-kerja', 'label' => config('services.woms_organization.legacy_read_only', false) ? 'Unit Kerja Lama — Riwayat' : 'Unit Kerja', 'route' => 'admin.organization-sections.index', 'active' => 'admin.organization-sections*'],
                 ['key' => 'master_data.woms-organization', 'label' => 'Struktur Organisasi WOMS', 'route' => 'admin.woms-organization.index', 'active' => 'admin.woms-organization*'],
             ],
         ];

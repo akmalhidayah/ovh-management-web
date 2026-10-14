@@ -1,6 +1,8 @@
 @php
     $record = $record ?? null;
     $organizationSectionOptions = $organizationSectionOptions ?? [];
+    $womsOrganizationOptions = $womsOrganizationOptions ?? [];
+    $useWomsOrganization = $useWomsOrganization ?? false;
 @endphp
 
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
@@ -54,15 +56,28 @@
                             <input type="text" name="area" class="form-control" value="{{ old('area', $record?->area) }}" required placeholder="RAW MILL">
                         </div>
                         <div class="col-12 col-md-4" data-commissioning-unit-field>
-                            <label class="form-label">Unit Kerja</label>
-                            <select name="organization_section_id" class="form-select">
-                                <option value="">Pilih Unit Kerja</option>
-                                @foreach ($organizationSectionOptions as $section)
-                                    <option value="{{ $section['id'] }}" @selected((string) old('organization_section_id', $record?->organization_section_id) === (string) $section['id'])>
-                                        {{ $section['label'] }}{{ $section['meta'] ? ' - '.$section['meta'] : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <label class="form-label">{{ $useWomsOrganization ? 'Struktur Organisasi WOMS' : 'Unit Kerja' }}</label>
+                            @if ($useWomsOrganization)
+                                <input type="search" class="form-control form-control-sm mb-2" placeholder="Cari departemen, unit kerja, atau seksi" data-woms-organization-search>
+                                <select name="woms_section_id" class="form-select" data-master-organization-select data-woms-organization-select>
+                                    <option value="">Pilih Departemen → Unit Kerja → Seksi</option>
+                                    @foreach ($womsOrganizationOptions as $section)
+                                        <option value="{{ $section['woms_section_id'] }}" @selected((string) old('woms_section_id', $record?->woms_section_id) === (string) $section['woms_section_id'])>
+                                            {{ $section['label'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="form-text text-muted">Equipment lama tetap menyimpan referensi Unit Kerja historis sampai seksi WOMS dipilih.</small>
+                            @else
+                                <select name="organization_section_id" class="form-select" data-master-organization-select>
+                                    <option value="">Pilih Unit Kerja</option>
+                                    @foreach ($organizationSectionOptions as $section)
+                                        <option value="{{ $section['id'] }}" @selected((string) old('organization_section_id', $record?->organization_section_id) === (string) $section['id'])>
+                                            {{ $section['label'] }}{{ $section['meta'] ? ' - '.$section['meta'] : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label">Status</label>

@@ -43,12 +43,28 @@
         'organizationDepartment' => (string) ($record->organizationSection?->department ?? ''),
         'organizationWorkUnit' => (string) ($record->organizationSection?->unit_kerja ?? ''),
         'organizationSection' => (string) ($record->organizationSection?->section ?? ''),
+        'womsSectionId' => (string) ($record->woms_section_id ?? ''),
         'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
-    $organizationSections = collect($activeOrganizationSections ?? []);
-    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? ($selectedMasterDataRecord?->organizationSection?->section ?? ''));
+    $legacyOrganizationDraft = $draftSubmission
+        && empty($oldHeader['woms_section_id'])
+        && (! empty($oldHeader['organization_section_id']) || ! empty($oldHeader['unit_kerja']));
+    $usesWomsOrganization = (! empty($useWomsOrganization) && ! $legacyOrganizationDraft)
+        || ! empty($oldHeader['woms_section_id'])
+        || filled(old('header.woms_section_id'));
+    $organizationSections = $usesWomsOrganization
+        ? collect($womsOrganizationOptions ?? [])
+        : collect($activeOrganizationSections ?? []);
+    $selectedOrganizationSection = $usesWomsOrganization
+        ? (string) old('header.woms_section_id', $oldHeader['woms_section_id'] ?? ($selectedMasterDataRecord?->woms_section_id ?? ''))
+        : (string) old('header.unit_kerja', $oldHeader['unit_kerja'] ?? ($selectedMasterDataRecord?->organizationSection?->section ?? ''));
     $organizationSectionOptions = $organizationSections
-        ->map(fn ($section, $index) => [
+        ->map(fn ($section, $index) => $usesWomsOrganization ? [
+            'id' => (string) data_get($section, 'woms_section_id', ''),
+            'department' => (string) data_get($section, 'department', ''),
+            'unitKerja' => (string) data_get($section, 'work_unit', ''),
+            'section' => (string) data_get($section, 'section', ''),
+        ] : [
             'id' => (string) ($section->id ?? $index),
             'department' => (string) ($section->department ?? ''),
             'unitKerja' => (string) ($section->unit_kerja ?? ''),
@@ -57,12 +73,20 @@
         ->filter(fn ($section) => $section['section'] !== '')
         ->sortBy(fn ($section) => implode('|', [$section['department'], $section['unitKerja'], $section['section']]))
         ->values();
-    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(fn ($section) => $section['section'] === $selectedOrganizationSection)) {
+    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(
+        fn ($section) => $usesWomsOrganization
+            ? $section['id'] === $selectedOrganizationSection
+            : $section['section'] === $selectedOrganizationSection
+    )) {
         $organizationSectionOptions->push([
-            'id' => (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
+            'id' => $usesWomsOrganization
+                ? (string) old('header.woms_section_id', $oldHeader['woms_section_id'] ?? '')
+                : (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
             'department' => (string) old('header.department', $oldHeader['department'] ?? ''),
             'unitKerja' => (string) old('header.work_unit', $oldHeader['work_unit'] ?? ''),
-            'section' => (string) $selectedOrganizationSection,
+            'section' => $usesWomsOrganization
+                ? (string) old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '')
+                : (string) $selectedOrganizationSection,
         ]);
     }
     $checkRows = old('body.equipment_check_rows', ($draftBody['equipment_check_rows'] ?? []) ?: ($schema['equipment_check_rows'] ?? []));
@@ -131,19 +155,31 @@
                     @elseif ($fieldKey === 'unit_kerja')
                         <input type="hidden" name="header[department]" value="{{ old('header.department', $oldHeader['department'] ?? '') }}" data-header-input="department">
                         <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
-                        <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
-                        <select name="header[unit_kerja]" class="form-select" data-organization-section-select required>
+                        @if ($usesWomsOrganization)
+                            <input type="hidden" name="header[unit_kerja]" value="{{ old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '') }}" data-header-input="unit_kerja">
+                        @else
+                            <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
+                        @endif
+                        <select name="header[{{ $usesWomsOrganization ? 'woms_section_id' : 'unit_kerja' }}]" class="form-select" data-organization-section-select data-organization-mode="{{ $usesWomsOrganization ? 'woms' : 'legacy' }}" required>
                             <option value="">Pilih Area Owner</option>
                             @foreach ($organizationSectionOptions as $sectionOption)
-                                <option value="{{ $sectionOption['section'] }}"
+                                <option value="{{ $usesWomsOrganization ? $sectionOption['id'] : $sectionOption['section'] }}"
                                         data-id="{{ $sectionOption['id'] }}"
                                         data-department="{{ $sectionOption['department'] }}"
                                         data-work-unit="{{ $sectionOption['unitKerja'] }}"
-                                        @selected((string) $selectedOrganizationSection === (string) $sectionOption['section'])>
-                                    {{ $sectionOption['section'] }}
+                                        data-section="{{ $sectionOption['section'] }}"
+                                        @selected((string) $selectedOrganizationSection === (string) ($usesWomsOrganization ? $sectionOption['id'] : $sectionOption['section']))>
+                                    {{ $usesWomsOrganization ? implode(' → ', array_filter([$sectionOption['department'], $sectionOption['unitKerja'], $sectionOption['section']])) : $sectionOption['section'] }}
                                 </option>
                             @endforeach
                         </select>
+                        @if ($usesWomsOrganization)
+                            <small class="text-danger d-none" data-equipment-woms-warning>Equipment ini belum mempunyai seksi WOMS. Hubungi Admin Master Data sebelum submit.</small>
+                            <div class="form-check mt-2 d-none" data-woms-override-warning>
+                                <input type="checkbox" class="form-check-input" name="header[woms_organization_override_confirmed]" value="1" @checked(old('header.woms_organization_override_confirmed')) data-woms-override-confirmation>
+                                <span class="form-check-label">Saya mengonfirmasi Area Owner berbeda dari organisasi equipment.</span>
+                            </div>
+                        @endif
                     @else
                         <input type="{{ $field['type'] }}" name="header[{{ $fieldKey }}]" value="{{ $value }}" class="form-control" data-header-input="{{ $fieldKey }}" @if ($fieldKey === 'doc_number' || $fieldKey === 'inspector_commissioning' || in_array($fieldKey, $autoKeys, true)) readonly @else required @endif>
                     @endif
@@ -618,16 +654,21 @@
 
     const syncOrganizationSection = () => {
         const option = organizationSection?.selectedOptions?.[0];
-        const section = option?.value || '';
-        setHeader('organization_section_id', option?.dataset.id || '');
+        const isWoms = organizationSection?.dataset.organizationMode === 'woms';
+        const section = option?.dataset.section || option?.value || '';
+        if (!isWoms) {
+            setHeader('organization_section_id', option?.dataset.id || '');
+        }
         setHeader('department', option?.dataset.department || '');
         setHeader('work_unit', option?.dataset.workUnit || '');
+        setHeader('unit_kerja', section);
         if (unitKerjaApprovalLabel) {
             unitKerjaApprovalLabel.textContent = areaOwnerApprovalLabel(section);
         }
         if (unitKerjaApprovalLabelInput) {
             unitKerjaApprovalLabelInput.value = areaOwnerApprovalLabel(section);
         }
+        syncWomsOrganizationWarnings();
     };
 
     document.querySelectorAll('[data-commissioning-form] input[name*="[remarks]"], [data-commissioning-form] input[name*="[remark]"]').forEach((input) => {
@@ -670,6 +711,7 @@
                 option.dataset.organizationDepartment = record.organizationDepartment;
                 option.dataset.organizationWorkUnit = record.organizationWorkUnit;
                 option.dataset.organizationSection = record.organizationSection;
+                option.dataset.womsSectionId = record.womsSectionId;
                 master.appendChild(option);
             });
 
@@ -702,7 +744,11 @@
         setHeader('functional_location', option.dataset.functionalLocation);
         setHeader('name_equipment', option.dataset.nameEquipment);
         setHeader('id_equipment', option.dataset.idEquipment);
-        setOrganizationValue(option.dataset.organizationSectionId || '');
+        const organizationId = organizationSection?.dataset.organizationMode === 'woms'
+            ? option.dataset.womsSectionId
+            : option.dataset.organizationSectionId;
+        setOrganizationValue(organizationId || '');
+        syncWomsOrganizationWarnings();
         persistMasterState();
     };
     const setOrganizationValue = (value) => {
@@ -722,6 +768,25 @@
         }
 
         syncOrganizationSection();
+    };
+    const syncWomsOrganizationWarnings = () => {
+        if (organizationSection?.dataset.organizationMode !== 'woms') return;
+
+        const equipmentWomsSectionId = master?.selectedOptions?.[0]?.dataset.womsSectionId || '';
+        const selectedWomsSectionId = organizationSection.value || '';
+        const equipmentWarning = document.querySelector('[data-equipment-woms-warning]');
+        const overrideWarning = document.querySelector('[data-woms-override-warning]');
+        const overrideConfirmation = document.querySelector('[data-woms-override-confirmation]');
+        const equipmentSelected = Boolean(master?.value);
+        const equipmentMissingWoms = equipmentSelected && !equipmentWomsSectionId;
+        const overridden = Boolean(equipmentWomsSectionId && selectedWomsSectionId && equipmentWomsSectionId !== selectedWomsSectionId);
+
+        equipmentWarning?.classList.toggle('d-none', !equipmentMissingWoms);
+        overrideWarning?.classList.toggle('d-none', !overridden);
+        if (overrideConfirmation) {
+            overrideConfirmation.required = overridden;
+            if (!overridden) overrideConfirmation.checked = false;
+        }
     };
     area?.addEventListener('change', () => {
         filterMasterOptions();

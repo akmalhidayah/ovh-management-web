@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Unit Kerja')
-@section('page_title', 'Unit Kerja')
+@section('title', config('services.woms_organization.legacy_read_only', false) ? 'Unit Kerja Lama — Riwayat' : 'Unit Kerja')
+@section('page_title', config('services.woms_organization.legacy_read_only', false) ? 'Unit Kerja Lama — Riwayat' : 'Unit Kerja')
 
 @section('content')
     @php
@@ -9,6 +9,7 @@
         $unitRowspans = $sections->groupBy(fn ($section) => $section->department.'|'.$section->unit_kerja)->map->count();
         $printedDepartments = [];
         $printedUnits = [];
+        $legacyReadOnly = (bool) config('services.woms_organization.legacy_read_only', false);
     @endphp
 
     @if (session('success'))
@@ -20,13 +21,18 @@
 
     <div class="page-header">
         <div>
-            <h1>Unit Kerja</h1>
+            <h1>{{ $legacyReadOnly ? 'Unit Kerja Lama — Riwayat' : 'Unit Kerja' }}</h1>
+            @if ($legacyReadOnly)
+                <p class="text-muted mb-0">Data ini dipertahankan untuk equipment dan dokumen historis. Pengelolaan organisasi aktif dilakukan melalui WOMS.</p>
+            @endif
         </div>
+        @unless ($legacyReadOnly)
         <div class="page-actions">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createOrganizationSectionModal">
                 <i class="bi bi-plus-lg me-1"></i>Tambah Unit Kerja
             </button>
         </div>
+        @endunless
     </div>
 
     <div class="table-responsive">
@@ -36,7 +42,7 @@
                     <th>Departemen</th>
                     <th>Unit Kerja</th>
                     <th>Seksi</th>
-                    <th class="text-end">Aksi</th>
+                    @unless ($legacyReadOnly)<th class="text-end">Aksi</th>@endunless
                 </tr>
             </thead>
             <tbody>
@@ -59,6 +65,7 @@
                             @php($printedUnits[$unitKey] = true)
                         @endif
                         <td class="fw-semibold">{{ $section->section }}</td>
+                        @unless ($legacyReadOnly)
                         <td>
                             <div class="d-flex justify-content-end gap-2">
                                 <button
@@ -82,16 +89,18 @@
                                 </form>
                             </div>
                         </td>
+                        @endunless
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">Belum ada data unit kerja.</td>
+                        <td colspan="{{ $legacyReadOnly ? 3 : 4 }}" class="text-center text-muted py-4">Belum ada data unit kerja.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
+    @unless ($legacyReadOnly)
     <div class="modal fade" id="createOrganizationSectionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content" action="{{ route('admin.organization-sections.store') }}" method="POST">
@@ -108,7 +117,6 @@
             </form>
         </div>
     </div>
-
     <div class="modal fade" id="editOrganizationSectionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content" action="#" method="POST" data-organization-section-edit-form>
@@ -126,8 +134,10 @@
             </form>
         </div>
     </div>
+    @endunless
 @endsection
 
+@unless ($legacyReadOnly)
 @push('scripts')
     <script>
         (() => {
@@ -146,3 +156,4 @@
         })();
     </script>
 @endpush
+@endunless

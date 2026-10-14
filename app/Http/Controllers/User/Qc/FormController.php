@@ -14,6 +14,7 @@ use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Services\MasterDataStatusService;
 use App\Services\QcPdfAttachmentMerger;
+use App\Services\WomsOrganizationResolver;
 use App\Support\AreaOwnerLabel;
 use App\Support\OrganizationSections;
 use App\Support\QcTemplates\FixedQcTemplate;
@@ -48,6 +49,10 @@ class FormController extends Controller
     private const SIGNATURE_MAX_BYTES = 1048576;
     private const TEMP_ATTACHMENT_SESSION_KEY = 'qc_temporary_attachments';
 
+    public function __construct(
+        private readonly WomsOrganizationResolver $womsOrganizationResolver
+    ) {}
+
     public function create(Request $request): View
     {
         $templates = QcFormTemplate::query()
@@ -79,6 +84,10 @@ class FormController extends Controller
             'autoDocNumber' => $this->previewQcDocumentNumber(),
             'activeQcMasterDataRecords' => $this->activeQcMasterDataRecords(),
             'activeOrganizationSections' => $this->activeOrganizationSections(),
+            'womsOrganizationOptions' => $this->qcWomsEnabled()
+                ? $this->womsOrganizationResolver->presentOptions()
+                : collect(),
+            'useWomsOrganization' => $this->qcWomsEnabled(),
         ]));
     }
 
@@ -161,6 +170,8 @@ class FormController extends Controller
 
                 return $submission;
             });
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             if ($this->isDuplicateFormNumberException($exception)) {
                 $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
@@ -223,6 +234,10 @@ class FormController extends Controller
             'autoDocNumber' => $submission->general_info['doc_number'] ?? $submission->report_no ?? $submission->form_number,
             'activeQcMasterDataRecords' => $this->activeQcMasterDataRecords(),
             'activeOrganizationSections' => $this->activeOrganizationSections(),
+            'womsOrganizationOptions' => ($this->qcWomsEnabled() || filled(data_get($submission->general_info, 'woms_section_id')))
+                ? $this->womsOrganizationResolver->presentOptions()
+                : collect(),
+            'useWomsOrganization' => $this->qcWomsEnabled(),
         ]));
     }
 
@@ -251,7 +266,7 @@ class FormController extends Controller
         try {
             $submission = DB::transaction(function () use ($request, $template, $validated, $submission) {
                 $isFixedTemplate = (bool) $template->template_type;
-                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, $submission->form_number, false, $template) : $request->input('general_info', []);
+                $generalInfo = $isFixedTemplate ? $this->fixedHeaderData($request, $submission->form_number, false, $template, $submission) : $request->input('general_info', []);
                 $bodyData = $isFixedTemplate ? $this->fixedBodyData($request, $template) : null;
                 $formNumber = $generalInfo['doc_number'] ?? $generalInfo['report_no'] ?? null;
                 $formNumber = $formNumber ?: $submission->form_number ?: $this->generateFormNumber();
@@ -307,6 +322,8 @@ class FormController extends Controller
 
                 return $submission;
             });
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             if ($this->isDuplicateFormNumberException($exception)) {
                 $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
@@ -723,7 +740,13 @@ class FormController extends Controller
         }
     }
 
-    private function fixedHeaderData(Request $request, ?string $existingDocNumber = null, bool $forceGeneratedDocNumber = false, ?QcFormTemplate $template = null): array
+    private function fixedHeaderData(
+        Request $request,
+        ?string $existingDocNumber = null,
+        bool $forceGeneratedDocNumber = false,
+        ?QcFormTemplate $template = null,
+        ?QcFormSubmission $currentSubmission = null
+    ): array
     {
         $header = collect(FixedQcTemplate::headerFields($template?->template_type))
             ->mapWithKeys(fn ($field) => [$field['key'] => $request->input("header.{$field['key']}")])
@@ -732,9 +755,13 @@ class FormController extends Controller
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateQcDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_qc'] = $request->user()?->name;
-        $header['department'] = $request->input('header.department');
-        $header['work_unit'] = $request->input('header.work_unit');
-        $header['organization_section_id'] = $request->input('header.organization_section_id');
+        if ($this->requestUsesWomsOrganization($request, $currentSubmission)) {
+            $header = $this->withResolvedWomsOrganization($request, $header, $currentSubmission);
+        } else {
+            $header['department'] = $request->input('header.department');
+            $header['work_unit'] = $request->input('header.work_unit');
+            $header['organization_section_id'] = $request->input('header.organization_section_id');
+        }
 
         if ($masterRecord = $this->selectedActiveQcMasterDataRecord($request)) {
             $header['master_data_record_id'] = $masterRecord->id;
@@ -921,7 +948,7 @@ class FormController extends Controller
     private function validateFixedSubmission(Request $request, QcFormTemplate $template, ?QcFormSubmission $submission = null): void
     {
         $errors = [];
-        $headerData = $this->fixedHeaderData($request, null, false, $template);
+        $headerData = $this->fixedHeaderData($request, null, false, $template, $submission);
 
         foreach (FixedQcTemplate::headerFields($template->template_type) as $field) {
             if ($field['key'] === 'doc_number') {
@@ -931,6 +958,10 @@ class FormController extends Controller
             if (blank($headerData[$field['key']] ?? null)) {
                 $errors["header.{$field['key']}"] = "{$field['label']} wajib diisi.";
             }
+        }
+
+        if ($this->requestUsesWomsOrganization($request, $submission) && blank($headerData['woms_section_id'] ?? null)) {
+            $errors['header.woms_section_id'] = 'Area Owner WOMS wajib dipilih.';
         }
 
         $body = $this->fixedBodyData($request, $template);
@@ -1660,6 +1691,99 @@ class FormController extends Controller
         return collect(OrganizationSections::rows())
             ->map(fn (array $row) => (object) $row)
             ->values();
+    }
+
+    private function requestUsesWomsOrganization(Request $request, ?QcFormSubmission $submission = null): bool
+    {
+        if (filled($request->input('header.woms_section_id')) || filled(data_get($submission?->general_info, 'woms_section_id'))) {
+            return true;
+        }
+
+        if (! $this->qcWomsEnabled()) {
+            return false;
+        }
+
+        return ! $submission || ! $this->isLegacyOrganizationDraft($submission);
+    }
+
+    private function isLegacyOrganizationDraft(QcFormSubmission $submission): bool
+    {
+        $header = $submission->general_info ?? [];
+
+        return blank($header['woms_section_id'] ?? null)
+            && (filled($header['organization_section_id'] ?? null) || filled($header['unit_kerja'] ?? null));
+    }
+
+    private function withResolvedWomsOrganization(
+        Request $request,
+        array $header,
+        ?QcFormSubmission $currentSubmission
+    ): array {
+        $localSectionId = $request->input('header.woms_section_id');
+        $storedHeader = $currentSubmission?->general_info ?? [];
+
+        if (blank($localSectionId)) {
+            return $this->clearOrganizationSnapshot($header);
+        }
+
+        try {
+            $organization = $this->womsOrganizationResolver->resolvePresent(
+                $localSectionId,
+                'header.woms_section_id'
+            );
+        } catch (ValidationException $exception) {
+            if (
+                $request->input('action') === 'draft'
+                && $currentSubmission
+                && (string) ($storedHeader['woms_section_id'] ?? '') === (string) $localSectionId
+            ) {
+                return array_replace($header, collect($storedHeader)->only([
+                    'woms_section_id',
+                    'woms_section_woms_id',
+                    'woms_unit_woms_id',
+                    'woms_department_woms_id',
+                    'department',
+                    'work_unit',
+                    'unit_kerja',
+                ])->all());
+            }
+
+            throw $exception;
+        }
+
+        return array_replace($header, [
+            'woms_section_id' => $organization['woms_section_id'],
+            'woms_section_woms_id' => $organization['woms_section_woms_id'],
+            'woms_unit_woms_id' => $organization['woms_unit_woms_id'],
+            'woms_department_woms_id' => $organization['woms_department_woms_id'],
+            'department' => $organization['department'],
+            'work_unit' => $organization['work_unit'],
+            'unit_kerja' => $organization['section'],
+            'organization_section_id' => null,
+        ]);
+    }
+
+    private function clearOrganizationSnapshot(array $header): array
+    {
+        foreach ([
+            'woms_section_id',
+            'woms_section_woms_id',
+            'woms_unit_woms_id',
+            'woms_department_woms_id',
+            'department',
+            'work_unit',
+            'unit_kerja',
+            'organization_section_id',
+        ] as $key) {
+            $header[$key] = null;
+        }
+
+        return $header;
+    }
+
+    private function qcWomsEnabled(): bool
+    {
+        return (bool) config('services.woms_organization.qc_enabled', false);
     }
 
     private function selectedActiveQcMasterDataRecord(Request $request): ?MasterDataRecord

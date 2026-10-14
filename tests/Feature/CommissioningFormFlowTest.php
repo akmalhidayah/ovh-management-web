@@ -10,6 +10,9 @@ use App\Models\MasterDataInspectionStatusHistory;
 use App\Models\MasterDataRecord;
 use App\Models\MasterDataStatusHistory;
 use App\Models\User;
+use App\Models\WomsDepartment;
+use App\Models\WomsSection;
+use App\Models\WomsUnit;
 use App\Services\DocumentNumberGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -899,6 +902,168 @@ class CommissioningFormFlowTest extends TestCase
         }
         $this->assertNull($master->refresh()->inspection_status);
         Storage::disk('local')->assertMissing($attachmentPath);
+    }
+
+    public function test_woms_commissioning_submission_uses_equipment_organization_and_server_snapshot(): void
+    {
+        Storage::fake('local');
+        config()->set('services.woms_organization.commissioning_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['woms_section_id' => $section->id]);
+        $payload = $this->payload($template, $master, 'submit');
+        $payload['header'] = array_replace($payload['header'], [
+            'woms_section_id' => $section->id,
+            'department' => 'FORGED DEPARTMENT',
+            'work_unit' => 'FORGED UNIT',
+            'unit_kerja' => 'FORGED SECTION',
+            'organization_section_id' => 999999,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $this->assertSame($section->id, $submission->header_data['woms_section_id']);
+        $this->assertSame(3001, $submission->header_data['woms_section_woms_id']);
+        $this->assertSame('Production', $submission->header_data['department']);
+        $this->assertSame('Clinker Production', $submission->header_data['work_unit']);
+        $this->assertSame('Kiln Operation', $submission->header_data['unit_kerja']);
+        $this->assertFalse($submission->header_data['woms_organization_overridden']);
+        $this->assertSame('Mgr of Kiln Operation', $submission->approval_data['unit_kerja']['label']);
+    }
+
+    public function test_woms_commissioning_rejects_legacy_equipment_without_explicit_woms_assignment(): void
+    {
+        Storage::fake('local');
+        config()->set('services.woms_organization.commissioning_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template, $legacyMaster] = $this->makeCommissioningSetup();
+        $payload = $this->payload($template, $legacyMaster, 'submit');
+        $payload['header']['woms_section_id'] = $section->id;
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertSessionHasErrors('header.master_data_record_id');
+
+        $this->assertDatabaseCount('commissioning_form_submissions', 0);
+    }
+
+    public function test_woms_commissioning_rejects_unknown_area_owner_id(): void
+    {
+        Storage::fake('local');
+        config()->set('services.woms_organization.commissioning_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['woms_section_id' => $section->id]);
+        $payload = $this->payload($template, $master, 'submit');
+        $payload['header']['woms_section_id'] = 999999;
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertSessionHasErrors('header.woms_section_id');
+
+        $this->assertDatabaseCount('commissioning_form_submissions', 0);
+    }
+
+    public function test_woms_commissioning_requires_explicit_confirmation_for_area_owner_override(): void
+    {
+        Storage::fake('local');
+        config()->set('services.woms_organization.commissioning_enabled', true);
+        $equipmentSection = $this->createWomsOrganizationForForm();
+        $overrideSection = $this->createWomsOrganizationForForm(
+            departmentWomsId: 1002,
+            unitWomsId: 2002,
+            sectionWomsId: 3002,
+            department: 'Maintenance',
+            unit: 'Mechanical Maintenance',
+            section: 'Mechanical Inspection'
+        );
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $master->update(['woms_section_id' => $equipmentSection->id]);
+        $payload = $this->payload($template, $master, 'submit');
+        $payload['header']['woms_section_id'] = $overrideSection->id;
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $payload)
+            ->assertSessionHasErrors('header.woms_organization_override_confirmed');
+
+        $confirmedPayload = $this->payload($template, $master, 'submit');
+        $confirmedPayload['header']['woms_section_id'] = $overrideSection->id;
+        $confirmedPayload['header']['woms_organization_override_confirmed'] = '1';
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $confirmedPayload)
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        $this->assertSame($overrideSection->id, $submission->header_data['woms_section_id']);
+        $this->assertSame($equipmentSection->id, $submission->header_data['equipment_woms_section_id']);
+        $this->assertTrue($submission->header_data['woms_organization_overridden']);
+        $this->assertSame('Mechanical Inspection', $submission->header_data['unit_kerja']);
+        $this->assertSame('Mgr of Mechanical Inspection', $submission->approval_data['unit_kerja']['label']);
+    }
+
+    public function test_legacy_commissioning_draft_remains_submittable_after_woms_cutover(): void
+    {
+        Storage::fake('local');
+        [$user, $template, $master] = $this->makeCommissioningSetup();
+        $draftPayload = $this->payload($template, $master, 'draft');
+        $draftPayload['header']['unit_kerja'] = 'Legacy Area Owner';
+        $draftPayload['header']['department'] = 'Legacy Department';
+        $draftPayload['header']['work_unit'] = 'Legacy Work Unit';
+
+        $this->actingAs($user)
+            ->post(route('user.commissioning.forms.store'), $draftPayload)
+            ->assertRedirect(route('user.commissioning.drafts.index'));
+
+        $submission = CommissioningFormSubmission::firstOrFail();
+        config()->set('services.woms_organization.commissioning_enabled', true);
+        $submitPayload = $this->payload($template, $master, 'submit');
+        $submitPayload['header']['unit_kerja'] = 'Legacy Area Owner';
+        $submitPayload['header']['department'] = 'Legacy Department';
+        $submitPayload['header']['work_unit'] = 'Legacy Work Unit';
+
+        $this->actingAs($user)
+            ->patch(route('user.commissioning.submissions.update', $submission), $submitPayload)
+            ->assertRedirect(route('user.commissioning.history.index'));
+
+        $submission->refresh();
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertArrayNotHasKey('woms_section_id', $submission->header_data);
+        $this->assertSame('Legacy Area Owner', $submission->header_data['unit_kerja']);
+    }
+
+    private function createWomsOrganizationForForm(
+        int $departmentWomsId = 1001,
+        int $unitWomsId = 2001,
+        int $sectionWomsId = 3001,
+        string $department = 'Production',
+        string $unit = 'Clinker Production',
+        string $section = 'Kiln Operation'
+    ): WomsSection {
+        WomsDepartment::create([
+            'woms_id' => $departmentWomsId,
+            'name' => $department,
+            'present_in_source' => true,
+            'source_synced_at' => now(),
+        ]);
+        WomsUnit::create([
+            'woms_id' => $unitWomsId,
+            'woms_department_id' => $departmentWomsId,
+            'name' => $unit,
+            'present_in_source' => true,
+            'source_synced_at' => now(),
+        ]);
+
+        return WomsSection::create([
+            'woms_id' => $sectionWomsId,
+            'woms_unit_id' => $unitWomsId,
+            'name' => $section,
+            'present_in_source' => true,
+            'source_synced_at' => now(),
+        ]);
     }
 
     private function makeCommissioningSetup(): array

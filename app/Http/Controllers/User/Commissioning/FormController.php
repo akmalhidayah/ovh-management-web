@@ -13,6 +13,7 @@ use App\Services\DocumentNumberGenerator;
 use App\Services\InspectionSubmissionDeletionService;
 use App\Services\MasterDataInspectionStatusService;
 use App\Services\MasterDataStatusService;
+use App\Services\WomsOrganizationResolver;
 use App\Support\AreaOwnerLabel;
 use App\Support\Commissioning\FixedCommissioningTemplate;
 use App\Support\MasterDataIdentity;
@@ -54,6 +55,10 @@ class FormController extends Controller
         'revision_required',
     ];
 
+    public function __construct(
+        private readonly WomsOrganizationResolver $womsOrganizationResolver
+    ) {}
+
     public function create(Request $request): View|RedirectResponse
     {
         $templates = CommissioningFormTemplate::where('status', 'active')->orderBy('name')->get();
@@ -80,6 +85,10 @@ class FormController extends Controller
             'autoDocNumber' => $this->previewDocumentNumber(),
             'activeMasterDataRecords' => $activeMasterDataRecords,
             'activeOrganizationSections' => $this->activeOrganizationSections(),
+            'womsOrganizationOptions' => $this->commissioningWomsEnabled()
+                ? $this->womsOrganizationResolver->presentOptions()
+                : collect(),
+            'useWomsOrganization' => $this->commissioningWomsEnabled(),
         ]));
     }
 
@@ -136,6 +145,8 @@ class FormController extends Controller
 
                 return $submission;
             });
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             if ($this->isDuplicateFormNumberException($exception)) {
                 $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
@@ -187,6 +198,10 @@ class FormController extends Controller
             'autoDocNumber' => $submission->form_number,
             'activeMasterDataRecords' => $this->activeMasterDataRecords($submission),
             'activeOrganizationSections' => $this->activeOrganizationSections(),
+            'womsOrganizationOptions' => ($this->commissioningWomsEnabled() || filled(data_get($submission->header_data, 'woms_section_id')))
+                ? $this->womsOrganizationResolver->presentOptions()
+                : collect(),
+            'useWomsOrganization' => $this->commissioningWomsEnabled(),
         ]));
     }
 
@@ -245,6 +260,8 @@ class FormController extends Controller
                     app(ApprovalFlowService::class)->startForSubmission($submission, 'commissioning');
                 }
             });
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             if ($this->isDuplicateFormNumberException($exception)) {
                 $this->logError(self::ERROR_DUPLICATE_NUMBER, $exception, [
@@ -421,7 +438,7 @@ class FormController extends Controller
     private function validateSubmit(Request $request, CommissioningFormTemplate $template, ?CommissioningFormSubmission $submission = null): void
     {
         $errors = [];
-        $header = $this->headerData($request);
+        $header = $this->headerData($request, currentSubmission: $submission);
         $body = $this->bodyData($request);
         $schema = FixedCommissioningTemplate::normalizeSchema($template->body_schema);
 
@@ -433,6 +450,10 @@ class FormController extends Controller
             if (blank($header[$field['key']] ?? null)) {
                 $errors["header.{$field['key']}"] = "{$field['label']} wajib diisi.";
             }
+        }
+
+        if ($this->requestUsesWomsOrganization($request, $submission) && blank($header['woms_section_id'] ?? null)) {
+            $errors['header.woms_section_id'] = 'Area Owner WOMS wajib dipilih.';
         }
 
         $equipmentRows = $body['equipment_check_rows'] ?? [];
@@ -478,11 +499,8 @@ class FormController extends Controller
         $header['doc_number'] = $existingDocNumber
             ?: ($forceGeneratedDocNumber ? $this->generateDocumentNumber() : ($header['doc_number'] ?: null));
         $header['inspector_commissioning'] = $request->user()?->name;
-        $header['department'] = $request->input('header.department');
-        $header['work_unit'] = $request->input('header.work_unit');
-        $header['organization_section_id'] = $request->input('header.organization_section_id');
-
-        if ($record = $this->selectedMasterDataRecord($request, $currentSubmission)) {
+        $record = $this->selectedMasterDataRecord($request, $currentSubmission);
+        if ($record) {
             $header['master_data_record_id'] = $record->id;
             $header['tahun'] = $record->year;
             $header['plant'] = $record->plant;
@@ -491,6 +509,14 @@ class FormController extends Controller
             $header['functional_location'] = $record->func_location;
             $header['name_equipment'] = $record->description;
             $header['id_equipment'] = $record->equipment_no;
+        }
+
+        if ($this->requestUsesWomsOrganization($request, $currentSubmission)) {
+            $header = $this->withResolvedWomsOrganization($request, $header, $record, $currentSubmission);
+        } else {
+            $header['department'] = $request->input('header.department');
+            $header['work_unit'] = $request->input('header.work_unit');
+            $header['organization_section_id'] = $request->input('header.organization_section_id');
         }
 
         return $header;
@@ -671,7 +697,7 @@ class FormController extends Controller
         $profileAreas = collect(auth()->user()?->profile_areas ?? [])->filter()->values()->all();
 
         return MasterDataRecord::query()
-            ->with('organizationSection')
+            ->with(['organizationSection', 'womsSection.unit.department'])
             ->where('document_category', MasterDataRecord::CATEGORY_COMMISSIONING)
             ->when($profileAreas, fn ($query, array $areas) => $query->whereIn('area', $areas))
             ->orderBy('func_location')
@@ -728,7 +754,17 @@ class FormController extends Controller
             return;
         }
 
-        if ($this->selectedMasterDataRecord($request, $currentSubmission)) {
+        if ($record = $this->selectedMasterDataRecord($request, $currentSubmission)) {
+            if (
+                $request->input('action') === 'submit'
+                && $this->requestUsesWomsOrganization($request, $currentSubmission)
+                && blank($record->woms_section_id)
+            ) {
+                throw ValidationException::withMessages([
+                    'header.master_data_record_id' => 'Equipment lama ini belum mempunyai seksi WOMS. Admin harus menetapkan seksi WOMS sebelum digunakan untuk Commissioning baru.',
+                ]);
+            }
+
             return;
         }
 
@@ -846,6 +882,120 @@ class FormController extends Controller
         }
 
         return null;
+    }
+
+    private function requestUsesWomsOrganization(Request $request, ?CommissioningFormSubmission $submission = null): bool
+    {
+        if (filled($request->input('header.woms_section_id')) || filled(data_get($submission?->header_data, 'woms_section_id'))) {
+            return true;
+        }
+
+        if (! $this->commissioningWomsEnabled()) {
+            return false;
+        }
+
+        return ! $submission || ! $this->isLegacyOrganizationDraft($submission);
+    }
+
+    private function isLegacyOrganizationDraft(CommissioningFormSubmission $submission): bool
+    {
+        $header = $submission->header_data ?? [];
+
+        return blank($header['woms_section_id'] ?? null)
+            && (filled($header['organization_section_id'] ?? null) || filled($header['unit_kerja'] ?? null));
+    }
+
+    private function withResolvedWomsOrganization(
+        Request $request,
+        array $header,
+        ?MasterDataRecord $record,
+        ?CommissioningFormSubmission $currentSubmission
+    ): array {
+        $localSectionId = $request->input('header.woms_section_id');
+        $storedHeader = $currentSubmission?->header_data ?? [];
+
+        if (blank($localSectionId)) {
+            return $this->clearOrganizationSnapshot($header);
+        }
+
+        try {
+            $organization = $this->womsOrganizationResolver->resolvePresent(
+                $localSectionId,
+                'header.woms_section_id'
+            );
+        } catch (ValidationException $exception) {
+            if (
+                $request->input('action') === 'draft'
+                && $currentSubmission
+                && (string) ($storedHeader['woms_section_id'] ?? '') === (string) $localSectionId
+            ) {
+                return array_replace($header, collect($storedHeader)->only([
+                    'woms_section_id',
+                    'woms_section_woms_id',
+                    'woms_unit_woms_id',
+                    'woms_department_woms_id',
+                    'department',
+                    'work_unit',
+                    'unit_kerja',
+                    'equipment_woms_section_id',
+                    'woms_organization_overridden',
+                ])->all());
+            }
+
+            throw $exception;
+        }
+
+        $equipmentWomsSectionId = $record?->woms_section_id;
+        $overridden = filled($equipmentWomsSectionId)
+            && (string) $equipmentWomsSectionId !== (string) $organization['woms_section_id'];
+
+        if (
+            $overridden
+            && $request->input('action') === 'submit'
+            && ! $request->boolean('header.woms_organization_override_confirmed')
+        ) {
+            throw ValidationException::withMessages([
+                'header.woms_organization_override_confirmed' => 'Konfirmasi diperlukan karena Area Owner berbeda dari organisasi equipment.',
+            ]);
+        }
+
+        return array_replace($header, [
+            'woms_section_id' => $organization['woms_section_id'],
+            'woms_section_woms_id' => $organization['woms_section_woms_id'],
+            'woms_unit_woms_id' => $organization['woms_unit_woms_id'],
+            'woms_department_woms_id' => $organization['woms_department_woms_id'],
+            'department' => $organization['department'],
+            'work_unit' => $organization['work_unit'],
+            'unit_kerja' => $organization['section'],
+            'organization_section_id' => null,
+            'equipment_woms_section_id' => $equipmentWomsSectionId,
+            'woms_organization_overridden' => $overridden,
+        ]);
+    }
+
+    private function clearOrganizationSnapshot(array $header): array
+    {
+        foreach ([
+            'woms_section_id',
+            'woms_section_woms_id',
+            'woms_unit_woms_id',
+            'woms_department_woms_id',
+            'department',
+            'work_unit',
+            'unit_kerja',
+            'organization_section_id',
+            'equipment_woms_section_id',
+            'woms_organization_overridden',
+        ] as $key) {
+            $header[$key] = null;
+        }
+
+        return $header;
+    }
+
+    private function commissioningWomsEnabled(): bool
+    {
+        return (bool) config('services.woms_organization.commissioning_enabled', false);
     }
 
     private function generateDocumentNumber(): string

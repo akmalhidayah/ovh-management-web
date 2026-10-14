@@ -43,6 +43,10 @@ return [
         'timeout_seconds' => env('WOMS_ORGANIZATION_TIMEOUT_SECONDS', 15),
         'max_reduction_percent' => env('WOMS_ORGANIZATION_MAX_REDUCTION_PERCENT', 25),
         'lock_seconds' => env('WOMS_ORGANIZATION_LOCK_SECONDS', 300),
+        'equipment_enabled' => env('WOMS_ORGANIZATION_EQUIPMENT_ENABLED', false),
+        'qc_enabled' => env('WOMS_ORGANIZATION_QC_ENABLED', false),
+        'commissioning_enabled' => env('WOMS_ORGANIZATION_COMMISSIONING_ENABLED', false),
+        'legacy_read_only' => env('WOMS_ORGANIZATION_LEGACY_READ_ONLY', false),
     ],
 
 ];

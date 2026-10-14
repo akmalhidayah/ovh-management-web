@@ -323,8 +323,14 @@
                                 <span class="master-data-location">
                                     <strong>{{ $record->plant }}</strong>
                                     <small>{{ $record->area }}</small>
-                                    @if ($record->document_category === \App\Models\MasterDataRecord::CATEGORY_COMMISSIONING && $record->organizationSection)
-                                        <small>Unit Kerja: {{ $record->organizationSection->section }}</small>
+                                    @if ($record->document_category === \App\Models\MasterDataRecord::CATEGORY_COMMISSIONING)
+                                        @if ($useWomsOrganization && $record->womsSection?->unit?->department)
+                                            <small>WOMS: {{ $record->womsSection->unit->department->name }} → {{ $record->womsSection->unit->name }} → {{ $record->womsSection->name }}</small>
+                                        @elseif ($record->organizationSection)
+                                            <small>Unit Kerja lama: {{ $record->organizationSection->section }}</small>
+                                        @else
+                                            <small>Organisasi belum dipilih</small>
+                                        @endif
                                     @endif
                                 </span>
                             </td>
@@ -345,6 +351,7 @@
                                             data-plant="{{ $record->plant }}"
                                             data-area="{{ $record->area }}"
                                             data-organization-section-id="{{ $record->organization_section_id }}"
+                                            data-woms-section-id="{{ $record->woms_section_id }}"
                                             data-status="{{ $record->status }}"
                                             data-notes="{{ $record->notes }}"
                                             title="Edit"
@@ -383,6 +390,8 @@
         'categoryOptions' => $categoryOptions,
         'statusOptions' => $statusOptions,
         'organizationSectionOptions' => $organizationSectionOptions,
+        'womsOrganizationOptions' => $womsOrganizationOptions,
+        'useWomsOrganization' => $useWomsOrganization,
         'record' => null,
     ])
 
@@ -394,6 +403,8 @@
         'categoryOptions' => $categoryOptions,
         'statusOptions' => $statusOptions,
         'organizationSectionOptions' => $organizationSectionOptions,
+        'womsOrganizationOptions' => $womsOrganizationOptions,
+        'useWomsOrganization' => $useWomsOrganization,
         'record' => null,
     ])
 @endsection
@@ -412,7 +423,7 @@
             const syncCommissioningUnitField = (form) => {
                 const category = form?.querySelector('[data-master-document-category]')?.value || '';
                 const unitField = form?.querySelector('[data-commissioning-unit-field]');
-                const unitSelect = form?.querySelector('[name="organization_section_id"]');
+                const unitSelect = form?.querySelector('[data-master-organization-select]');
 
                 if (!unitField || !unitSelect) {
                     return;
@@ -610,6 +621,7 @@
                     plant: button.dataset.plant,
                     area: button.dataset.area,
                     organization_section_id: button.dataset.organizationSectionId,
+                    woms_section_id: button.dataset.womsSectionId,
                     status: button.dataset.status,
                     notes: button.dataset.notes,
                 };
@@ -620,6 +632,23 @@
                 });
 
                 syncCommissioningUnitField(form);
+            });
+
+            document.querySelectorAll('[data-woms-organization-search]').forEach((searchInput) => {
+                const select = searchInput.closest('[data-commissioning-unit-field]')?.querySelector('[data-woms-organization-select]');
+                if (!select) return;
+
+                const options = Array.from(select.options).map((option) => ({
+                    option,
+                    text: option.textContent.toLowerCase(),
+                }));
+
+                searchInput.addEventListener('input', () => {
+                    const search = searchInput.value.trim().toLowerCase();
+                    options.forEach(({option, text}, index) => {
+                        option.hidden = index > 0 && search !== '' && !text.includes(search);
+                    });
+                });
             });
         })();
     </script>

@@ -24,6 +24,7 @@ class OrganizationSectionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->ensureLegacyMasterIsWritable();
         OrganizationSection::create($this->validatedData($request));
 
         return redirect()
@@ -33,6 +34,7 @@ class OrganizationSectionController extends Controller
 
     public function update(Request $request, OrganizationSection $organizationSection): RedirectResponse
     {
+        $this->ensureLegacyMasterIsWritable();
         $organizationSection->update($this->validatedData($request, $organizationSection));
 
         return redirect()
@@ -42,6 +44,7 @@ class OrganizationSectionController extends Controller
 
     public function destroy(OrganizationSection $organizationSection): RedirectResponse
     {
+        $this->ensureLegacyMasterIsWritable();
         $organizationSection->delete();
 
         return redirect()
@@ -69,5 +72,14 @@ class OrganizationSectionController extends Controller
         $validated['status'] = $section?->status ?? 'active';
 
         return $validated;
+    }
+
+    private function ensureLegacyMasterIsWritable(): void
+    {
+        abort_if(
+            (bool) config('services.woms_organization.legacy_read_only', false),
+            403,
+            'Master Unit Kerja lama hanya tersedia sebagai arsip riwayat.'
+        );
     }
 }

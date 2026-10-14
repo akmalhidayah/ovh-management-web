@@ -69,7 +69,9 @@ class AdminMenuPermissions
                 'label' => 'Master Data',
                 'children' => [
                     'master_data.equipment' => 'Equipment',
-                    'master_data.unit-kerja' => 'Unit Kerja',
+                    'master_data.unit-kerja' => config('services.woms_organization.legacy_read_only', false)
+                        ? 'Unit Kerja Lama — Riwayat'
+                        : 'Unit Kerja',
                     'master_data.woms-organization' => 'Struktur Organisasi WOMS',
                 ],
             ],

@@ -9,6 +9,9 @@ use App\Models\QcFormSubmission;
 use App\Models\QcFormTemplate;
 use App\Models\MasterDataRecord;
 use App\Models\User;
+use App\Models\WomsDepartment;
+use App\Models\WomsSection;
+use App\Models\WomsUnit;
 use App\Services\ApprovalFlowService;
 use App\Support\QcTemplates\FixedQcTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1679,6 +1682,117 @@ class QcFormSubmissionTest extends TestCase
         $this->assertDatabaseMissing('qc_form_submission_rows', [
             'block_type' => 'welding_welder',
             'catatan' => 'Injected',
+        ]);
+    }
+
+    public function test_woms_qc_submission_rebuilds_organization_snapshot_on_the_server(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        config()->set('services.woms_organization.qc_enabled', true);
+        $section = $this->createWomsOrganizationForForm();
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header'] = array_replace($payload['header'], [
+            'woms_section_id' => $section->id,
+            'department' => 'FORGED DEPARTMENT',
+            'work_unit' => 'FORGED UNIT',
+            'unit_kerja' => 'FORGED SECTION',
+            'organization_section_id' => 999999,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        $this->assertSame($section->id, $submission->general_info['woms_section_id']);
+        $this->assertSame(3001, $submission->general_info['woms_section_woms_id']);
+        $this->assertSame('Production', $submission->general_info['department']);
+        $this->assertSame('Clinker Production', $submission->general_info['work_unit']);
+        $this->assertSame('Kiln Operation', $submission->general_info['unit_kerja']);
+        $this->assertNull($submission->general_info['organization_section_id']);
+        $this->assertSame('Kiln Operation', $submission->unit);
+        $this->assertSame('Mgr of Kiln Operation', $submission->approval_data['approved_by_unit_kerja']['label']);
+    }
+
+    public function test_woms_qc_submission_rejects_unknown_section_id(): void
+    {
+        Storage::fake('local');
+        config()->set('services.woms_organization.qc_enabled', true);
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $payload = $this->fixedGeneralPayload($template);
+        $payload['header']['woms_section_id'] = 999999;
+
+        $this->actingAs($user)
+            ->from(route('user.qc.forms.create', ['template' => $template->id]))
+            ->post(route('user.qc.forms.store'), $payload)
+            ->assertSessionHasErrors('header.woms_section_id');
+
+        $this->assertDatabaseCount('qc_form_submissions', 0);
+    }
+
+    public function test_legacy_qc_draft_remains_editable_and_submittable_after_woms_cutover(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        [$user, $template] = $this->makeFixedGeneralTemplate();
+        $draftPayload = $this->fixedGeneralPayload($template);
+        $draftPayload['action'] = 'draft';
+        $draftPayload['header']['unit_kerja'] = 'Legacy Area Owner';
+        $draftPayload['header']['department'] = 'Legacy Department';
+        $draftPayload['header']['work_unit'] = 'Legacy Work Unit';
+
+        $this->actingAs($user)
+            ->post(route('user.qc.forms.store'), $draftPayload)
+            ->assertRedirect(route('user.qc.drafts.index'));
+
+        $submission = QcFormSubmission::firstOrFail();
+        config()->set('services.woms_organization.qc_enabled', true);
+
+        $this->actingAs($user)
+            ->get(route('user.qc.submissions.edit', $submission))
+            ->assertOk()
+            ->assertSee('Legacy Area Owner');
+
+        $submitPayload = $this->fixedGeneralPayload($template);
+        $submitPayload['header']['unit_kerja'] = 'Legacy Area Owner';
+        $submitPayload['header']['department'] = 'Legacy Department';
+        $submitPayload['header']['work_unit'] = 'Legacy Work Unit';
+
+        $this->actingAs($user)
+            ->patch(route('user.qc.submissions.update', $submission), $submitPayload)
+            ->assertRedirect(route('user.qc.history.index'));
+
+        $submission->refresh();
+        $this->assertSame('pending_approval', $submission->status);
+        $this->assertArrayNotHasKey('woms_section_id', $submission->general_info);
+        $this->assertSame('Legacy Area Owner', $submission->general_info['unit_kerja']);
+        $this->assertSame('Mgr of Legacy Area Owner', $submission->approval_data['approved_by_unit_kerja']['label']);
+    }
+
+    private function createWomsOrganizationForForm(): WomsSection
+    {
+        WomsDepartment::create([
+            'woms_id' => 1001,
+            'name' => 'Production',
+            'present_in_source' => true,
+            'source_synced_at' => now(),
+        ]);
+        WomsUnit::create([
+            'woms_id' => 2001,
+            'woms_department_id' => 1001,
+            'name' => 'Clinker Production',
+            'present_in_source' => true,
+            'source_synced_at' => now(),
+        ]);
+
+        return WomsSection::create([
+            'woms_id' => 3001,
+            'woms_unit_id' => 2001,
+            'name' => 'Kiln Operation',
+            'present_in_source' => true,
+            'source_synced_at' => now(),
         ]);
     }
 

@@ -74,10 +74,25 @@
         'nameEquipment' => (string) ($record->description ?? ''),
         'label' => trim(($record->section_no ?: '-') . ' - ' . ($record->description ?: '-') . ' (' . ($record->equipment_no ?: '-') . ')'),
     ])->values();
-    $organizationSections = collect($activeOrganizationSections ?? []);
-    $selectedOrganizationSection = old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
+    $legacyOrganizationDraft = $draftSubmission
+        && empty($oldHeader['woms_section_id'])
+        && (! empty($oldHeader['organization_section_id']) || ! empty($oldHeader['unit_kerja']));
+    $usesWomsOrganization = (! empty($useWomsOrganization) && ! $legacyOrganizationDraft)
+        || ! empty($oldHeader['woms_section_id'])
+        || filled(old('header.woms_section_id'));
+    $organizationSections = $usesWomsOrganization
+        ? collect($womsOrganizationOptions ?? [])
+        : collect($activeOrganizationSections ?? []);
+    $selectedOrganizationSection = $usesWomsOrganization
+        ? (string) old('header.woms_section_id', $oldHeader['woms_section_id'] ?? '')
+        : (string) old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '');
     $organizationSectionOptions = $organizationSections
-        ->map(fn ($section, $index) => [
+        ->map(fn ($section, $index) => $usesWomsOrganization ? [
+            'id' => (string) data_get($section, 'woms_section_id', ''),
+            'department' => (string) data_get($section, 'department', ''),
+            'unitKerja' => (string) data_get($section, 'work_unit', ''),
+            'section' => (string) data_get($section, 'section', ''),
+        ] : [
             'id' => (string) ($section->id ?? $index),
             'department' => (string) ($section->department ?? ''),
             'unitKerja' => (string) ($section->unit_kerja ?? ''),
@@ -86,12 +101,20 @@
         ->filter(fn ($section) => $section['section'] !== '')
         ->sortBy(fn ($section) => implode('|', [$section['department'], $section['unitKerja'], $section['section']]))
         ->values();
-    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(fn ($section) => $section['section'] === $selectedOrganizationSection)) {
+    if ($selectedOrganizationSection !== '' && ! $organizationSectionOptions->contains(
+        fn ($section) => $usesWomsOrganization
+            ? $section['id'] === $selectedOrganizationSection
+            : $section['section'] === $selectedOrganizationSection
+    )) {
         $organizationSectionOptions->push([
-            'id' => (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
+            'id' => $usesWomsOrganization
+                ? (string) old('header.woms_section_id', $oldHeader['woms_section_id'] ?? '')
+                : (string) old('header.organization_section_id', $oldHeader['organization_section_id'] ?? ''),
             'department' => (string) old('header.department', $oldHeader['department'] ?? ''),
             'unitKerja' => (string) old('header.work_unit', $oldHeader['work_unit'] ?? ''),
-            'section' => (string) $selectedOrganizationSection,
+            'section' => $usesWomsOrganization
+                ? (string) old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '')
+                : (string) $selectedOrganizationSection,
         ]);
     }
     $headerRows = FixedQcTemplate::headerRows($type);
@@ -165,16 +188,21 @@
                         @elseif ($fieldKey === 'unit_kerja')
                             <input type="hidden" name="header[department]" value="{{ old('header.department', $oldHeader['department'] ?? '') }}" data-header-input="department">
                             <input type="hidden" name="header[work_unit]" value="{{ old('header.work_unit', $oldHeader['work_unit'] ?? '') }}" data-header-input="work_unit">
-                            <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
-                            <select name="header[unit_kerja]" class="form-select" data-organization-section-select required>
+                            @if ($usesWomsOrganization)
+                                <input type="hidden" name="header[unit_kerja]" value="{{ old('header.unit_kerja', $oldHeader['unit_kerja'] ?? '') }}" data-header-input="unit_kerja">
+                            @else
+                                <input type="hidden" name="header[organization_section_id]" value="{{ old('header.organization_section_id', $oldHeader['organization_section_id'] ?? '') }}" data-header-input="organization_section_id">
+                            @endif
+                            <select name="header[{{ $usesWomsOrganization ? 'woms_section_id' : 'unit_kerja' }}]" class="form-select" data-organization-section-select data-organization-mode="{{ $usesWomsOrganization ? 'woms' : 'legacy' }}" required>
                                 <option value="">Pilih Area Owner</option>
                                 @foreach ($organizationSectionOptions as $sectionOption)
-                                    <option value="{{ $sectionOption['section'] }}"
+                                    <option value="{{ $usesWomsOrganization ? $sectionOption['id'] : $sectionOption['section'] }}"
                                             data-id="{{ $sectionOption['id'] }}"
                                             data-department="{{ $sectionOption['department'] }}"
                                             data-work-unit="{{ $sectionOption['unitKerja'] }}"
-                                            @selected((string) $selectedOrganizationSection === (string) $sectionOption['section'])>
-                                        {{ $sectionOption['section'] }}
+                                            data-section="{{ $sectionOption['section'] }}"
+                                            @selected((string) $selectedOrganizationSection === (string) ($usesWomsOrganization ? $sectionOption['id'] : $sectionOption['section']))>
+                                        {{ $usesWomsOrganization ? implode(' → ', array_filter([$sectionOption['department'], $sectionOption['unitKerja'], $sectionOption['section']])) : $sectionOption['section'] }}
                                     </option>
                                 @endforeach
                             </select>
@@ -622,10 +650,14 @@
 
             const syncOrganizationSection = () => {
                 const option = organizationSectionSelect?.selectedOptions?.[0];
-                const section = option?.value || '';
-                setHeaderValue('organization_section_id', option?.dataset.id || '');
+                const isWoms = organizationSectionSelect?.dataset.organizationMode === 'woms';
+                const section = option?.dataset.section || option?.value || '';
+                if (!isWoms) {
+                    setHeaderValue('organization_section_id', option?.dataset.id || '');
+                }
                 setHeaderValue('department', option?.dataset.department || '');
                 setHeaderValue('work_unit', option?.dataset.workUnit || '');
+                setHeaderValue('unit_kerja', section);
                 if (unitKerjaApprovalLabel) {
                     unitKerjaApprovalLabel.textContent = areaOwnerApprovalLabel(section);
                 }

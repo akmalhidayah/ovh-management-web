@@ -8,15 +8,21 @@ use App\Models\OrganizationSection;
 use App\Services\MasterDataInspectionStatusService;
 use App\Services\MasterDataStatusService;
 use App\Services\MasterDataUsageService;
+use App\Services\WomsOrganizationResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MasterDataController extends Controller
 {
+    public function __construct(
+        private readonly WomsOrganizationResolver $womsOrganizationResolver
+    ) {}
+
     public function index(Request $request): View
     {
         $filters = $this->filtersFromRequest($request);
@@ -24,7 +30,9 @@ class MasterDataController extends Controller
         $filteredRecordCount = (clone $filteredQuery)->count();
 
         $records = $filteredQuery
-            ->with('organizationSection')
+            ->with($this->womsEquipmentEnabled()
+                ? ['organizationSection', 'womsSection.unit.department']
+                : ['organizationSection'])
             ->orderByRaw("case when status = 'active' then 0 else 1 end")
             ->orderBy('document_category')
             ->orderBy('plant')
@@ -45,6 +53,10 @@ class MasterDataController extends Controller
             'categoryOptions' => MasterDataRecord::documentCategories(),
             'statusOptions' => MasterDataRecord::statuses(),
             'organizationSectionOptions' => $this->organizationSectionOptions(),
+            'womsOrganizationOptions' => $this->womsEquipmentEnabled()
+                ? $this->womsOrganizationOptions()
+                : [],
+            'useWomsOrganization' => $this->womsEquipmentEnabled(),
             'summary' => $this->summary(),
             'filteredRecordCount' => $filteredRecordCount,
         ]);
@@ -231,7 +243,7 @@ class MasterDataController extends Controller
 
     private function validateRecord(Request $request, ?MasterDataRecord $record = null): array
     {
-        $validated = $request->validate([
+        $rules = [
             'document_category' => ['required', Rule::in(array_keys(MasterDataRecord::documentCategories()))],
             'year' => ['nullable', 'string', 'max:10'],
             'func_location' => [
@@ -250,11 +262,39 @@ class MasterDataController extends Controller
             'organization_section_id' => ['nullable', 'integer', Rule::exists('organization_sections', 'id')],
             'status' => ['required', Rule::in(array_keys(MasterDataRecord::statuses()))],
             'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ];
+
+        if ($this->womsEquipmentEnabled()) {
+            $rules['woms_section_id'] = ['nullable', 'integer'];
+        }
+
+        $validated = $request->validate($rules);
 
         $validated['equipment_no'] = $this->nullableEquipmentNo($validated['equipment_no'] ?? null);
         if ($validated['document_category'] !== MasterDataRecord::CATEGORY_COMMISSIONING) {
             $validated['organization_section_id'] = null;
+            if ($this->womsEquipmentEnabled()) {
+                $validated['woms_section_id'] = null;
+            }
+        } elseif ($this->womsEquipmentEnabled()) {
+            $submittedWomsSectionId = $validated['woms_section_id'] ?? null;
+
+            if (filled($submittedWomsSectionId)) {
+                $organization = $this->womsOrganizationResolver->resolvePresent(
+                    $submittedWomsSectionId,
+                    'woms_section_id'
+                );
+                $validated['woms_section_id'] = $organization['woms_section_id'];
+            } elseif ($record) {
+                $validated['woms_section_id'] = $record->woms_section_id;
+            } else {
+                throw ValidationException::withMessages([
+                    'woms_section_id' => 'Seksi WOMS wajib dipilih untuk equipment Commissioning baru.',
+                ]);
+            }
+
+            // Keep the legacy reference as historical provenance. New WOMS records do not create one.
+            $validated['organization_section_id'] = $record?->organization_section_id;
         }
 
         return $validated;
@@ -333,5 +373,24 @@ class MasterDataController extends Controller
                 'meta' => collect([$section->unit_kerja, $section->department])->filter()->implode(' - '),
             ])
             ->all();
+    }
+
+    private function womsOrganizationOptions(): array
+    {
+        return $this->womsOrganizationResolver
+            ->presentOptions()
+            ->map(fn (array $organization): array => $organization + [
+                'label' => implode(' → ', [
+                    $organization['department'],
+                    $organization['work_unit'],
+                    $organization['section'],
+                ]),
+            ])
+            ->all();
+    }
+
+    private function womsEquipmentEnabled(): bool
+    {
+        return (bool) config('services.woms_organization.equipment_enabled', false);
     }
 }
