@@ -112,25 +112,72 @@
             border: 1px solid #d5dce5;
             border-radius: .8rem;
             background: #fff;
-            box-shadow: 0 2px 3px rgba(15, 23, 42, .12);
+            box-shadow: 0 2px 3px rgba(15, 23, 42, .09);
         }
         .work-overview-summary-card {
+            position: relative;
+            overflow: hidden;
             display: flex;
             min-height: 82px;
             flex-direction: column;
             justify-content: center;
             padding: 1rem 1.25rem;
+            border-color: #dfe6ee;
+            background: linear-gradient(135deg, #fff 58%, #f5f8fc 100%);
+            box-shadow: 0 8px 22px rgba(30, 55, 85, .07);
+        }
+        .work-overview-summary-card::before {
+            position: absolute;
+            top: 0;
+            right: 1.35rem;
+            left: 1.35rem;
+            height: 3px;
+            border-radius: 0 0 999px 999px;
+            background: #315d92;
+            content: '';
+        }
+        .work-overview-summary-card.is-submission::before { background: #3b8d6a; }
+        .work-overview-summary-card.is-ratio::before { background: #c58a32; }
+        .work-overview-summary-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: .55rem;
         }
         .work-overview-summary-card.is-primary { min-height: 180px; }
         .work-overview-summary-label {
-            margin-bottom: .4rem;
-            color: #575757;
+            color: #526278;
             font-size: .84rem;
             font-weight: 700;
+            letter-spacing: .01em;
         }
         .work-overview-summary-card.is-compact .work-overview-summary-label { font-size: .76rem; }
+        .work-overview-summary-icon {
+            display: inline-flex;
+            width: 2.25rem;
+            height: 2.25rem;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d8e6f5;
+            border-radius: .65rem;
+            background: #ebf3fb;
+            color: #315d92;
+            font-size: 1rem;
+        }
+        .work-overview-summary-card.is-submission .work-overview-summary-icon {
+            border-color: #d8eee4;
+            background: #eaf6f0;
+            color: #357b5d;
+        }
+        .work-overview-summary-card.is-ratio .work-overview-summary-icon {
+            border-color: #f1e4cb;
+            background: #fbf4e7;
+            color: #a87326;
+        }
         .work-overview-summary-value {
-            color: #080808;
+            color: #172338;
             font-size: clamp(1.8rem, 3.4vw, 2.75rem);
             font-weight: 800;
             letter-spacing: -.04em;
@@ -138,6 +185,33 @@
         }
         .work-overview-summary-card.is-compact .work-overview-summary-value {
             font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+        }
+        .work-overview-summary-card.is-compact {
+            padding: .75rem 1.15rem;
+        }
+        .work-overview-summary-card.is-compact .work-overview-summary-heading {
+            display: block;
+            margin-bottom: .25rem;
+            padding-right: 2.5rem;
+        }
+        .work-overview-summary-card.is-compact .work-overview-summary-icon {
+            position: absolute;
+            top: .9rem;
+            right: 1.15rem;
+            width: 1.95rem;
+            height: 1.95rem;
+            border-radius: .55rem;
+            font-size: .85rem;
+        }
+        .work-overview-summary-meta {
+            margin-top: .6rem;
+            color: #8390a2;
+            font-size: .68rem;
+            font-weight: 500;
+        }
+        .work-overview-summary-card.is-compact .work-overview-summary-meta {
+            margin-top: .3rem;
+            font-size: .63rem;
         }
         .work-overview-filter {
             display: grid;
@@ -377,17 +451,29 @@
     <div class="work-overview" data-work-overview>
         <section class="work-overview-summary" aria-label="Ringkasan anggaran rencana kerja">
             <article class="work-overview-summary-card is-primary">
-                <span class="work-overview-summary-label">Total Pagu Anggaran</span>
+                <div class="work-overview-summary-heading">
+                    <span class="work-overview-summary-label">Total Pagu Anggaran</span>
+                    <span class="work-overview-summary-icon" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+                </div>
                 <strong class="work-overview-summary-value">Rp 12,8 M</strong>
+                <span class="work-overview-summary-meta">Ringkasan pagu aktif</span>
             </article>
             <div class="work-overview-summary-stack">
-                <article class="work-overview-summary-card is-compact">
-                    <span class="work-overview-summary-label">Total Ajuan</span>
+                <article class="work-overview-summary-card is-compact is-submission">
+                    <div class="work-overview-summary-heading">
+                        <span class="work-overview-summary-label">Total Ajuan</span>
+                        <span class="work-overview-summary-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></span>
+                    </div>
                     <strong class="work-overview-summary-value">Rp 5 M</strong>
+                    <span class="work-overview-summary-meta">Nilai pengajuan aktif</span>
                 </article>
-                <article class="work-overview-summary-card is-compact">
-                    <span class="work-overview-summary-label">Perbandingan Pagu dan Ajuan</span>
+                <article class="work-overview-summary-card is-compact is-ratio">
+                    <div class="work-overview-summary-heading">
+                        <span class="work-overview-summary-label">Perbandingan Pagu dan Ajuan</span>
+                        <span class="work-overview-summary-icon" aria-hidden="true"><i class="bi bi-pie-chart"></i></span>
+                    </div>
                     <strong class="work-overview-summary-value">56%</strong>
+                    <span class="work-overview-summary-meta">Rasio perencanaan aktif</span>
                 </article>
             </div>
         </section>
