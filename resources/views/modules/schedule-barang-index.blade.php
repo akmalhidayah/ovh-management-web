@@ -286,6 +286,7 @@
 
         .schedule-barang-table-card {
             overflow: hidden;
+            border-radius: 0;
         }
 
         .schedule-barang-table-scroll {
