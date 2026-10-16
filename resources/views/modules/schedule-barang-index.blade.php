@@ -96,10 +96,17 @@
 
         <div class="schedule-barang-table-footer">
             <span data-barang-table-summary aria-live="polite"></span>
-            <button class="schedule-barang-detail" type="button" data-barang-detail-toggle>
-                Lihat Detail
-                <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            </button>
+            <div class="schedule-barang-table-controls">
+                <label class="schedule-barang-page-size">
+                    <select data-barang-page-size aria-label="Jumlah data Rencana Kerja Barang per halaman">
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                    </select>
+                    <span>data per halaman</span>
+                </label>
+                <nav class="schedule-barang-pagination" data-barang-pagination aria-label="Pagination Rencana Kerja Barang"></nav>
+            </div>
         </div>
     </section>
 </div>
@@ -272,8 +279,7 @@
             transform: translateY(1px);
         }
 
-        .schedule-barang-update:focus-visible,
-        .schedule-barang-detail:focus-visible {
+        .schedule-barang-update:focus-visible {
             outline: 3px solid rgba(37, 76, 127, .25);
             outline-offset: 2px;
         }
@@ -423,30 +429,68 @@
             font-size: 12px;
         }
 
-        .schedule-barang-detail {
-            padding: 4px 0;
-            display: inline-flex;
+        .schedule-barang-table-controls,
+        .schedule-barang-page-size,
+        .schedule-barang-pagination {
+            display: flex;
             align-items: center;
-            gap: 5px;
-            border: 0;
-            background: transparent;
-            color: #e23d3d;
+            gap: 7px;
+        }
+
+        .schedule-barang-page-size select {
+            width: 58px;
+            min-height: 30px;
+            padding: 0 7px;
+            border: 1px solid #d6deea;
+            border-radius: 6px;
+            background: #fff;
+            color: #58677a;
             font: inherit;
-            font-size: 12px;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .schedule-barang-page-size select:focus {
+            border-color: var(--barang-navy);
+            box-shadow: 0 0 0 3px rgba(51, 79, 112, .12);
+        }
+
+        .schedule-barang-pagination {
+            flex-wrap: wrap;
+        }
+
+        .schedule-barang-page-button {
+            min-width: 30px;
+            height: 30px;
+            padding: 0 9px;
+            border: 1px solid #d6deea;
+            border-radius: 6px;
+            background: #fff;
+            color: #58677a;
+            font: inherit;
+            font-size: 11px;
             font-weight: 700;
         }
 
-        .schedule-barang-detail:hover {
-            color: #b91c1c;
-            text-decoration: underline;
+        .schedule-barang-page-button:hover:not(:disabled) {
+            border-color: var(--barang-navy);
+            color: var(--barang-navy);
         }
 
-        .schedule-barang-detail[hidden] {
-            display: none;
+        .schedule-barang-page-button.is-active {
+            border-color: var(--barang-navy);
+            background: var(--barang-navy);
+            color: #fff;
         }
 
-        .schedule-barang-detail.is-expanded i {
-            transform: rotate(90deg);
+        .schedule-barang-page-button:disabled {
+            cursor: not-allowed;
+            opacity: .4;
+        }
+
+        .schedule-barang-page-button:focus-visible {
+            outline: 3px solid rgba(51, 79, 112, .2);
+            outline-offset: 2px;
         }
 
         @media (max-width: 991.98px) {
@@ -499,6 +543,16 @@
                 align-items: flex-start;
                 flex-direction: column;
             }
+
+            .schedule-barang-table-controls {
+                width: 100%;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .schedule-barang-pagination {
+                width: 100%;
+            }
         }
     </style>
 @endpush
@@ -510,7 +564,6 @@
             if (!root) return;
 
             const allRows = @json($scheduleBarangRows);
-            const initialLimit = 5;
             const yearInput = root.querySelector('[data-barang-year]');
             const plantInput = root.querySelector('[data-barang-plant]');
             const searchInput = root.querySelector('[data-barang-search]');
@@ -519,9 +572,10 @@
             const tableScroll = root.querySelector('.schedule-barang-table-scroll');
             const emptyState = root.querySelector('[data-barang-empty]');
             const summary = root.querySelector('[data-barang-table-summary]');
-            const detailButton = root.querySelector('[data-barang-detail-toggle]');
+            const pageSizeInput = root.querySelector('[data-barang-page-size]');
+            const pagination = root.querySelector('[data-barang-pagination]');
             let filteredRows = [];
-            let expanded = false;
+            const tableState = {page: 1, perPage: 5};
 
             const escapeHtml = (value) => String(value)
                 .replaceAll('&', '&amp;')
@@ -535,11 +589,30 @@
                 return ['oem', 'fabrikasi', 'casting'].includes(normalized) ? normalized : 'oem';
             };
 
+            const pageButton = (label, page, disabled = false) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'schedule-barang-page-button';
+                button.textContent = label;
+                button.dataset.page = String(page);
+                button.disabled = disabled;
+
+                if (page === tableState.page && /^\d+$/.test(label)) {
+                    button.classList.add('is-active');
+                    button.setAttribute('aria-current', 'page');
+                }
+
+                return button;
+            };
+
             const render = () => {
-                const visibleRows = expanded ? filteredRows : filteredRows.slice(0, initialLimit);
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / tableState.perPage));
+                tableState.page = Math.min(tableState.page, totalPages);
+                const start = (tableState.page - 1) * tableState.perPage;
+                const visibleRows = filteredRows.slice(start, start + tableState.perPage);
                 tableBody.innerHTML = visibleRows.map((row, index) => `
                     <tr>
-                        <td>${index + 1}</td>
+                        <td>${start + index + 1}</td>
                         <td>${escapeHtml(row.plant)}</td>
                         <td>${escapeHtml(row.unit)}</td>
                         <td>${escapeHtml(row.pic)}</td>
@@ -561,14 +634,17 @@
                 const hasRows = filteredRows.length > 0;
                 tableScroll.hidden = !hasRows;
                 emptyState.hidden = hasRows;
+                const end = Math.min(start + tableState.perPage, filteredRows.length);
                 summary.textContent = hasRows
-                    ? `Menampilkan ${visibleRows.length} dari ${filteredRows.length} data`
-                    : '0 data ditampilkan';
+                    ? `Menampilkan ${start + 1} - ${end} dari ${filteredRows.length} data`
+                    : 'Menampilkan 0 data';
 
-                detailButton.hidden = filteredRows.length <= initialLimit;
-                detailButton.classList.toggle('is-expanded', expanded);
-                detailButton.firstChild.textContent = expanded ? 'Tutup Detail ' : 'Lihat Detail ';
-                detailButton.setAttribute('aria-expanded', String(expanded));
+                pagination.replaceChildren();
+                pagination.appendChild(pageButton('Previous', Math.max(1, tableState.page - 1), tableState.page === 1 || !hasRows));
+                for (let page = 1; page <= totalPages; page += 1) {
+                    pagination.appendChild(pageButton(String(page), page, !hasRows));
+                }
+                pagination.appendChild(pageButton('Next', Math.min(totalPages, tableState.page + 1), tableState.page === totalPages || !hasRows));
             };
 
             const applyFilters = () => {
@@ -583,7 +659,7 @@
                     return matchesYear && matchesPlant && (!keyword || searchableText.includes(keyword));
                 });
 
-                expanded = false;
+                tableState.page = 1;
                 render();
             };
 
@@ -593,8 +669,15 @@
                 event.preventDefault();
                 applyFilters();
             });
-            detailButton.addEventListener('click', () => {
-                expanded = !expanded;
+            pageSizeInput.addEventListener('change', (event) => {
+                tableState.perPage = Math.max(1, Number(event.target.value) || 5);
+                tableState.page = 1;
+                render();
+            });
+            pagination.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-page]');
+                if (!button || button.disabled) return;
+                tableState.page = Number(button.dataset.page) || 1;
                 render();
             });
 
