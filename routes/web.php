@@ -146,6 +146,7 @@ Route::middleware(['auth', 'usertype:admin', 'adminmenu'])->prefix('admin')->nam
     Route::get('/procurement/action-log', [AdminDashboardController::class, 'procurementActionLog'])->name('procurement.action-log');
     Route::get('/procurement/minutes-of-meeting', [AdminDashboardController::class, 'procurementMinutesOfMeeting'])->name('procurement.minutes-of-meeting');
     Route::get('/kalender-overhaul', [AdminDashboardController::class, 'kalenderOverhaul'])->name('kalender-overhaul');
+    Route::get('/schedule/overview', [AdminDashboardController::class, 'scheduleOverview'])->name('schedule.overview');
     Route::get('/schedule', [AdminDashboardController::class, 'schedule'])->name('schedule');
     Route::get('/commissioning', [AdminDashboardController::class, 'commissioning'])->name('commissioning');
     Route::get('/commissioning/submissions/{submission}/pdf', [CommissioningFormController::class, 'pdf'])->name('commissioning.submissions.pdf')->missing($missingAdminCommissioningSubmission);

@@ -25,8 +25,14 @@
             'key' => 'planning.schedule',
             'label' => 'Rencana Kerja',
             'icon' => 'bi-clipboard-check',
-            'routes' => ["{$role}.schedule"],
+            'routes' => array_filter([
+                "{$role}.schedule",
+                $role === 'admin' ? 'admin.schedule.overview' : null,
+            ]),
             'items' => [
+                ...($role === 'admin' ? [
+                    ['key' => 'planning.schedule', 'label' => 'Overview', 'route' => 'admin.schedule.overview', 'active' => 'admin.schedule.overview'],
+                ] : []),
                 ['key' => 'planning.schedule', 'label' => 'Rencana Kerja Barang', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'barang']],
                 ['key' => 'planning.schedule', 'label' => 'Rencana Kerja Jasa', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'jasa']],
                 ['key' => 'planning.schedule', 'label' => 'Rencana Kerja Capex', 'route' => "{$role}.schedule", 'query' => ['work_type' => 'capex']],

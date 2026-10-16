@@ -55,6 +55,11 @@ class DashboardController extends Controller
         return view('admin.schedule');
     }
 
+    public function scheduleOverview(): View
+    {
+        return view('admin.schedule-overview');
+    }
+
     public function commissioning(Request $request): View
     {
         $request->merge(['type' => 'commissioning']);
