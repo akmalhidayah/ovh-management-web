@@ -18,30 +18,18 @@
 <div class="schedule-barang-index" data-schedule-barang-index>
     <section class="schedule-barang-summary" aria-label="Ringkasan anggaran rencana kerja barang">
         <article class="schedule-barang-summary-card schedule-barang-summary-card--primary">
-            <div class="schedule-barang-summary-heading">
-                <p>Total Pagu Anggaran</p>
-                <span class="schedule-barang-summary-icon" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
-            </div>
+            <p>Total Pagu Anggaran</p>
             <strong>Rp 12,8 M</strong>
-            <span class="schedule-barang-summary-meta">Ringkasan pagu aktif</span>
         </article>
 
         <div class="schedule-barang-summary-side">
-            <article class="schedule-barang-summary-card schedule-barang-summary-card--submission">
-                <div class="schedule-barang-summary-heading">
-                    <p>Total Ajuan</p>
-                    <span class="schedule-barang-summary-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></span>
-                </div>
+            <article class="schedule-barang-summary-card">
+                <p>Total Ajuan</p>
                 <strong>Rp 5 M</strong>
-                <span class="schedule-barang-summary-meta">Nilai pengajuan aktif</span>
             </article>
-            <article class="schedule-barang-summary-card schedule-barang-summary-card--ratio">
-                <div class="schedule-barang-summary-heading">
-                    <p>Perbandingan Pagu dan Ajuan</p>
-                    <span class="schedule-barang-summary-icon" aria-hidden="true"><i class="bi bi-pie-chart"></i></span>
-                </div>
+            <article class="schedule-barang-summary-card">
+                <p>Perbandingan Pagu dan Ajuan</p>
                 <strong>56%</strong>
-                <span class="schedule-barang-summary-meta">Rasio perencanaan aktif</span>
             </article>
         </div>
     </section>
@@ -144,100 +132,36 @@
             background: #fff;
             border: 1px solid var(--barang-border);
             border-radius: 12px;
-            box-shadow: 0 2px 3px rgba(15, 23, 42, .09);
+            box-shadow: 0 2px 3px rgba(15, 23, 42, .06);
         }
 
         .schedule-barang-summary-card {
-            position: relative;
-            overflow: hidden;
             min-height: 92px;
-            padding: 18px 24px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            background: linear-gradient(135deg, #fff 58%, #f5f8fc 100%);
-            border-color: #dfe6ee;
-            box-shadow: 0 8px 22px rgba(30, 55, 85, .07);
-        }
-
-        .schedule-barang-summary-card::before {
-            position: absolute;
-            top: 0;
-            right: 22px;
-            left: 22px;
-            height: 3px;
-            border-radius: 0 0 999px 999px;
-            background: #315d92;
-            content: '';
-        }
-
-        .schedule-barang-summary-card--submission::before {
-            background: #3b8d6a;
-        }
-
-        .schedule-barang-summary-card--ratio::before {
-            background: #c58a32;
+            border-color: #dde3ea;
+            box-shadow: 0 6px 18px rgba(25, 42, 65, .045);
         }
 
         .schedule-barang-summary-card--primary {
             min-height: 196px;
         }
 
-        .schedule-barang-summary-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 9px;
-        }
-
         .schedule-barang-summary-card p {
-            margin: 0;
-            color: #526278;
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: .01em;
-        }
-
-        .schedule-barang-summary-icon {
-            width: 36px;
-            height: 36px;
-            display: inline-flex;
-            flex: 0 0 auto;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #d8e6f5;
-            border-radius: 10px;
-            background: #ebf3fb;
-            color: #315d92;
-            font-size: 16px;
-        }
-
-        .schedule-barang-summary-card--submission .schedule-barang-summary-icon {
-            border-color: #d8eee4;
-            background: #eaf6f0;
-            color: #357b5d;
-        }
-
-        .schedule-barang-summary-card--ratio .schedule-barang-summary-icon {
-            border-color: #f1e4cb;
-            background: #fbf4e7;
-            color: #a87326;
+            margin: 0 0 10px;
+            color: #657186;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .schedule-barang-summary-card strong {
-            color: #172338;
+            color: #172033;
             font-size: clamp(30px, 3vw, 44px);
             font-weight: 800;
             letter-spacing: -.04em;
             line-height: 1;
-        }
-
-        .schedule-barang-summary-meta {
-            margin-top: 10px;
-            color: #8390a2;
-            font-size: 11px;
-            font-weight: 500;
         }
 
         .schedule-barang-summary-side .schedule-barang-summary-card strong {
@@ -245,28 +169,7 @@
         }
 
         .schedule-barang-summary-side .schedule-barang-summary-card {
-            padding: 13px 20px;
-        }
-
-        .schedule-barang-summary-side .schedule-barang-summary-heading {
-            display: block;
-            margin-bottom: 4px;
-            padding-right: 42px;
-        }
-
-        .schedule-barang-summary-side .schedule-barang-summary-icon {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            width: 31px;
-            height: 31px;
-            border-radius: 9px;
-            font-size: 14px;
-        }
-
-        .schedule-barang-summary-side .schedule-barang-summary-meta {
-            margin-top: 5px;
-            font-size: 10px;
+            padding: 16px 22px;
         }
 
         .schedule-barang-summary-side .schedule-barang-summary-card:last-child p {
