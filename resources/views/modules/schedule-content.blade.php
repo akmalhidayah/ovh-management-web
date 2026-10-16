@@ -92,6 +92,9 @@
     };
 @endphp
 
+@if ($workType === 'barang')
+    @include('modules.schedule-barang-index')
+@else
 <div class="row g-3 mb-4">
     <div class="col-12 col-xl-5">
         <div class="content-card h-100 work-plan-chart-card">
@@ -253,3 +256,4 @@
         <nav class="work-plan-pagination" data-work-plan-pagination aria-label="Pagination {{ $tableTitle }}"></nav>
     </div>
 </section>
+@endif
