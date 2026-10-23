@@ -11,10 +11,10 @@
 @section('title', $workTypeLabel)
 @section('page_title', $workTypeLabel)
 @section('breadcrumb_parent', 'Rencana Kerja')
-@if ($workType === 'barang')
+@if (in_array($workType, ['barang', 'jasa'], true))
     @section('hide_breadcrumb', '1')
 @endif
-@if ($workType !== 'barang')
+@if (! in_array($workType, ['barang', 'jasa'], true))
     @section('breadcrumb_actions')
         <button class="btn btn-primary work-plan-update-btn" type="button">
             <i class="bi bi-plus-lg"></i>

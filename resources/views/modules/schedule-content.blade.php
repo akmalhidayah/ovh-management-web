@@ -94,6 +94,8 @@
 
 @if ($workType === 'barang')
     @include('modules.schedule-barang.tabs')
+@elseif ($workType === 'jasa')
+    @include('modules.schedule-jasa.tabs')
 @else
 <div class="row g-3 mb-4">
     <div class="col-12 col-xl-5">
