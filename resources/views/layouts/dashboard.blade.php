@@ -22,7 +22,9 @@
             @include('partials.topbar')
 
             <main class="ovh-content">
-                @include('partials.breadcrumb')
+                @unless (View::hasSection('hide_breadcrumb'))
+                    @include('partials.breadcrumb')
+                @endunless
                 @yield('content')
             </main>
 

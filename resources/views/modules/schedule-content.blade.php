@@ -93,7 +93,7 @@
 @endphp
 
 @if ($workType === 'barang')
-    @include('modules.schedule-barang-index')
+    @include('modules.schedule-barang.tabs')
 @else
 <div class="row g-3 mb-4">
     <div class="col-12 col-xl-5">
