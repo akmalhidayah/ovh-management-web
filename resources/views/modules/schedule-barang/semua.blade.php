@@ -1,1 +1,1 @@
-<section class="schedule-barang-empty-sheet" aria-label="Semua rencana kerja barang"></section>
+@include('modules.schedule-barang.partials.work-list', ['listMode' => 'semua'])
