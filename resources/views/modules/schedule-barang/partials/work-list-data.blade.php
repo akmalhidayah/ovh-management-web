@@ -55,3 +55,6 @@
         ];
     }
 @endphp
+
+{{-- Pass the locally prepared rows directly to the script partial. --}}
+@include('modules.schedule-barang.partials.work-list-script', ['workListRows' => $workListRows])

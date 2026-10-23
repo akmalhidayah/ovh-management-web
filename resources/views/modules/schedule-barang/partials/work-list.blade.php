@@ -1,4 +1,4 @@
-@include('modules.schedule-barang.partials.work-list-data')
+@include('modules.schedule-barang.partials.work-list-data', ['listMode' => $listMode])
 
 <section class="barang-work-list" data-barang-work-list data-mode="{{ $listMode }}" aria-label="Daftar rencana kerja barang">
     <div class="bwl-toolbar">
@@ -73,4 +73,3 @@
 </section>
 
 @include('modules.schedule-barang.partials.work-list-styles')
-@include('modules.schedule-barang.partials.work-list-script')
