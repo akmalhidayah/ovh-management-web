@@ -12,7 +12,7 @@
         : 'dashboard';
 @endphp
 
-<div class="schedule-barang-tabs-shell">
+<div class="schedule-barang-tabs-shell" style="--schedule-tab-count: {{ count($scheduleJasaTabs) }};">
     <nav class="schedule-barang-tabs" aria-label="Navigasi Rencana Kerja Jasa">
         @foreach ($scheduleJasaTabs as $tabKey => $tabLabel)
             <a

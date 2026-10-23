@@ -3,8 +3,7 @@
     $scheduleBarangTabs = [
         'dashboard' => 'Dashboard',
         'lanjut' => 'Lanjut',
-        'internal' => 'Dikerjakan Intern',
-        'batal' => 'Batal',
+        'cancel' => 'Cancel',
         'semua' => 'Semua',
     ];
     $scheduleBarangTab = is_string($requestedScheduleBarangTab) && array_key_exists($requestedScheduleBarangTab, $scheduleBarangTabs)
@@ -12,7 +11,7 @@
         : 'dashboard';
 @endphp
 
-<div class="schedule-barang-tabs-shell">
+<div class="schedule-barang-tabs-shell" style="--schedule-tab-count: {{ count($scheduleBarangTabs) }};">
     <nav class="schedule-barang-tabs" aria-label="Navigasi Rencana Kerja Barang">
         @foreach ($scheduleBarangTabs as $tabKey => $tabLabel)
             <a

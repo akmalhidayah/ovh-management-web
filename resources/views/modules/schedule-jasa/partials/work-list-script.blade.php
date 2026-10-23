@@ -1,7 +1,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const root = document.querySelector('[data-barang-work-list]');
+    const root = document.querySelector('[data-jasa-work-list]');
     if (!root) return;
 
     const initialRows = {{ Illuminate\Support\Js::from($workListRows) }};
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const link = element('a');
         link.href = url;
-        link.download = 'rencana-kerja-barang-' + mode + '.csv';
+        link.download = 'rencana-kerja-jasa-' + mode + '.csv';
         document.body.append(link);
         link.click();
         link.remove();

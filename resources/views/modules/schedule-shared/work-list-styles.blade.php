@@ -1,6 +1,6 @@
 @push('styles')
 <style>
-    .barang-work-list { --bwl-blue: #214f82; color: #233a55; display: grid; gap: 16px; min-width: 0; }
+    .schedule-work-list { --bwl-blue: #214f82; color: #233a55; display: grid; gap: 16px; min-width: 0; }
     .bwl-toolbar { display: grid; grid-template-columns: 110px 145px minmax(220px, 1fr) auto; align-items: end; gap: 20px; }
     .bwl-toolbar label { display: grid; gap: 7px; font-size: 12px; font-weight: 700; color: #26384a; }
     .bwl-toolbar .form-select, .bwl-toolbar .form-control { min-height: 39px; font-size: 12px; background-color: #f8fafc; border-color: #dae4ed; border-radius: 6px; }
@@ -63,7 +63,7 @@
     .bwl-page { min-width: 30px; height: 30px; border: 1px solid #d5dfeb; border-radius: 5px; background: #fff; color: #32597e; }
     .bwl-page[aria-current="page"] { background: #214f82; border-color: #214f82; color: #fff; }
     .bwl-page:disabled { opacity: .4; cursor: not-allowed; }
-    .barang-work-list > [data-close-detail] { justify-self: start; }
+    .schedule-work-list > [data-close-detail] { justify-self: start; }
     .bwl-modal .modal-content { border: 0; border-radius: 12px; overflow: hidden; }
     .bwl-modal .modal-header, .bwl-modal .modal-footer { padding: 18px 22px; border-color: #e1e8ef; }
     .bwl-modal .modal-title { font-size: 18px; font-weight: 700; color: #213e5f; }
@@ -81,7 +81,7 @@
     .bwl-note-footer { display: flex; align-items: center; justify-content: space-between; color: #7f8fa1; font-size: 10px; }
     .bwl-note-footer button { background: transparent; color: #b34b5a; border: 0; padding: 4px; }
     .bwl-notes-empty { padding: 18px; border: 1px dashed #d6e0eb; border-radius: 7px; text-align: center; color: #7f8fa1; font-size: 12px; }
-    .barang-work-list [hidden] { display: none !important; }
+    .schedule-work-list [hidden] { display: none !important; }
     @media (max-width: 1199.98px) { .bwl-toolbar { grid-template-columns: 110px 145px minmax(200px, 1fr); } .bwl-toolbar-actions { grid-column: 1 / -1; } }
     @media (max-width: 575.98px) {
         .bwl-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }

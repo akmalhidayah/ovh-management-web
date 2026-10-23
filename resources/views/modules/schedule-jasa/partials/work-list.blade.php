@@ -1,6 +1,6 @@
-@include('modules.schedule-barang.partials.work-list-data', ['listMode' => $listMode])
+@include('modules.schedule-jasa.partials.work-list-data', ['listMode' => $listMode])
 
-<section class="barang-work-list" data-barang-work-list data-mode="{{ $listMode }}" aria-label="Daftar rencana kerja barang">
+<section class="schedule-work-list" data-jasa-work-list data-mode="{{ $listMode }}" aria-label="Daftar rencana kerja jasa">
     <div class="bwl-toolbar">
         <label>Tahun<select class="form-select" data-year><option value="">Semua tahun</option><option>2026</option><option selected>2027</option><option>2028</option></select></label>
         <label>Plant<select class="form-select" data-plant><option value="">Semua plant</option><option>Tonasa 2</option><option>Tonasa 3</option><option>Tonasa 4</option><option selected>Tonasa 5</option><option>Power Plant</option></select></label>
@@ -16,7 +16,7 @@
     <div class="bwl-preview-note"><i class="bi bi-info-circle" aria-hidden="true"></i>Pratinjau frontend. Perubahan sementara akan kembali ke data awal saat halaman dimuat ulang.</div>
     <div class="bwl-feedback" data-feedback role="status" hidden></div>
     <div class="bwl-card">
-        <div class="bwl-table-scroll" tabindex="0" role="region" aria-label="Tabel rencana kerja barang, geser untuk melihat seluruh kolom">
+        <div class="bwl-table-scroll" tabindex="0" role="region" aria-label="Tabel rencana kerja jasa, geser untuk melihat seluruh kolom">
             <table class="bwl-table">
                 <thead><tr>
                     <th scope="col">No.</th><th scope="col" data-detail-col hidden>Tahun</th><th scope="col">Unit Kerja</th><th scope="col">Plant</th>
@@ -72,4 +72,4 @@
     </div>
 </section>
 
-@include('modules.schedule-barang.partials.work-list-styles')
+@include('modules.schedule-shared.work-list-styles')

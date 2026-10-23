@@ -1,1 +1,1 @@
-@include('modules.schedule-barang.partials.work-list', ['listMode' => 'lanjut'])
+@include('modules.schedule-barang.partials.material-list', ['listMode' => 'lanjut'])

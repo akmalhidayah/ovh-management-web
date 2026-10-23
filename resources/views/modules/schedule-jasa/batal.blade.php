@@ -1,1 +1,1 @@
-<section class="schedule-barang-empty-sheet" aria-label="Rencana kerja jasa batal"></section>
+@include('modules.schedule-jasa.partials.work-list', ['listMode' => 'batal'])

@@ -11,7 +11,7 @@
             width: 100%;
             padding: 6px;
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(var(--schedule-tab-count, 5), minmax(0, 1fr));
             align-items: center;
             gap: 5px;
             border: 1px solid #d7e0e8;
