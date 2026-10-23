@@ -1,15 +1,10 @@
 @php
     $scheduleBarangPlanRows = [
-        ['unit' => 'Pemeliharaan Kiln & Cooler', 'plant' => 'Tonasa 4', 'pagu' => 'Rp 3.500.000.000', 'ajuan' => 'Rp 3.250.000.000', 'status' => 'Di bawah 100% (92,8%)', 'tone' => 'safe'],
-        ['unit' => 'Re-bricking & Refractory RKC', 'plant' => 'Tonasa 5', 'pagu' => 'Rp 2.800.000.000', 'ajuan' => 'Rp 2.750.000.000', 'status' => 'Di bawah 100% (98,2%)', 'tone' => 'safe'],
-        ['unit' => 'Alignment & Balancing Turbin', 'plant' => 'Power Plant', 'pagu' => 'Rp 1.500.000.000', 'ajuan' => 'Rp 1.120.000.000', 'status' => 'Di bawah 100% (74,6%)', 'tone' => 'safe'],
-        ['unit' => 'Fabrikasi Dust Collector', 'plant' => 'Tonasa 4', 'pagu' => 'Rp 1.200.000.000', 'ajuan' => 'Rp 1.450.000.000', 'status' => 'Di atas 100% (120,8%)', 'tone' => 'danger'],
-        ['unit' => 'Inspeksi NDT & Vibrasi Finish Mill', 'plant' => 'Tonasa 2/3', 'pagu' => 'Rp 800.000.000', 'ajuan' => 'Rp 910.000.000', 'status' => 'Di atas 100% (113,7%)', 'tone' => 'danger'],
-        ['unit' => 'Overhaul Gearbox Raw Mill', 'plant' => 'Tonasa 5', 'pagu' => 'Rp 2.150.000.000', 'ajuan' => 'Rp 2.050.000.000', 'status' => 'Di bawah 100% (95,3%)', 'tone' => 'safe'],
-        ['unit' => 'Repair Bucket Elevator', 'plant' => 'Tonasa 4', 'pagu' => 'Rp 975.000.000', 'ajuan' => 'Rp 1.025.000.000', 'status' => 'Di atas 100% (105,1%)', 'tone' => 'danger'],
-        ['unit' => 'Penggantian Liner Coal Mill', 'plant' => 'Tonasa 3', 'pagu' => 'Rp 1.300.000.000', 'ajuan' => 'Rp 1.175.000.000', 'status' => 'Di bawah 100% (90,3%)', 'tone' => 'safe'],
-        ['unit' => 'Major Service ID Fan', 'plant' => 'Tonasa 2', 'pagu' => 'Rp 1.050.000.000', 'ajuan' => 'Rp 995.000.000', 'status' => 'Di bawah 100% (94,7%)', 'tone' => 'safe'],
-        ['unit' => 'Rekondisi Hydraulic System', 'plant' => 'Tonasa 5', 'pagu' => 'Rp 1.525.000.000', 'ajuan' => 'Rp 1.575.000.000', 'status' => 'Di atas 100% (103,2%)', 'tone' => 'danger'],
+        ['unit' => 'PEM. MESIN KCM 4/5', 'plant' => 'Tonasa 4', 'pagu' => '2.700.000.000,00', 'ajuan' => '2.554.923.037,00', 'status' => 'Di bawah 100% (94,6%)', 'tone' => 'safe'],
+        ['unit' => 'OPERASI RKC 4/5', 'plant' => 'Tonasa 4', 'pagu' => '50.000.000,00', 'ajuan' => '31.057.500,00', 'status' => 'Di bawah 100% (62,1%)', 'tone' => 'safe'],
+        ['unit' => 'PEM. MESIN FM 4/5', 'plant' => 'Tonasa 4', 'pagu' => '2.200.000.000,00', 'ajuan' => '51.684.100,00', 'status' => 'Di bawah 100% (2,3%)', 'tone' => 'safe'],
+        ['unit' => 'PEM. MESIN RM 4/5', 'plant' => 'Tonasa 4', 'pagu' => '2.350.000.000,00', 'ajuan' => '2.845.986.000,00', 'status' => 'Di atas 100% (121,1%)', 'tone' => 'danger'],
+        ['unit' => 'OPERASI FM 4/5', 'plant' => 'Tonasa 4', 'pagu' => '50.000.000,00', 'ajuan' => '168.707.171,00', 'status' => 'Di atas 100% (337,4%)', 'tone' => 'danger'],
     ];
 
     $scheduleBarangRemarks = [
@@ -75,13 +70,13 @@
 
                 <article class="schedule-barang-budget-card">
                     <span class="schedule-barang-budget-icon" aria-hidden="true"><i class="bi bi-bar-chart-line-fill"></i></span>
-                    <div><p>Total Ajuan Anggaran</p><strong>Rp 5 M</strong></div>
+                    <div><p>Total Ajuan Anggaran</p><strong>Rp 11,8 M</strong></div>
                 </article>
             </div>
 
             <div class="schedule-barang-budget-column">
                 <article class="schedule-barang-budget-ratio">
-                    <strong>96<span>%</span></strong>
+                    <strong>92,2<span>%</span></strong>
                     <div class="schedule-barang-budget-ratio-label"><p>Pagu</p><p>vs Ajuan</p></div>
                     <span class="schedule-barang-budget-ratio-icon" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>
                 </article>
@@ -105,17 +100,17 @@
         <div class="schedule-barang-section-heading">
             <h2 id="schedule-barang-plants-title">Ajuan Plant</h2>
             <div class="schedule-barang-section-actions">
-                <span class="schedule-barang-total-chip">Total Ajuan = <strong>Rp 16,8 M</strong></span>
+                <span class="schedule-barang-total-chip">Total Ajuan = <strong>Rp 11,8 M</strong></span>
                 <a href="#schedule-barang-report" class="schedule-barang-detail-link">Lihat Laporan Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
             </div>
         </div>
 
         <div class="schedule-barang-plant-grid">
             @foreach ([
-                ['Tonasa 2', 'Rp 1,8 M', '2%', 'orange'],
-                ['Tonasa 4', 'Rp 6,1 M', '40%', 'green'],
-                ['Tonasa 3', 'Rp 2,4 M', '3%', 'purple'],
-                ['Tonasa 5', 'Rp 6,5 M', '42%', 'red'],
+                ['Tonasa 2', 'Rp 0,9 M', '2%', 'orange'],
+                ['Tonasa 4', 'Rp 4,5 M', '40%', 'green'],
+                ['Tonasa 3', 'Rp 1,2 M', '3%', 'purple'],
+                ['Tonasa 5', 'Rp 5,2 M', '42%', 'red'],
             ] as [$plant, $value, $progress, $tone])
                 <article class="schedule-barang-plant-card">
                     <div class="schedule-barang-plant-card-top">
@@ -133,13 +128,13 @@
 
     <section class="schedule-barang-report-grid" id="schedule-barang-report">
         <article class="schedule-barang-report-card" data-paginated-list data-page-size="5">
-            <h2>Rencana Kerja Jasa</h2>
+            <h2>Rencana Kerja Barang</h2>
             <div class="schedule-barang-report-scroll">
                 <table class="schedule-barang-report-table">
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th>Unit Kerja Jasa</th>
+                            <th>Unit Kerja</th>
                             <th>Plant</th>
                             <th>Pagu Anggaran</th>
                             <th>Ajuan Anggaran</th>
@@ -164,19 +159,19 @@
                 <span data-pagination-summary aria-live="polite"></span>
                 <div class="schedule-barang-list-controls">
                     <label><select data-pagination-size aria-label="Jumlah data per halaman"><option value="5" selected>5</option><option value="10">10</option></select><span>data per halaman</span></label>
-                    <nav data-pagination-nav aria-label="Pagination rencana kerja jasa"></nav>
+                    <nav data-pagination-nav aria-label="Pagination rencana kerja barang"></nav>
                 </div>
             </div>
         </article>
 
         <aside class="schedule-barang-distribution" aria-labelledby="schedule-barang-distribution-title">
             <h2 id="schedule-barang-distribution-title">Distribusi Pagu</h2>
-            <div class="schedule-barang-donut" role="img" aria-label="35 plant melebihi pagu dan 17 plant sesuai pagu">
-                <div><strong>52</strong><span>Total Plant</span></div>
+            <div class="schedule-barang-donut" role="img" aria-label="24 seksi: 16 seksi melebihi pagu dan 8 seksi sesuai pagu">
+                <div><strong>24</strong><span>Total Seksi</span></div>
             </div>
             <div class="schedule-barang-distribution-legend">
-                <div class="is-danger"><span><i></i>Melebihi Pagu</span><strong>35 <small>Plant</small></strong><small>67,3% dari total plant</small></div>
-                <div class="is-safe"><span><i></i>Sesuai Pagu</span><strong>17 <small>Plant</small></strong><small>32,7% dari total plant</small></div>
+                <div class="is-danger"><span><i></i>Melebihi Pagu</span><strong>16 <small>Seksi</small></strong><small>66,7% dari total seksi</small></div>
+                <div class="is-safe"><span><i></i>Sesuai Pagu</span><strong>8 <small>Seksi</small></strong><small>33,3% dari total seksi</small></div>
             </div>
         </aside>
     </section>
@@ -749,7 +744,7 @@
             display: grid;
             place-items: center;
             border-radius: 50%;
-            background: conic-gradient(#b72e24 0 67.3%, #4b9f5b 67.3% 100%);
+            background: conic-gradient(#b72e24 0 66.6667%, #4b9f5b 66.6667% 100%);
         }
 
         .schedule-barang-donut::before {

@@ -38,29 +38,28 @@
 
         .schedule-barang-tabs {
             min-height: 48px;
-            padding: 7px;
-            display: flex;
+            width: 100%;
+            padding: 6px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             align-items: center;
-            gap: 8px;
-            overflow-x: auto;
+            gap: 5px;
             border: 1px solid #d7e0e8;
             border-radius: 8px;
-            background: #fff;
-            scrollbar-width: thin;
+            background: #f8fafc;
         }
 
         .schedule-barang-tab {
-            min-width: 116px;
-            min-height: 34px;
+            width: 100%;
+            min-height: 36px;
             padding: 0 16px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            flex: 0 0 auto;
             border-radius: 6px;
-            color: #1f2937;
+            color: #475569;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             line-height: 1;
             text-decoration: none;
             white-space: nowrap;
@@ -68,7 +67,7 @@
         }
 
         .schedule-barang-tab:hover {
-            background: #edf3f8;
+            background: #eaf1f7;
             color: #173f6d;
         }
 
@@ -96,8 +95,13 @@
 
         @media (max-width: 575.98px) {
             .schedule-barang-tabs-shell { gap: 16px; }
-            .schedule-barang-tabs { border-radius: 7px; }
-            .schedule-barang-tab { min-width: 105px; padding: 0 13px; }
+            .schedule-barang-tabs {
+                display: flex;
+                overflow-x: auto;
+                border-radius: 7px;
+                scrollbar-width: thin;
+            }
+            .schedule-barang-tab { width: auto; min-width: 132px; padding: 0 13px; flex: 0 0 auto; }
             .schedule-barang-empty-sheet { min-height: 420px; }
         }
     </style>
