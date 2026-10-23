@@ -29,7 +29,7 @@
 @endphp
 
 <div class="schedule-barang-budget" data-schedule-barang-budget>
-    <section class="schedule-barang-budget-filter" aria-label="Filter rencana kerja barang">
+    <section class="schedule-barang-budget-filter" aria-label="Search rencana kerja barang">
         <div class="schedule-barang-budget-field">
             <label for="schedule-barang-budget-year">Tahun</label>
             <select id="schedule-barang-budget-year">
@@ -50,7 +50,7 @@
         </div>
 
         <div class="schedule-barang-budget-field schedule-barang-budget-field--search">
-            <label for="schedule-barang-budget-search">Filter</label>
+            <label for="schedule-barang-budget-search">Search</label>
             <div class="schedule-barang-budget-search">
                 <i class="bi bi-search" aria-hidden="true"></i>
                 <input id="schedule-barang-budget-search" type="search" placeholder="Cari unit kerja/status ajuan/pekerjaan...">
@@ -197,9 +197,9 @@
                             <td><span class="schedule-barang-remark-status is-{{ strtolower($remark['status']) }}"><i class="bi {{ $remark['status'] === 'OK' ? 'bi-check' : 'bi-x' }}" aria-hidden="true"></i>{{ $remark['status'] }}</span></td>
                             <td>
                                 <div class="schedule-barang-remark-actions" aria-label="Aksi remark {{ $index + 1 }}">
-                                    <span title="Dokumen"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span>
-                                    <span title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
-                                    <span class="{{ $remark['status'] === 'OK' ? 'is-ok' : '' }}" title="Status"><i class="bi {{ $remark['status'] === 'OK' ? 'bi-check-circle' : 'bi-circle' }}" aria-hidden="true"></i></span>
+                                    <span class="is-document" title="Lihat dokumen" aria-label="Lihat dokumen"><i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i></span>
+                                    <span class="is-edit" title="Edit remark" aria-label="Edit remark"><i class="bi bi-pencil-fill" aria-hidden="true"></i></span>
+                                    <span class="is-status {{ $remark['status'] === 'OK' ? 'is-ok' : 'is-pending' }}" title="{{ $remark['status'] === 'OK' ? 'Status selesai' : 'Status belum selesai' }}" aria-label="{{ $remark['status'] === 'OK' ? 'Status selesai' : 'Status belum selesai' }}"><i class="bi {{ $remark['status'] === 'OK' ? 'bi-check-circle-fill' : 'bi-dash-circle' }}" aria-hidden="true"></i></span>
                                 </div>
                             </td>
                         </tr>
@@ -861,12 +861,44 @@
         .schedule-barang-remark-actions {
             display: inline-flex;
             align-items: center;
-            gap: 9px;
-            color: #8392a5;
-            font-size: 13px;
+            justify-content: center;
+            gap: 6px;
         }
 
-        .schedule-barang-remark-actions .is-ok { color: #24a873; }
+        .schedule-barang-remark-actions > span {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .schedule-barang-remark-actions .is-document {
+            border-color: #c9d9ea;
+            background: #f3f7fb;
+            color: #315f8f;
+        }
+
+        .schedule-barang-remark-actions .is-edit {
+            border-color: #f0d9a8;
+            background: #fff9ec;
+            color: #b87a12;
+        }
+
+        .schedule-barang-remark-actions .is-status.is-ok {
+            border-color: #b7e5cf;
+            background: #effaf5;
+            color: #249967;
+        }
+
+        .schedule-barang-remark-actions .is-status.is-pending {
+            border-color: #d6dee7;
+            background: #f7f9fb;
+            color: #718197;
+        }
 
         .schedule-barang-remarks > .schedule-barang-list-footer {
             padding: 12px 18px;
