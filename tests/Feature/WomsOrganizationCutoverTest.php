@@ -35,7 +35,10 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertOk()
             ->assertSee('Struktur Organisasi')
             ->assertDontSee('Struktur Organisasi WOMS')
-            ->assertDontSee('Unit Kerja Lama — Riwayat');
+            ->assertDontSee('Unit Kerja Lama — Riwayat')
+            ->assertDontSee('Salinan lokal read-only')
+            ->assertDontSee('departemen ditemukan')
+            ->assertDontSee('Ada di WOMS');
     }
 
     public function test_resolver_returns_server_owned_present_hierarchy(): void

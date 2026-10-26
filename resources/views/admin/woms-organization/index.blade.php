@@ -17,7 +17,6 @@
     <div class="page-header woms-page-header">
         <div>
             <h1>Struktur Organisasi</h1>
-            <p>Salinan lokal read-only Departemen, Unit Kerja, Seksi, dan pejabat dari WOMS.</p>
         </div>
         @if ($canSync)
             <div class="page-actions">
@@ -113,8 +112,8 @@
                 <label class="form-label" for="womsPresenceFilter">Status Sumber</label>
                 <select class="form-select" id="womsPresenceFilter" name="presence">
                     <option value="">Semua Status</option>
-                    <option value="present" @selected($filters['presence'] === 'present')>Ada di WOMS</option>
-                    <option value="missing" @selected($filters['presence'] === 'missing')>Tidak lagi di WOMS</option>
+                    <option value="present" @selected($filters['presence'] === 'present')>Tersedia</option>
+                    <option value="missing" @selected($filters['presence'] === 'missing')>Tidak Tersedia</option>
                 </select>
             </div>
             <div class="woms-filter-actions">
@@ -125,11 +124,7 @@
     </div>
 
     <div class="woms-section-heading">
-        <div>
-            <h2>Hierarki Organisasi</h2>
-            <p>Data ditampilkan dari master lokal hasil sinkronisasi terakhir.</p>
-        </div>
-        <span>{{ $departments->total() }} departemen ditemukan</span>
+        <h2>Hierarki Organisasi</h2>
     </div>
 
     <div class="woms-hierarchy">
@@ -148,10 +143,6 @@
                                 <small>{{ $department->generalManager->email }}</small>
                             @endif
                         </div>
-                        <span class="woms-presence {{ $department->present_in_source ? 'is-present' : 'is-missing' }}">
-                            <i class="bi {{ $department->present_in_source ? 'bi-check-circle' : 'bi-exclamation-circle' }}"></i>
-                            {{ $department->present_in_source ? 'Ada di WOMS' : 'Tidak lagi di WOMS' }}
-                        </span>
                     </div>
                 </header>
 
@@ -168,28 +159,20 @@
                                     <strong>{{ $unit->seniorManager?->name ?? 'Belum ditetapkan' }}</strong>
                                     @if ($unit->seniorManager?->email)<small>{{ $unit->seniorManager->email }}</small>@endif
                                 </div>
-                                <span class="woms-presence {{ $unit->present_in_source ? 'is-present' : 'is-missing' }}">
-                                    {{ $unit->present_in_source ? 'Ada di WOMS' : 'Tidak lagi di WOMS' }}
-                                </span>
                             </div>
 
                             <div class="table-responsive">
                                 <table class="table align-middle woms-section-table">
-                                    <thead><tr><th>Seksi</th><th>Manager</th><th>Email</th><th>Status Sumber</th></tr></thead>
+                                    <thead><tr><th>Seksi</th><th>Manager</th><th>Email</th></tr></thead>
                                     <tbody>
                                         @forelse ($unit->sections as $section)
                                             <tr>
                                                 <td><strong>{{ $section->name }}</strong><small>WOMS ID {{ $section->woms_id }}</small></td>
                                                 <td>{{ $section->manager?->name ?? 'Belum ditetapkan' }}</td>
                                                 <td>{{ $section->manager?->email ?? '-' }}</td>
-                                                <td>
-                                                    <span class="woms-presence {{ $section->present_in_source ? 'is-present' : 'is-missing' }}">
-                                                        {{ $section->present_in_source ? 'Ada di WOMS' : 'Tidak lagi di WOMS' }}
-                                                    </span>
-                                                </td>
                                             </tr>
                                         @empty
-                                            <tr><td colspan="4" class="text-center text-muted py-3">Unit kerja ini tidak mempunyai seksi.</td></tr>
+                                            <tr><td colspan="3" class="text-center text-muted py-3">Unit kerja ini tidak mempunyai seksi.</td></tr>
                                         @endforelse
                                     </tbody>
                                 </table>
@@ -255,6 +238,6 @@
 
 @push('styles')
     <style>
-        .woms-page-header p,.woms-section-heading p{margin:.25rem 0 0;color:#64748b;font-size:.84rem}.woms-page-header .page-actions{display:flex;flex-wrap:wrap;gap:.55rem}.woms-status-card{display:flex;align-items:center;gap:1rem;border-left:4px solid #64748b}.woms-status-card.is-success{border-left-color:#16a34a}.woms-status-card.is-warning{border-left-color:#f59e0b}.woms-status-card.is-danger{border-left-color:#dc2626}.woms-status-card.is-info{border-left-color:#0ea5e9}.woms-status-icon{width:52px;height:52px;display:grid;place-items:center;flex:0 0 auto;border-radius:.75rem;background:#eff6ff;color:#2563eb;font-size:1.4rem}.woms-status-copy{min-width:0;flex:1}.woms-status-copy>span,.woms-status-meta span{display:block;color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase}.woms-status-copy h2{margin:.1rem 0;color:#172033;font-size:1.15rem;font-weight:800}.woms-status-copy p{margin:0;color:#64748b;font-size:.82rem}.woms-status-meta{display:grid;grid-template-columns:auto auto;gap:.2rem .7rem;text-align:right}.woms-status-meta code{max-width:170px;color:#334155;overflow:hidden;text-overflow:ellipsis}.woms-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:.75rem;margin:1rem 0}.woms-summary-card{display:flex;align-items:center;gap:.7rem;margin:0;padding:.85rem}.woms-summary-card>i{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:.55rem;background:#eaf2ff;color:#2563eb}.woms-summary-card.is-green>i{background:#eaf8ef;color:#168148}.woms-summary-card.is-cyan>i{background:#e8f8fc;color:#0891b2}.woms-summary-card.is-violet>i{background:#f2edff;color:#7c3aed}.woms-summary-card.is-orange>i{background:#fff5e5;color:#d97706}.woms-summary-card.is-slate>i{background:#eef2f7;color:#475569}.woms-summary-card span{display:block;color:#64748b;font-size:.7rem;font-weight:700}.woms-summary-card strong{display:block;color:#172033;font-size:1.25rem;line-height:1.15}.woms-filter-card{margin-bottom:1rem}.woms-filter-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr)) auto;gap:.7rem;align-items:end}.woms-filter-grid .form-label{font-size:.75rem;font-weight:700;color:#475569}.woms-filter-grid .form-control,.woms-filter-grid .form-select{font-size:.8rem}.woms-filter-actions{display:flex;gap:.4rem}.woms-section-heading{display:flex;align-items:end;justify-content:space-between;margin:1.2rem 0 .7rem}.woms-section-heading h2{margin:0;color:#172033;font-size:1.05rem;font-weight:800}.woms-section-heading>span{color:#64748b;font-size:.78rem}.woms-hierarchy{display:grid;gap:1rem}.woms-department-card{padding:0;overflow:hidden}.woms-department-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;background:#eef4fb;border-bottom:1px solid #d9e3ef}.woms-entity-kicker{color:#64748b;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.woms-department-header h3,.woms-unit-header h4{margin:.15rem 0 0;color:#172033;font-weight:800}.woms-department-header h3{font-size:1.08rem}.woms-unit-header h4{font-size:.93rem}.woms-department-meta{display:flex;align-items:center;gap:1rem;text-align:right}.woms-department-meta>div span,.woms-officer span{display:block;color:#64748b;font-size:.68rem;font-weight:700;text-transform:uppercase}.woms-department-meta strong,.woms-officer strong{display:block;color:#334155;font-size:.8rem}.woms-department-meta small,.woms-officer small{display:block;color:#64748b;font-size:.7rem}.woms-presence{display:inline-flex;align-items:center;gap:.28rem;padding:.26rem .48rem;border-radius:999px;font-size:.66rem;font-weight:800;white-space:nowrap}.woms-presence.is-present{background:#dcfce7;color:#166534}.woms-presence.is-missing{background:#fee2e2;color:#991b1b}.woms-unit-list{display:grid;gap:.8rem;padding:.8rem}.woms-unit-card{overflow:hidden;border:1px solid #dbe3ee;border-radius:.65rem}.woms-unit-header{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,.7fr) auto;align-items:center;gap:.8rem;padding:.75rem .85rem;background:#fff}.woms-officer{text-align:right}.woms-section-table{min-width:720px;margin:0;border-top:1px solid #e2e8f0}.woms-section-table thead th,.woms-history-table thead th{background:#f8fafc;color:#526076;font-size:.7rem;text-transform:uppercase;white-space:nowrap}.woms-section-table td,.woms-history-table td{color:#475569;font-size:.75rem}.woms-section-table td:first-child strong,.woms-section-table td:first-child small{display:block}.woms-section-table td:first-child small{margin-top:.12rem;color:#94a3b8}.woms-empty-unit,.woms-empty-state{padding:1.5rem;text-align:center;color:#64748b}.woms-empty-state i{font-size:2rem}.woms-empty-state h3{margin:.5rem 0 .2rem;color:#334155;font-size:1rem}.woms-empty-state p{margin:0;font-size:.82rem}.woms-history-card{margin-top:1rem}.woms-history-table{min-width:1050px}.woms-history-table td:last-child{max-width:300px;white-space:normal}.woms-history-card .card-heading{margin-bottom:.7rem}@media(max-width:1399.98px){.woms-summary-grid{grid-template-columns:repeat(3,1fr)}.woms-filter-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:767.98px){.woms-page-header,.woms-department-header,.woms-section-heading{align-items:stretch;flex-direction:column}.woms-page-header .page-actions,.woms-page-header .page-actions form,.woms-page-header .btn{width:100%}.woms-status-card{align-items:flex-start;flex-wrap:wrap}.woms-status-meta{width:100%;padding-top:.7rem;border-top:1px solid #e2e8f0;text-align:left}.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr 1fr}.woms-filter-actions{grid-column:1/-1}.woms-unit-header{grid-template-columns:1fr}.woms-officer{text-align:left}.woms-department-meta{align-items:flex-start;flex-direction:column;text-align:left}}@media(max-width:479.98px){.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr}.woms-filter-actions{grid-column:auto}.woms-filter-actions .btn{flex:1}}
+        .woms-page-header p,.woms-section-heading p{margin:.25rem 0 0;color:#64748b;font-size:.84rem}.woms-page-header .page-actions{display:flex;flex-wrap:wrap;gap:.55rem}.woms-status-card{display:flex;align-items:center;gap:1rem;border-left:4px solid #64748b}.woms-status-card.is-success{border-left-color:#16a34a}.woms-status-card.is-warning{border-left-color:#f59e0b}.woms-status-card.is-danger{border-left-color:#dc2626}.woms-status-card.is-info{border-left-color:#0ea5e9}.woms-status-icon{width:52px;height:52px;display:grid;place-items:center;flex:0 0 auto;border-radius:.75rem;background:#eff6ff;color:#2563eb;font-size:1.4rem}.woms-status-copy{min-width:0;flex:1}.woms-status-copy>span,.woms-status-meta span{display:block;color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase}.woms-status-copy h2{margin:.1rem 0;color:#172033;font-size:1.15rem;font-weight:800}.woms-status-copy p{margin:0;color:#64748b;font-size:.82rem}.woms-status-meta{display:grid;grid-template-columns:auto auto;gap:.2rem .7rem;text-align:right}.woms-status-meta code{max-width:170px;color:#334155;overflow:hidden;text-overflow:ellipsis}.woms-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:.75rem;margin:1rem 0}.woms-summary-card{display:flex;align-items:center;gap:.7rem;margin:0;padding:.85rem}.woms-summary-card>i{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:.55rem;background:#eaf2ff;color:#2563eb}.woms-summary-card.is-green>i{background:#eaf8ef;color:#168148}.woms-summary-card.is-cyan>i{background:#e8f8fc;color:#0891b2}.woms-summary-card.is-violet>i{background:#f2edff;color:#7c3aed}.woms-summary-card.is-orange>i{background:#fff5e5;color:#d97706}.woms-summary-card.is-slate>i{background:#eef2f7;color:#475569}.woms-summary-card span{display:block;color:#64748b;font-size:.7rem;font-weight:700}.woms-summary-card strong{display:block;color:#172033;font-size:1.25rem;line-height:1.15}.woms-filter-card{margin-bottom:1rem}.woms-filter-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr)) auto;gap:.7rem;align-items:end}.woms-filter-grid .form-label{font-size:.75rem;font-weight:700;color:#475569}.woms-filter-grid .form-control,.woms-filter-grid .form-select{font-size:.8rem}.woms-filter-actions{display:flex;gap:.4rem}.woms-section-heading{display:flex;align-items:end;justify-content:space-between;margin:1.2rem 0 .7rem}.woms-section-heading h2{margin:0;color:#172033;font-size:1.05rem;font-weight:800}.woms-section-heading>span{color:#64748b;font-size:.78rem}.woms-hierarchy{display:grid;gap:1rem}.woms-department-card{padding:0;overflow:hidden}.woms-department-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;background:#eef4fb;border-bottom:1px solid #d9e3ef}.woms-entity-kicker{color:#64748b;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.woms-department-header h3,.woms-unit-header h4{margin:.15rem 0 0;color:#172033;font-weight:800}.woms-department-header h3{font-size:1.08rem}.woms-unit-header h4{font-size:.93rem}.woms-department-meta{display:flex;align-items:center;gap:1rem;text-align:right}.woms-department-meta>div span,.woms-officer span{display:block;color:#64748b;font-size:.68rem;font-weight:700;text-transform:uppercase}.woms-department-meta strong,.woms-officer strong{display:block;color:#334155;font-size:.8rem}.woms-department-meta small,.woms-officer small{display:block;color:#64748b;font-size:.7rem}.woms-unit-list{display:grid;gap:.8rem;padding:.8rem}.woms-unit-card{overflow:hidden;border:1px solid #dbe3ee;border-radius:.65rem}.woms-unit-header{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,.7fr);align-items:center;gap:.8rem;padding:.75rem .85rem;background:#fff}.woms-officer{text-align:right}.woms-section-table{min-width:720px;margin:0;border-top:1px solid #e2e8f0}.woms-section-table thead th,.woms-history-table thead th{background:#f8fafc;color:#526076;font-size:.7rem;text-transform:uppercase;white-space:nowrap}.woms-section-table td,.woms-history-table td{color:#475569;font-size:.75rem}.woms-section-table td:first-child strong,.woms-section-table td:first-child small{display:block}.woms-section-table td:first-child small{margin-top:.12rem;color:#94a3b8}.woms-empty-unit,.woms-empty-state{padding:1.5rem;text-align:center;color:#64748b}.woms-empty-state i{font-size:2rem}.woms-empty-state h3{margin:.5rem 0 .2rem;color:#334155;font-size:1rem}.woms-empty-state p{margin:0;font-size:.82rem}.woms-history-card{margin-top:1rem}.woms-history-table{min-width:1050px}.woms-history-table td:last-child{max-width:300px;white-space:normal}.woms-history-card .card-heading{margin-bottom:.7rem}@media(max-width:1399.98px){.woms-summary-grid{grid-template-columns:repeat(3,1fr)}.woms-filter-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:767.98px){.woms-page-header,.woms-department-header,.woms-section-heading{align-items:stretch;flex-direction:column}.woms-page-header .page-actions,.woms-page-header .page-actions form,.woms-page-header .btn{width:100%}.woms-status-card{align-items:flex-start;flex-wrap:wrap}.woms-status-meta{width:100%;padding-top:.7rem;border-top:1px solid #e2e8f0;text-align:left}.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr 1fr}.woms-filter-actions{grid-column:1/-1}.woms-unit-header{grid-template-columns:1fr}.woms-officer{text-align:left}.woms-department-meta{align-items:flex-start;flex-direction:column;text-align:left}}@media(max-width:479.98px){.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr}.woms-filter-actions{grid-column:auto}.woms-filter-actions .btn{flex:1}}
     </style>
 @endpush
