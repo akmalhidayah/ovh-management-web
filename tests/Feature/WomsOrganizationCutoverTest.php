@@ -25,6 +25,19 @@ class WomsOrganizationCutoverTest extends TestCase
         $this->assertFalse((bool) config('services.woms_organization.legacy_read_only'));
     }
 
+    public function test_woms_organization_page_uses_the_new_label_and_hides_the_legacy_menu(): void
+    {
+        config()->set('services.woms_organization.legacy_read_only', true);
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.woms-organization.index'))
+            ->assertOk()
+            ->assertSee('Struktur Organisasi')
+            ->assertDontSee('Struktur Organisasi WOMS')
+            ->assertDontSee('Unit Kerja Lama — Riwayat');
+    }
+
     public function test_resolver_returns_server_owned_present_hierarchy(): void
     {
         $section = $this->createWomsHierarchy();

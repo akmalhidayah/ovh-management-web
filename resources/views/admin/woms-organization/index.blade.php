@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Struktur Organisasi WOMS')
-@section('page_title', 'Struktur Organisasi WOMS')
+@section('title', 'Struktur Organisasi')
+@section('page_title', 'Struktur Organisasi')
 @section('breadcrumb_parent', 'Master Data')
 
 @section('content')
@@ -16,7 +16,7 @@
 
     <div class="page-header woms-page-header">
         <div>
-            <h1>Struktur Organisasi WOMS</h1>
+            <h1>Struktur Organisasi</h1>
             <p>Salinan lokal read-only Departemen, Unit Kerja, Seksi, dan pejabat dari WOMS.</p>
         </div>
         @if ($canSync)

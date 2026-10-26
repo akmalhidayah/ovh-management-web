@@ -56,7 +56,7 @@
                             <input type="text" name="area" class="form-control" value="{{ old('area', $record?->area) }}" required placeholder="RAW MILL">
                         </div>
                         <div class="col-12 col-md-4" data-commissioning-unit-field>
-                            <label class="form-label">{{ $useWomsOrganization ? 'Struktur Organisasi WOMS' : 'Unit Kerja' }}</label>
+                            <label class="form-label">{{ $useWomsOrganization ? 'Struktur Organisasi' : 'Unit Kerja' }}</label>
                             @if ($useWomsOrganization)
                                 <input type="search" class="form-control form-control-sm mb-2" placeholder="Cari departemen, unit kerja, atau seksi" data-woms-organization-search>
                                 <select name="woms_section_id" class="form-select" data-master-organization-select data-woms-organization-select>
