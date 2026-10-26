@@ -42,7 +42,11 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertDontSee('Pejabat Unik')
             ->assertDontSee('Tidak di Sumber')
             ->assertDontSee('Mapping Terverifikasi')
-            ->assertDontSee('Status Sumber');
+            ->assertDontSee('Status Sumber')
+            ->assertDontSee('Hierarki Organisasi')
+            ->assertSee('Informasi Sinkronisasi')
+            ->assertSee('womsSyncInfoModal')
+            ->assertSee('Riwayat Sinkronisasi');
     }
 
     public function test_resolver_returns_server_owned_present_hierarchy(): void
