@@ -1,4 +1,5 @@
 @php
+    $procurementContextLabel = $procurementContextLabel ?? 'barang';
     $budgetFlowCards = [
         ['label' => 'Procurement', 'value' => 'Rp 77,3 M', 'icon' => 'bi-cart-check', 'tone' => 'orange'],
         ['label' => 'Purchase Order', 'value' => 'Rp 77,3 M', 'icon' => 'bi-diagram-3', 'tone' => 'green'],
@@ -19,7 +20,7 @@
     $readinessRequests = [['Tahap 2', 20], ['Tahap 1', 15], ['Firebricks', 0], ['Castable', 0], ['Anchor', 10]];
 @endphp
 
-<section class="procurement-goods-filter" aria-label="Filter dashboard pengadaan barang">
+<section class="procurement-goods-filter" aria-label="Filter dashboard pengadaan {{ $procurementContextLabel }}">
     <label>
         <span>Tahun</span>
         <select aria-label="Tahun pengadaan"><option>2025</option><option selected>2026</option><option>2027</option></select>
@@ -30,7 +31,11 @@
     </label>
 </section>
 
-<section class="procurement-goods-budget" aria-label="Ringkasan budget pengadaan barang">
+@if (filled($procurementBudgetTitle ?? null))
+    <h2 class="procurement-goods-dashboard-title">{{ $procurementBudgetTitle }}</h2>
+@endif
+
+<section class="procurement-goods-budget" aria-label="Ringkasan budget pengadaan {{ $procurementContextLabel }}">
     <div class="procurement-goods-budget-main">
         <div class="procurement-goods-budget-headline">
             <article class="procurement-goods-metric is-wide">

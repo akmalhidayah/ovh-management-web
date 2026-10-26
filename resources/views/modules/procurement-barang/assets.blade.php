@@ -81,6 +81,15 @@
         .procurement-goods-filter select:focus,
         .procurement-goods-search > div:focus-within { border-color: #6d91b7; box-shadow: 0 0 0 3px rgba(35, 104, 185, .1); outline: 0; }
 
+        .procurement-goods-dashboard-title {
+            margin: 2px 0 10px;
+            color: #174d84;
+            font-size: 18px;
+            font-weight: 850;
+            letter-spacing: .015em;
+            text-transform: uppercase;
+        }
+
         .procurement-goods-budget { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 12px; }
         .procurement-goods-budget-main { display: grid; gap: 10px; min-width: 0; }
         .procurement-goods-budget-headline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -299,6 +308,7 @@
                 const rows = Array.from(tableRoot.querySelectorAll('[data-procurement-row]'));
                 const moduleRoot = tableRoot.closest('[data-procurement-goods]');
                 const search = moduleRoot?.querySelector('[data-procurement-search]');
+                const specification = moduleRoot?.querySelector('[data-procurement-specification]');
                 const plant = moduleRoot?.querySelector('[data-procurement-plant]');
                 const summary = tableRoot.querySelector('[data-procurement-summary]');
                 const pagination = tableRoot.querySelector('[data-procurement-pagination]');
@@ -325,11 +335,13 @@
 
                 const matchingRows = () => {
                     const query = (search?.value || '').trim().toLowerCase();
+                    const specificationQuery = (specification?.value || '').trim().toLowerCase();
                     const selectedPlant = plant?.value || 'all';
                     return rows.filter((row) => {
                         const matchesSearch = query === '' || (row.dataset.search || '').includes(query);
+                        const matchesSpecification = specificationQuery === '' || (row.dataset.specification || '').includes(specificationQuery);
                         const matchesPlant = selectedPlant === 'all' || row.dataset.plant === selectedPlant;
-                        return matchesSearch && matchesPlant;
+                        return matchesSearch && matchesSpecification && matchesPlant;
                     });
                 };
 
@@ -359,6 +371,7 @@
                 };
 
                 search?.addEventListener('input', () => { currentPage = 1; render(); });
+                specification?.addEventListener('input', () => { currentPage = 1; render(); });
                 plant?.addEventListener('change', () => { currentPage = 1; render(); });
                 render();
             });

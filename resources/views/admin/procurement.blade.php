@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 @section('title', 'Pengadaan')
 @section('page_title', 'Pengadaan')
-@if (($section ?? 'barang') === 'barang')
+@if (in_array(($section ?? 'barang'), ['barang', 'jasa'], true))
     @section('hide_breadcrumb', '1')
 @endif
 @section('content')

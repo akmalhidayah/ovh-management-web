@@ -90,6 +90,8 @@
 
 @if ($section === 'barang')
     @include('modules.procurement-barang.tabs')
+@elseif ($section === 'jasa')
+    @include('modules.procurement-jasa.tabs')
 @else
 <x-page-header :title="$data['title']" :subtitle="$data['subtitle']"></x-page-header>
 
