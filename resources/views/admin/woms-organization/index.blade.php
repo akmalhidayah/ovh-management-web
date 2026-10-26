@@ -105,7 +105,7 @@
             <article class="content-card woms-department-card">
                 <header class="woms-department-header">
                     <div>
-                        <div class="woms-entity-kicker">Departemen · WOMS ID {{ $department->woms_id }}</div>
+                        <div class="woms-entity-kicker">Departemen</div>
                         <h3>{{ $department->name }}</h3>
                     </div>
                     <div class="woms-department-meta">
@@ -124,7 +124,7 @@
                         <section class="woms-unit-card">
                             <div class="woms-unit-header">
                                 <div>
-                                    <div class="woms-entity-kicker">Unit Kerja · WOMS ID {{ $unit->woms_id }}</div>
+                                    <div class="woms-entity-kicker">Unit Kerja</div>
                                     <h4>{{ $unit->name }}</h4>
                                 </div>
                                 <div class="woms-officer">
@@ -140,7 +140,7 @@
                                     <tbody>
                                         @forelse ($unit->sections as $section)
                                             <tr>
-                                                <td><strong>{{ $section->name }}</strong><small>WOMS ID {{ $section->woms_id }}</small></td>
+                                                <td><strong>{{ $section->name }}</strong></td>
                                                 <td>{{ $section->manager?->name ?? 'Belum ditetapkan' }}</td>
                                                 <td>{{ $section->manager?->email ?? '-' }}</td>
                                             </tr>

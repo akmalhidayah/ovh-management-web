@@ -46,7 +46,8 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertDontSee('Hierarki Organisasi')
             ->assertSee('Informasi Sinkronisasi')
             ->assertSee('womsSyncInfoModal')
-            ->assertSee('Riwayat Sinkronisasi');
+            ->assertSee('Riwayat Sinkronisasi')
+            ->assertDontSee('WOMS ID');
     }
 
     public function test_resolver_returns_server_owned_present_hierarchy(): void
