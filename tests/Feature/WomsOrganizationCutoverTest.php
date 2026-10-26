@@ -51,6 +51,8 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertSee('Riwayat Sinkronisasi')
             ->assertSee('Bagan Struktur Organisasi')
             ->assertSee('womsOrganizationChartModal')
+            ->assertSee(route('admin.woms-organization.chart'))
+            ->assertSee('Memuat bagan organisasi')
             ->assertSee('Clinker Production')
             ->assertSee('Kiln Operation')
             ->assertSee('50%')
@@ -78,6 +80,22 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertOk()
             ->assertSee('btn-outline-success')
             ->assertSee('woms-status-icon is-connected');
+    }
+
+    public function test_organization_chart_endpoint_returns_the_present_hierarchy(): void
+    {
+        $this->createWomsHierarchy();
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.woms-organization.chart'))
+            ->assertOk()
+            ->assertJsonPath('departments.0.name', 'Production')
+            ->assertJsonPath('departments.0.units.0.name', 'Clinker Production')
+            ->assertJsonPath('departments.0.units.0.sections.0.name', 'Kiln Operation')
+            ->assertJsonPath('summary.departments', 1)
+            ->assertJsonPath('summary.units', 1)
+            ->assertJsonPath('summary.sections', 1);
     }
 
     public function test_resolver_returns_server_owned_present_hierarchy(): void

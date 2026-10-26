@@ -11,6 +11,7 @@ use App\Models\WomsSection;
 use App\Models\WomsUnit;
 use App\Services\Integrations\WomsOrganizationSyncService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -91,25 +92,51 @@ class WomsOrganizationController extends Controller
                 ->latest('started_at')
                 ->limit(10)
                 ->get(),
-            'organizationChartDepartments' => WomsDepartment::query()
-                ->present()
-                ->with([
-                    'generalManager',
-                    'units' => fn ($query) => $query
-                        ->present()
-                        ->with([
-                            'seniorManager',
-                            'sections' => fn ($query) => $query
-                                ->present()
-                                ->with('manager')
-                                ->orderBy('name'),
-                        ])
-                        ->orderBy('name'),
-                ])
-                ->orderBy('name')
-                ->get(),
             'connectionStatus' => $this->connectionStatus($latestRun),
             'canSync' => (bool) $request->user()?->isSuperAdmin(),
+        ]);
+    }
+
+    public function chart(): JsonResponse
+    {
+        $departments = WomsDepartment::query()
+            ->present()
+            ->with([
+                'generalManager',
+                'units' => fn ($query) => $query
+                    ->present()
+                    ->with([
+                        'seniorManager',
+                        'sections' => fn ($query) => $query
+                            ->present()
+                            ->with('manager')
+                            ->orderBy('name'),
+                    ])
+                    ->orderBy('name'),
+            ])
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'departments' => $departments->map(fn (WomsDepartment $department): array => [
+                'name' => $department->name,
+                'general_manager' => $department->generalManager?->name,
+                'units' => $department->units->map(fn (WomsUnit $unit): array => [
+                    'name' => $unit->name,
+                    'senior_manager' => $unit->seniorManager?->name,
+                    'sections' => $unit->sections->map(fn (WomsSection $section): array => [
+                        'name' => $section->name,
+                        'manager' => $section->manager?->name,
+                    ])->values(),
+                ])->values(),
+            ])->values(),
+            'summary' => [
+                'departments' => $departments->count(),
+                'units' => $departments->sum(fn (WomsDepartment $department): int => $department->units->count()),
+                'sections' => $departments->sum(fn (WomsDepartment $department): int => $department->units->sum(
+                    fn (WomsUnit $unit): int => $unit->sections->count()
+                )),
+            ],
         ]);
     }
 
