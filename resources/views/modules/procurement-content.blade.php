@@ -88,6 +88,9 @@
     ];
 @endphp
 
+@if ($section === 'barang')
+    @include('modules.procurement-barang.tabs')
+@else
 <x-page-header :title="$data['title']" :subtitle="$data['subtitle']"></x-page-header>
 
 <form method="GET" action="{{ route($active['route']) }}">
@@ -168,3 +171,4 @@
         </table>
     </div>
 </div>
+@endif

@@ -5,21 +5,21 @@
             --budget-text: #16497e;
             --budget-green: #459d72;
             display: grid;
-            gap: 34px;
+            gap: 24px;
             min-width: 0;
-            padding: 2px 0 22px;
+            padding: 0 0 18px;
         }
 
         .schedule-barang-budget-filter {
             display: grid;
-            grid-template-columns: 150px 170px minmax(280px, 1fr) auto;
+            grid-template-columns: 132px 152px minmax(260px, 1fr) auto;
             align-items: end;
-            gap: 42px;
+            gap: 20px;
         }
 
         .schedule-barang-budget-field {
             display: grid;
-            gap: 8px;
+            gap: 6px;
             min-width: 0;
         }
 
@@ -33,10 +33,10 @@
         .schedule-barang-budget-field select,
         .schedule-barang-budget-search {
             width: 100%;
-            min-height: 42px;
-            border: 1px solid #e4ebf2;
-            border-radius: 7px;
-            background: #f8fafc;
+            min-height: 38px;
+            border: 1px solid #dce5ee;
+            border-radius: 8px;
+            background: #fff;
             color: #26364d;
             font: inherit;
             font-size: 13px;
@@ -81,37 +81,37 @@
         }
 
         .schedule-barang-budget-add {
-            min-height: 43px;
-            padding: 0 20px;
+            min-height: 38px;
+            padding: 0 18px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             border: 0;
-            border-radius: 7px;
-            background: var(--budget-navy);
+            border-radius: 8px;
+            background: linear-gradient(135deg, #235b96, var(--budget-navy));
             color: #fff;
             font: inherit;
             font-size: 13px;
             font-weight: 600;
             white-space: nowrap;
-            box-shadow: 0 4px 10px rgba(30, 75, 128, .12);
-            transition: background-color .18s ease, transform .18s ease;
+            box-shadow: 0 3px 8px rgba(30, 75, 128, .16);
+            transition: box-shadow .18s ease, transform .18s ease;
         }
 
-        .schedule-barang-budget-add:hover { background: #143b68; }
+        .schedule-barang-budget-add:hover { box-shadow: 0 5px 12px rgba(30, 75, 128, .22); transform: translateY(-1px); }
         .schedule-barang-budget-add:active { transform: translateY(1px); }
         .schedule-barang-budget-add:focus-visible { outline: 3px solid rgba(30, 75, 128, .22); outline-offset: 2px; }
 
         .schedule-barang-budget-overview {
             display: grid;
-            gap: 18px;
+            gap: 12px;
         }
 
         .schedule-barang-budget-overview h2 {
             margin: 0;
             color: var(--budget-text);
-            font-size: 23px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: .02em;
             text-transform: uppercase;
@@ -119,55 +119,63 @@
 
         .schedule-barang-budget-grid {
             display: grid;
-            grid-template-columns: minmax(300px, .92fr) minmax(420px, 1.2fr);
-            gap: 16px;
+            grid-template-columns: minmax(280px, .88fr) minmax(400px, 1.12fr);
+            gap: 12px;
         }
 
         .schedule-barang-budget-column {
             display: grid;
-            grid-template-rows: minmax(170px, 1fr) auto;
-            gap: 14px;
+            grid-template-rows: minmax(124px, 1fr) auto;
+            gap: 10px;
             min-width: 0;
         }
 
         .schedule-barang-budget-card,
         .schedule-barang-budget-ratio {
-            border: 1px solid #bcc9d6;
-            border-radius: 13px;
+            border: 1px solid #d4dee8;
+            border-radius: 12px;
             background: #fff;
-            box-shadow: 0 3px 3px rgba(15, 23, 42, .16);
+            box-shadow: 0 2px 5px rgba(15, 23, 42, .07);
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+
+        .schedule-barang-budget-card:hover,
+        .schedule-barang-plant-card:hover {
+            border-color: #b8c9da;
+            box-shadow: 0 6px 16px rgba(23, 63, 104, .10);
+            transform: translateY(-2px);
         }
 
         .schedule-barang-budget-card {
-            min-height: 106px;
-            padding: 22px 28px;
+            min-height: 78px;
+            padding: 15px 20px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 13px;
         }
 
         .schedule-barang-budget-card--large {
-            min-height: 170px;
-            padding: 32px 44px;
+            min-height: 124px;
+            padding: 20px 26px;
         }
 
         .schedule-barang-budget-icon {
-            width: 52px;
-            height: 52px;
-            flex: 0 0 52px;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 44px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 5px;
-            background: var(--budget-navy);
+            border-radius: 9px;
+            background: linear-gradient(145deg, #28639f, var(--budget-navy));
             color: #fff;
-            font-size: 27px;
+            font-size: 21px;
         }
 
         .schedule-barang-budget-card p {
-            margin: 0 0 6px;
+            margin: 0 0 4px;
             color: #16528f;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: .025em;
             line-height: 1.25;
@@ -177,7 +185,7 @@
         .schedule-barang-budget-card strong {
             display: block;
             color: var(--budget-text);
-            font-size: clamp(26px, 2.35vw, 38px);
+            font-size: clamp(24px, 2vw, 32px);
             font-weight: 800;
             letter-spacing: -.035em;
             line-height: 1.05;
@@ -194,20 +202,20 @@
 
         .schedule-barang-budget-ratio {
             position: relative;
-            min-height: 170px;
-            padding: 26px 42px;
+            min-height: 124px;
+            padding: 18px 30px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 56px;
+            gap: 38px;
             overflow: hidden;
-            border-color: #29976d;
-            background: #effcf7;
+            border-color: #70bd9a;
+            background: linear-gradient(135deg, #f1fcf7, #e8f8f1);
             color: var(--budget-green);
         }
 
         .schedule-barang-budget-ratio > strong {
-            font-size: clamp(62px, 7vw, 92px);
+            font-size: clamp(50px, 5.2vw, 68px);
             font-weight: 800;
             letter-spacing: -.055em;
             line-height: .9;
@@ -218,10 +226,10 @@
             font-size: .72em;
         }
 
-        .schedule-barang-budget-ratio-label { padding-right: 50px; }
+        .schedule-barang-budget-ratio-label { padding-right: 42px; }
         .schedule-barang-budget-ratio-label p {
             margin: 0;
-            font-size: 17px;
+            font-size: 13px;
             font-weight: 800;
             line-height: 1.35;
             text-transform: uppercase;
@@ -229,40 +237,40 @@
 
         .schedule-barang-budget-ratio-icon {
             position: absolute;
-            top: 18px;
-            right: 20px;
-            width: 54px;
-            height: 54px;
+            top: 12px;
+            right: 14px;
+            width: 42px;
+            height: 42px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 7px;
+            border-radius: 9px;
             background: var(--budget-green);
             color: #fff;
-            font-size: 29px;
+            font-size: 21px;
         }
 
         .schedule-barang-budget-split {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
+            gap: 10px;
         }
 
-        .schedule-barang-budget-split .schedule-barang-budget-card { padding: 22px 18px; }
-        .schedule-barang-budget-split .schedule-barang-budget-icon { width: 50px; height: 50px; flex-basis: 50px; }
-        .schedule-barang-budget-split .schedule-barang-budget-card p { font-size: 11px; }
-        .schedule-barang-budget-split .schedule-barang-budget-card strong { font-size: clamp(25px, 2.1vw, 34px); }
+        .schedule-barang-budget-split .schedule-barang-budget-card { padding: 14px 16px; }
+        .schedule-barang-budget-split .schedule-barang-budget-icon { width: 40px; height: 40px; flex-basis: 40px; }
+        .schedule-barang-budget-split .schedule-barang-budget-card p { font-size: 10px; }
+        .schedule-barang-budget-split .schedule-barang-budget-card strong { font-size: clamp(23px, 1.8vw, 29px); }
 
         .schedule-barang-plants {
             display: grid;
-            gap: 16px;
+            gap: 12px;
         }
 
         .schedule-barang-section-heading {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 18px;
+            gap: 12px;
         }
 
         .schedule-barang-section-heading h2,
@@ -271,7 +279,7 @@
         .schedule-barang-remarks > h2 {
             margin: 0;
             color: var(--budget-text);
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: .025em;
             text-transform: uppercase;
@@ -280,18 +288,18 @@
         .schedule-barang-section-actions {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 9px;
         }
 
         .schedule-barang-total-chip,
         .schedule-barang-detail-link {
-            min-height: 38px;
-            padding: 0 15px;
+            min-height: 34px;
+            padding: 0 13px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 7px;
-            font-size: 12px;
+            border-radius: 8px;
+            font-size: 11px;
             text-decoration: none;
             white-space: nowrap;
         }
@@ -315,47 +323,48 @@
         .schedule-barang-plant-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
+            gap: 10px;
         }
 
         .schedule-barang-plant-card {
-            min-height: 142px;
-            padding: 24px;
+            min-height: 98px;
+            padding: 15px 18px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            border: 1px solid #d2dae3;
-            border-radius: 11px;
+            border: 1px solid #d7e1eb;
+            border-radius: 12px;
             background: #fff;
-            box-shadow: 0 3px 3px rgba(15, 23, 42, .13);
+            box-shadow: 0 2px 5px rgba(15, 23, 42, .06);
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
         }
 
         .schedule-barang-plant-card-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 14px;
+            gap: 10px;
         }
 
         .schedule-barang-plant-name {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 9px;
             color: var(--budget-text);
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
         }
 
         .schedule-barang-plant-icon {
-            width: 42px;
-            height: 42px;
+            width: 34px;
+            height: 34px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
+            border-radius: 8px;
             color: #fff;
-            font-size: 23px;
+            font-size: 17px;
         }
 
         .schedule-barang-plant-icon.is-orange { background: #f39a3d; }
@@ -364,12 +373,12 @@
         .schedule-barang-plant-icon.is-red { background: #eb4e55; }
 
         .schedule-barang-plant-progress {
-            min-width: 56px;
-            padding: 3px 8px;
-            border-radius: 5px;
+            min-width: 52px;
+            padding: 4px 8px;
+            border-radius: 999px;
             background: var(--budget-navy);
             color: #fff;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 800;
             line-height: 1;
             text-align: center;
@@ -377,7 +386,7 @@
 
         .schedule-barang-plant-card > strong {
             color: var(--budget-text);
-            font-size: clamp(30px, 3vw, 42px);
+            font-size: clamp(26px, 2.4vw, 34px);
             font-weight: 800;
             letter-spacing: -.03em;
             line-height: 1;
@@ -386,7 +395,7 @@
         .schedule-barang-report-grid {
             display: grid;
             grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
-            gap: 18px;
+            gap: 14px;
             align-items: stretch;
             scroll-margin-top: 22px;
         }
@@ -403,7 +412,7 @@
 
         .schedule-barang-report-card,
         .schedule-barang-distribution {
-            padding: 20px;
+            padding: 16px;
         }
 
         .schedule-barang-report-card > h2,
@@ -414,7 +423,7 @@
 
         .schedule-barang-report-scroll,
         .schedule-barang-remarks-scroll {
-            margin-top: 16px;
+            margin-top: 12px;
             overflow-x: auto;
         }
 
@@ -448,7 +457,7 @@
 
         .schedule-barang-report-table th,
         .schedule-barang-report-table td {
-            padding: 11px 10px;
+            padding: 9px 10px;
             border-bottom: 1px solid #e6ebf1;
             vertical-align: middle;
         }
@@ -530,9 +539,9 @@
         }
 
         .schedule-barang-donut {
-            width: 190px;
-            height: 190px;
-            margin: 24px auto 18px;
+            width: 158px;
+            height: 158px;
+            margin: 16px auto 14px;
             display: grid;
             place-items: center;
             border-radius: 50%;
@@ -542,8 +551,8 @@
         .schedule-barang-donut.is-capex { --distribution-over-budget: 67.8571%; }
 
         .schedule-barang-donut::before {
-            width: 112px;
-            height: 112px;
+            width: 92px;
+            height: 92px;
             border-radius: 50%;
             background: #fff;
             content: '';
@@ -557,17 +566,17 @@
             text-align: center;
         }
 
-        .schedule-barang-donut strong { color: #1d2d42; font-size: 39px; line-height: 1; }
+        .schedule-barang-donut strong { color: #1d2d42; font-size: 32px; line-height: 1; }
         .schedule-barang-donut span { margin-top: 4px; color: #67788d; font-size: 9px; font-weight: 800; text-transform: uppercase; }
 
         .schedule-barang-distribution-legend {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
         .schedule-barang-distribution-legend > div {
-            padding: 12px;
+            padding: 10px;
             display: grid;
             gap: 7px;
             border: 1px solid #e3e8ee;
@@ -589,7 +598,7 @@
         .schedule-barang-distribution-legend .is-safe i { background: #4b9f5b; }
         .schedule-barang-distribution-legend strong { color: #16283d; font-size: 20px; }
         .schedule-barang-distribution-legend strong small { font-size: 10px; }
-        .schedule-barang-distribution-legend > div > small { margin: 0 -12px -12px; padding: 8px 10px; border-radius: 0 0 9px 9px; font-size: 9px; font-weight: 700; text-align: center; }
+        .schedule-barang-distribution-legend > div > small { margin: 0 -10px -10px; padding: 7px 8px; border-radius: 0 0 9px 9px; font-size: 9px; font-weight: 700; text-align: center; }
         .schedule-barang-distribution-legend .is-danger > small { background: #fff0f0; color: #c52b2b; }
         .schedule-barang-distribution-legend .is-safe > small { background: #ebfaef; color: #278246; }
 
@@ -598,7 +607,7 @@
         }
 
         .schedule-barang-remarks > h2 {
-            padding: 18px 20px;
+            padding: 14px 18px;
             border-bottom: 1px solid #e1e7ee;
         }
 
@@ -613,7 +622,7 @@
 
         .schedule-barang-remarks-table th,
         .schedule-barang-remarks-table td {
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid #e7ecf1;
             vertical-align: middle;
         }
@@ -735,7 +744,7 @@
         }
 
         @media (max-width: 575.98px) {
-            .schedule-barang-budget { gap: 26px; }
+            .schedule-barang-budget { gap: 20px; }
             .schedule-barang-budget-filter,
             .schedule-barang-budget-split { grid-template-columns: minmax(0, 1fr); }
             .schedule-barang-budget-field--search,
@@ -744,9 +753,9 @@
             .schedule-barang-budget-overview h2 { font-size: 19px; }
             .schedule-barang-budget-column { grid-template-rows: auto; }
             .schedule-barang-budget-card,
-            .schedule-barang-budget-card--large { min-height: 112px; padding: 22px; }
-            .schedule-barang-budget-ratio { min-height: 150px; padding: 24px 18px; justify-content: flex-start; gap: 22px; }
-            .schedule-barang-budget-ratio > strong { font-size: 62px; }
+            .schedule-barang-budget-card--large { min-height: 92px; padding: 17px; }
+            .schedule-barang-budget-ratio { min-height: 126px; padding: 20px 16px; justify-content: flex-start; gap: 18px; }
+            .schedule-barang-budget-ratio > strong { font-size: 52px; }
             .schedule-barang-budget-ratio-label { padding-right: 42px; }
             .schedule-barang-budget-ratio-label p { font-size: 14px; }
             .schedule-barang-budget-ratio-icon { width: 44px; height: 44px; top: 14px; right: 14px; font-size: 23px; }
@@ -758,12 +767,12 @@
             .schedule-barang-total-chip,
             .schedule-barang-detail-link { width: 100%; }
             .schedule-barang-plant-grid { grid-template-columns: minmax(0, 1fr); }
-            .schedule-barang-plant-card { min-height: 130px; padding: 20px; }
+            .schedule-barang-plant-card { min-height: 100px; padding: 16px; }
             .schedule-barang-report-card,
             .schedule-barang-distribution { padding: 16px; }
             .schedule-barang-distribution { min-height: 0; }
-            .schedule-barang-donut { width: 166px; height: 166px; }
-            .schedule-barang-donut::before { width: 98px; height: 98px; }
+            .schedule-barang-donut { width: 148px; height: 148px; }
+            .schedule-barang-donut::before { width: 86px; height: 86px; }
             .schedule-barang-distribution-legend { grid-template-columns: minmax(0, 1fr); }
             .schedule-barang-list-controls label { justify-content: space-between; }
             [data-pagination-nav] { flex-wrap: wrap; }
