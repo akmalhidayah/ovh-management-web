@@ -189,6 +189,9 @@
             letter-spacing: 0;
         }
 
+        .schedule-barang-budget-card strong.is-warning-value { color: #ef8b1e; }
+        .schedule-barang-budget-card strong.is-success-value { color: #54b918; }
+
         .schedule-barang-budget-ratio {
             position: relative;
             min-height: 170px;
@@ -536,6 +539,8 @@
             background: conic-gradient(#b72e24 0 var(--distribution-over-budget, 66.6667%), #4b9f5b var(--distribution-over-budget, 66.6667%) 100%);
         }
 
+        .schedule-barang-donut.is-capex { --distribution-over-budget: 67.8571%; }
+
         .schedule-barang-donut::before {
             width: 112px;
             height: 112px;
@@ -686,6 +691,24 @@
 
         .schedule-barang-remarks > .schedule-barang-list-footer {
             padding: 12px 18px;
+        }
+
+        .schedule-capex-remarks-footer-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 14px;
+        }
+
+        .schedule-capex-database-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #238f5b;
+            font-size: 9px;
+            font-weight: 800;
+            white-space: nowrap;
         }
 
         @media (max-width: 1199.98px) {
