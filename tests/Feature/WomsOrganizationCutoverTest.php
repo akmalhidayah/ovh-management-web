@@ -6,6 +6,7 @@ use App\Models\MasterDataRecord;
 use App\Models\OrganizationSection;
 use App\Models\User;
 use App\Models\WomsDepartment;
+use App\Models\WomsOrganizationSyncRun;
 use App\Models\WomsSection;
 use App\Models\WomsUnit;
 use App\Services\WomsOrganizationResolver;
@@ -47,7 +48,30 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertSee('Informasi Sinkronisasi')
             ->assertSee('womsSyncInfoModal')
             ->assertSee('Riwayat Sinkronisasi')
-            ->assertDontSee('WOMS ID');
+            ->assertDontSee('WOMS ID')
+            ->assertSee('btn-outline-danger')
+            ->assertSee('woms-status-icon is-disconnected');
+    }
+
+    public function test_connected_sync_uses_green_info_icons(): void
+    {
+        config()->set('services.woms_organization.base_url', 'https://woms.example.test');
+        config()->set('services.woms_organization.token', 'test-token');
+
+        WomsOrganizationSyncRun::create([
+            'status' => WomsOrganizationSyncRun::STATUS_SUCCESS,
+            'started_at' => now(),
+            'finished_at' => now(),
+            'triggered_by_type' => WomsOrganizationSyncRun::TRIGGER_COMMAND,
+        ]);
+
+        $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.woms-organization.index'))
+            ->assertOk()
+            ->assertSee('btn-outline-success')
+            ->assertSee('woms-status-icon is-connected');
     }
 
     public function test_resolver_returns_server_owned_present_hierarchy(): void
