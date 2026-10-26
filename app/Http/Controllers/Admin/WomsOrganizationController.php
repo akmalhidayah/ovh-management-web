@@ -91,6 +91,23 @@ class WomsOrganizationController extends Controller
                 ->latest('started_at')
                 ->limit(10)
                 ->get(),
+            'organizationChartDepartments' => WomsDepartment::query()
+                ->present()
+                ->with([
+                    'generalManager',
+                    'units' => fn ($query) => $query
+                        ->present()
+                        ->with([
+                            'seniorManager',
+                            'sections' => fn ($query) => $query
+                                ->present()
+                                ->with('manager')
+                                ->orderBy('name'),
+                        ])
+                        ->orderBy('name'),
+                ])
+                ->orderBy('name')
+                ->get(),
             'connectionStatus' => $this->connectionStatus($latestRun),
             'canSync' => (bool) $request->user()?->isSuperAdmin(),
         ]);

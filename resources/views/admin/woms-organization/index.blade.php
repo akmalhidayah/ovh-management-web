@@ -19,6 +19,9 @@
             <h1>Struktur Organisasi</h1>
         </div>
         <div class="page-actions">
+            <button type="button" class="btn btn-outline-primary woms-chart-button" data-bs-toggle="modal" data-bs-target="#womsOrganizationChartModal" aria-label="Lihat bagan struktur organisasi" title="Lihat bagan struktur organisasi">
+                <i class="bi bi-diagram-3"></i>
+            </button>
             <button type="button" class="btn btn-outline-{{ $connectionStatus['tone'] === 'success' ? 'success' : 'danger' }} woms-info-button" data-bs-toggle="modal" data-bs-target="#womsSyncInfoModal" aria-label="Informasi sinkronisasi" title="Informasi sinkronisasi">
                 <i class="bi bi-info-circle"></i>
             </button>
@@ -169,6 +172,102 @@
         <div class="mt-3">{{ $departments->links() }}</div>
     @endif
 
+    <div class="modal fade" id="womsOrganizationChartModal" tabindex="-1" aria-labelledby="womsOrganizationChartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered woms-chart-dialog">
+            <div class="modal-content woms-chart-modal-content">
+                <div class="modal-header woms-chart-modal-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="woms-chart-title-icon"><i class="bi bi-diagram-3"></i></span>
+                        <div>
+                            <h2 class="modal-title" id="womsOrganizationChartModalLabel">Bagan Struktur Organisasi</h2>
+                            <p>Departemen, Unit Kerja, dan Seksi</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+
+                <div class="modal-body woms-chart-modal-body">
+                    <div class="woms-chart-toolbar">
+                        <div class="woms-chart-levels" role="group" aria-label="Kedalaman bagan">
+                            <span>Tampilan</span>
+                            <button type="button" class="is-active" data-woms-chart-mode="all">Lengkap</button>
+                            <button type="button" data-woms-chart-mode="units">Sampai Unit Kerja</button>
+                            <button type="button" data-woms-chart-mode="departments">Departemen Saja</button>
+                        </div>
+                        <div class="woms-chart-controls">
+                            <span>Zoom</span>
+                            <button type="button" data-woms-chart-zoom-out aria-label="Perkecil bagan"><i class="bi bi-zoom-out"></i></button>
+                            <strong data-woms-chart-zoom-label>50%</strong>
+                            <button type="button" data-woms-chart-zoom-in aria-label="Perbesar bagan"><i class="bi bi-zoom-in"></i></button>
+                            <button type="button" class="woms-chart-reset" data-woms-chart-reset><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                            <button type="button" data-woms-chart-left aria-label="Geser bagan ke kiri"><i class="bi bi-arrow-left"></i></button>
+                            <button type="button" data-woms-chart-right aria-label="Geser bagan ke kanan"><i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="woms-chart-viewport" data-woms-chart-viewport>
+                        <div class="woms-chart-stage" data-woms-chart-stage>
+                            <div class="woms-chart-canvas" data-woms-chart-canvas data-mode="all">
+                                <div class="woms-chart-root">
+                                    <span>Struktur Organisasi</span>
+                                    <strong>Overhaul PT. Semen Tonasa</strong>
+                                    <small>{{ number_format($summary['departments']) }} Departemen · {{ number_format($summary['units']) }} Unit Kerja · {{ number_format($summary['sections']) }} Seksi</small>
+                                </div>
+
+                                <div class="woms-chart-departments">
+                                    @forelse ($organizationChartDepartments as $department)
+                                        <section class="woms-chart-branch">
+                                            <header class="woms-chart-node woms-chart-department-node">
+                                                <span>Departemen</span>
+                                                <strong>{{ $department->name }}</strong>
+                                                <small>General Manager · {{ $department->generalManager?->name ?? 'Belum ditetapkan' }}</small>
+                                            </header>
+
+                                            <div class="woms-chart-units">
+                                                @forelse ($department->units as $unit)
+                                                    <article class="woms-chart-unit-group">
+                                                        <div class="woms-chart-node woms-chart-unit-node">
+                                                            <span>Unit Kerja</span>
+                                                            <strong>{{ $unit->name }}</strong>
+                                                            <small>Senior Manager · {{ $unit->seniorManager?->name ?? 'Belum ditetapkan' }}</small>
+                                                        </div>
+
+                                                        <div class="woms-chart-sections">
+                                                            @forelse ($unit->sections as $section)
+                                                                <div class="woms-chart-node woms-chart-section-node">
+                                                                    <strong>{{ $section->name }}</strong>
+                                                                    <small>Manager · {{ $section->manager?->name ?? 'Belum ditetapkan' }}</small>
+                                                                </div>
+                                                            @empty
+                                                                <div class="woms-chart-empty">Belum ada seksi</div>
+                                                            @endforelse
+                                                        </div>
+                                                    </article>
+                                                @empty
+                                                    <div class="woms-chart-empty">Belum ada unit kerja</div>
+                                                @endforelse
+                                            </div>
+                                        </section>
+                                    @empty
+                                        <div class="woms-chart-empty-state">
+                                            <i class="bi bi-diagram-3"></i>
+                                            <strong>Belum ada data struktur organisasi</strong>
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer woms-chart-modal-footer">
+                    <span><i class="bi bi-arrows-move"></i> Tarik area bagan atau gunakan tombol panah untuk bergeser.</span>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Selesai</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="womsSyncInfoModal" tabindex="-1" aria-labelledby="womsSyncInfoModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -241,6 +340,114 @@
 
 @push('styles')
     <style>
-        .woms-page-header p,.woms-section-heading p{margin:.25rem 0 0;color:#64748b;font-size:.84rem}.woms-page-header .page-actions{display:flex;flex-wrap:wrap;gap:.55rem}.woms-info-button{width:42px;padding-left:0;padding-right:0}.woms-status-card{display:flex;align-items:center;gap:1rem;border-left:4px solid #64748b}.woms-status-card.is-success{border-left-color:#16a34a}.woms-status-card.is-warning{border-left-color:#f59e0b}.woms-status-card.is-danger{border-left-color:#dc2626}.woms-status-card.is-info{border-left-color:#0ea5e9}.woms-status-icon{width:52px;height:52px;display:grid;place-items:center;flex:0 0 auto;border-radius:.75rem;font-size:1.4rem}.woms-status-icon.is-connected{background:#ecfdf3;color:#16a34a}.woms-status-icon.is-disconnected{background:#fef2f2;color:#dc2626}.woms-status-copy{min-width:0;flex:1}.woms-status-copy>span,.woms-status-meta span{display:block;color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase}.woms-status-copy h2{margin:.1rem 0;color:#172033;font-size:1.15rem;font-weight:800}.woms-status-copy p{margin:0;color:#64748b;font-size:.82rem}.woms-status-meta{display:grid;grid-template-columns:auto auto;gap:.2rem .7rem;text-align:right}.woms-status-meta code{max-width:170px;color:#334155;overflow:hidden;text-overflow:ellipsis}.woms-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:.75rem;margin:1rem 0}.woms-summary-card{display:flex;align-items:center;gap:.7rem;margin:0;padding:.85rem}.woms-summary-card>i{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:.55rem;background:#eaf2ff;color:#2563eb}.woms-summary-card.is-green>i{background:#eaf8ef;color:#168148}.woms-summary-card.is-cyan>i{background:#e8f8fc;color:#0891b2}.woms-summary-card.is-violet>i{background:#f2edff;color:#7c3aed}.woms-summary-card.is-orange>i{background:#fff5e5;color:#d97706}.woms-summary-card.is-slate>i{background:#eef2f7;color:#475569}.woms-summary-card span{display:block;color:#64748b;font-size:.7rem;font-weight:700}.woms-summary-card strong{display:block;color:#172033;font-size:1.25rem;line-height:1.15}.woms-filter-card{margin-bottom:1rem}.woms-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:.7rem;align-items:end}.woms-filter-grid .form-label{font-size:.75rem;font-weight:700;color:#475569}.woms-filter-grid .form-control,.woms-filter-grid .form-select{font-size:.8rem}.woms-filter-actions{display:flex;gap:.4rem}.woms-section-heading{display:flex;align-items:end;justify-content:space-between;margin:1.2rem 0 .7rem}.woms-section-heading h2{margin:0;color:#172033;font-size:1.05rem;font-weight:800}.woms-section-heading>span{color:#64748b;font-size:.78rem}.woms-hierarchy{display:grid;gap:1rem}.woms-department-card{padding:0;overflow:hidden}.woms-department-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;background:#eef4fb;border-bottom:1px solid #d9e3ef}.woms-entity-kicker{color:#64748b;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.woms-department-header h3,.woms-unit-header h4{margin:.15rem 0 0;color:#172033;font-weight:800}.woms-department-header h3{font-size:1.08rem}.woms-unit-header h4{font-size:.93rem}.woms-department-meta{display:flex;align-items:center;gap:1rem;text-align:right}.woms-department-meta>div span,.woms-officer span{display:block;color:#64748b;font-size:.68rem;font-weight:700;text-transform:uppercase}.woms-department-meta strong,.woms-officer strong{display:block;color:#334155;font-size:.8rem}.woms-department-meta small,.woms-officer small{display:block;color:#64748b;font-size:.7rem}.woms-unit-list{display:grid;gap:.8rem;padding:.8rem}.woms-unit-card{overflow:hidden;border:1px solid #dbe3ee;border-radius:.65rem}.woms-unit-header{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,.7fr);align-items:center;gap:.8rem;padding:.75rem .85rem;background:#fff}.woms-officer{text-align:right}.woms-section-table{min-width:720px;margin:0;border-top:1px solid #e2e8f0}.woms-section-table thead th,.woms-history-table thead th{background:#f8fafc;color:#526076;font-size:.7rem;text-transform:uppercase;white-space:nowrap}.woms-section-table td,.woms-history-table td{color:#475569;font-size:.75rem}.woms-section-table td:first-child strong,.woms-section-table td:first-child small{display:block}.woms-section-table td:first-child small{margin-top:.12rem;color:#94a3b8}.woms-empty-unit,.woms-empty-state{padding:1.5rem;text-align:center;color:#64748b}.woms-empty-state i{font-size:2rem}.woms-empty-state h3{margin:.5rem 0 .2rem;color:#334155;font-size:1rem}.woms-empty-state p{margin:0;font-size:.82rem}.woms-history-card{margin-top:1rem}.woms-history-table{min-width:1050px}.woms-history-table td:last-child{max-width:300px;white-space:normal}.woms-history-card .card-heading{margin-bottom:.7rem}@media(max-width:1399.98px){.woms-summary-grid{grid-template-columns:repeat(3,1fr)}.woms-filter-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:767.98px){.woms-page-header,.woms-department-header,.woms-section-heading{align-items:stretch;flex-direction:column}.woms-page-header .page-actions,.woms-page-header .page-actions form,.woms-page-header .btn{width:100%}.woms-status-card{align-items:flex-start;flex-wrap:wrap}.woms-status-meta{width:100%;padding-top:.7rem;border-top:1px solid #e2e8f0;text-align:left}.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr 1fr}.woms-filter-actions{grid-column:1/-1}.woms-unit-header{grid-template-columns:1fr}.woms-officer{text-align:left}.woms-department-meta{align-items:flex-start;flex-direction:column;text-align:left}}@media(max-width:479.98px){.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr}.woms-filter-actions{grid-column:auto}.woms-filter-actions .btn{flex:1}}
+        .woms-page-header p,.woms-section-heading p{margin:.25rem 0 0;color:#64748b;font-size:.84rem}.woms-page-header .page-actions{display:flex;flex-wrap:wrap;gap:.55rem}.woms-info-button,.woms-chart-button{width:42px;padding-left:0;padding-right:0}.woms-status-card{display:flex;align-items:center;gap:1rem;border-left:4px solid #64748b}.woms-status-card.is-success{border-left-color:#16a34a}.woms-status-card.is-warning{border-left-color:#f59e0b}.woms-status-card.is-danger{border-left-color:#dc2626}.woms-status-card.is-info{border-left-color:#0ea5e9}.woms-status-icon{width:52px;height:52px;display:grid;place-items:center;flex:0 0 auto;border-radius:.75rem;font-size:1.4rem}.woms-status-icon.is-connected{background:#ecfdf3;color:#16a34a}.woms-status-icon.is-disconnected{background:#fef2f2;color:#dc2626}.woms-status-copy{min-width:0;flex:1}.woms-status-copy>span,.woms-status-meta span{display:block;color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase}.woms-status-copy h2{margin:.1rem 0;color:#172033;font-size:1.15rem;font-weight:800}.woms-status-copy p{margin:0;color:#64748b;font-size:.82rem}.woms-status-meta{display:grid;grid-template-columns:auto auto;gap:.2rem .7rem;text-align:right}.woms-status-meta code{max-width:170px;color:#334155;overflow:hidden;text-overflow:ellipsis}.woms-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:.75rem;margin:1rem 0}.woms-summary-card{display:flex;align-items:center;gap:.7rem;margin:0;padding:.85rem}.woms-summary-card>i{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:.55rem;background:#eaf2ff;color:#2563eb}.woms-summary-card.is-green>i{background:#eaf8ef;color:#168148}.woms-summary-card.is-cyan>i{background:#e8f8fc;color:#0891b2}.woms-summary-card.is-violet>i{background:#f2edff;color:#7c3aed}.woms-summary-card.is-orange>i{background:#fff5e5;color:#d97706}.woms-summary-card.is-slate>i{background:#eef2f7;color:#475569}.woms-summary-card span{display:block;color:#64748b;font-size:.7rem;font-weight:700}.woms-summary-card strong{display:block;color:#172033;font-size:1.25rem;line-height:1.15}.woms-filter-card{margin-bottom:1rem}.woms-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:.7rem;align-items:end}.woms-filter-grid .form-label{font-size:.75rem;font-weight:700;color:#475569}.woms-filter-grid .form-control,.woms-filter-grid .form-select{font-size:.8rem}.woms-filter-actions{display:flex;gap:.4rem}.woms-section-heading{display:flex;align-items:end;justify-content:space-between;margin:1.2rem 0 .7rem}.woms-section-heading h2{margin:0;color:#172033;font-size:1.05rem;font-weight:800}.woms-section-heading>span{color:#64748b;font-size:.78rem}.woms-hierarchy{display:grid;gap:1rem}.woms-department-card{padding:0;overflow:hidden}.woms-department-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;background:#eef4fb;border-bottom:1px solid #d9e3ef}.woms-entity-kicker{color:#64748b;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.woms-department-header h3,.woms-unit-header h4{margin:.15rem 0 0;color:#172033;font-weight:800}.woms-department-header h3{font-size:1.08rem}.woms-unit-header h4{font-size:.93rem}.woms-department-meta{display:flex;align-items:center;gap:1rem;text-align:right}.woms-department-meta>div span,.woms-officer span{display:block;color:#64748b;font-size:.68rem;font-weight:700;text-transform:uppercase}.woms-department-meta strong,.woms-officer strong{display:block;color:#334155;font-size:.8rem}.woms-department-meta small,.woms-officer small{display:block;color:#64748b;font-size:.7rem}.woms-unit-list{display:grid;gap:.8rem;padding:.8rem}.woms-unit-card{overflow:hidden;border:1px solid #dbe3ee;border-radius:.65rem}.woms-unit-header{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,.7fr);align-items:center;gap:.8rem;padding:.75rem .85rem;background:#fff}.woms-officer{text-align:right}.woms-section-table{min-width:720px;margin:0;border-top:1px solid #e2e8f0}.woms-section-table thead th,.woms-history-table thead th{background:#f8fafc;color:#526076;font-size:.7rem;text-transform:uppercase;white-space:nowrap}.woms-section-table td,.woms-history-table td{color:#475569;font-size:.75rem}.woms-section-table td:first-child strong,.woms-section-table td:first-child small{display:block}.woms-section-table td:first-child small{margin-top:.12rem;color:#94a3b8}.woms-empty-unit,.woms-empty-state{padding:1.5rem;text-align:center;color:#64748b}.woms-empty-state i{font-size:2rem}.woms-empty-state h3{margin:.5rem 0 .2rem;color:#334155;font-size:1rem}.woms-empty-state p{margin:0;font-size:.82rem}.woms-history-card{margin-top:1rem}.woms-history-table{min-width:1050px}.woms-history-table td:last-child{max-width:300px;white-space:normal}.woms-history-card .card-heading{margin-bottom:.7rem}@media(max-width:1399.98px){.woms-summary-grid{grid-template-columns:repeat(3,1fr)}.woms-filter-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:767.98px){.woms-page-header,.woms-department-header,.woms-section-heading{align-items:stretch;flex-direction:column}.woms-page-header .page-actions,.woms-page-header .page-actions form,.woms-page-header .btn{width:100%}.woms-status-card{align-items:flex-start;flex-wrap:wrap}.woms-status-meta{width:100%;padding-top:.7rem;border-top:1px solid #e2e8f0;text-align:left}.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr 1fr}.woms-filter-actions{grid-column:1/-1}.woms-unit-header{grid-template-columns:1fr}.woms-officer{text-align:left}.woms-department-meta{align-items:flex-start;flex-direction:column;text-align:left}}@media(max-width:479.98px){.woms-summary-grid,.woms-filter-grid{grid-template-columns:1fr}.woms-filter-actions{grid-column:auto}.woms-filter-actions .btn{flex:1}}
+
+        .woms-chart-dialog{width:min(96vw,1680px);max-width:none;height:calc(100vh - 2rem);margin:1rem auto}.woms-chart-modal-content{height:100%;overflow:hidden;border:0;border-radius:1.25rem;box-shadow:0 28px 80px rgba(15,23,42,.3)}.woms-chart-modal-header{padding:1rem 1.25rem;border:0;background:linear-gradient(135deg,#173d82,#1e5fd4);color:#fff}.woms-chart-modal-header .modal-title{font-size:1.08rem;font-weight:800}.woms-chart-modal-header p{margin:.15rem 0 0;color:#dbeafe;font-size:.78rem}.woms-chart-title-icon{display:grid;width:42px;height:42px;place-items:center;border-radius:.8rem;background:rgba(255,255,255,.14);font-size:1.15rem}.woms-chart-modal-body{display:flex;min-height:0;flex:1;flex-direction:column;gap:.8rem;padding:1rem;background:#f1f5f9}.woms-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.65rem .75rem;border:1px solid #d7e1ee;border-radius:.8rem;background:#fff}.woms-chart-levels,.woms-chart-controls{display:flex;align-items:center;gap:.45rem}.woms-chart-levels>span,.woms-chart-controls>span{margin-right:.2rem;color:#64748b;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.woms-chart-levels button,.woms-chart-controls button{height:32px;padding:0 .72rem;border:1px solid #d7e1ee;border-radius:.55rem;background:#fff;color:#334155;font-size:.72rem;font-weight:700}.woms-chart-levels button:hover,.woms-chart-controls button:hover{border-color:#2563eb;color:#1d4ed8}.woms-chart-levels button.is-active{border-color:#2563eb;background:#2563eb;color:#fff}.woms-chart-controls strong{display:grid;height:32px;min-width:54px;place-items:center;border-block:1px solid #d7e1ee;color:#172033;font-size:.75rem}.woms-chart-controls .woms-chart-reset{display:inline-flex;align-items:center;gap:.35rem}.woms-chart-viewport{min-height:0;flex:1;overflow:auto;border:1px solid #d7e1ee;border-radius:.9rem;background-color:#f8fafc;background-image:radial-gradient(#cbd5e1 1px,transparent 1px);background-size:22px 22px;cursor:grab}.woms-chart-viewport.is-dragging{cursor:grabbing;user-select:none}.woms-chart-stage{position:relative;min-width:100%;min-height:100%}.woms-chart-canvas{position:absolute;top:0;left:0;width:max-content;min-width:1450px;padding:56px 44px 90px;transform-origin:top left}.woms-chart-root{position:relative;display:flex;width:390px;min-height:104px;margin:0 auto 64px;padding:1rem 1.2rem;align-items:center;justify-content:center;flex-direction:column;border-radius:1rem;background:linear-gradient(135deg,#6d4ee8,#7c3aed);box-shadow:0 12px 30px rgba(109,78,232,.24);color:#fff;text-align:center}.woms-chart-root::after{position:absolute;bottom:-64px;width:2px;height:64px;background:#94a3b8;content:""}.woms-chart-root span,.woms-chart-node span{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;opacity:.82}.woms-chart-root strong{font-size:1.05rem}.woms-chart-root small{margin-top:.25rem;color:#ede9fe;font-size:.7rem}.woms-chart-departments{position:relative;display:flex;width:max-content;min-width:100%;gap:28px;padding-top:38px}.woms-chart-departments::before{position:absolute;top:0;right:160px;left:160px;height:2px;background:#94a3b8;content:""}.woms-chart-branch{position:relative;width:320px;flex:0 0 320px}.woms-chart-branch::before{position:absolute;top:-38px;left:50%;width:2px;height:38px;background:#94a3b8;content:""}.woms-chart-node{padding:.8rem .9rem;border-radius:.8rem;color:#fff;box-shadow:0 6px 16px rgba(15,23,42,.12)}.woms-chart-node strong,.woms-chart-node small{display:block}.woms-chart-node strong{margin-top:.12rem;font-size:.82rem;line-height:1.25}.woms-chart-node small{margin-top:.25rem;font-size:.64rem;line-height:1.35;opacity:.9}.woms-chart-department-node{min-height:90px;background:linear-gradient(135deg,#319363,#47a76f)}.woms-chart-units{position:relative;display:grid;gap:18px;margin-top:24px;padding-left:22px}.woms-chart-units::before{position:absolute;top:-24px;bottom:24px;left:8px;width:2px;background:#60a5fa;content:""}.woms-chart-unit-group{position:relative}.woms-chart-unit-group::before{position:absolute;top:36px;left:-14px;width:14px;height:2px;background:#60a5fa;content:""}.woms-chart-unit-node{min-height:76px;background:linear-gradient(135deg,#1764df,#2563eb)}.woms-chart-sections{position:relative;display:grid;gap:9px;margin-top:12px;padding-left:22px}.woms-chart-sections::before{position:absolute;top:-12px;bottom:19px;left:8px;width:2px;background:#f59e0b;content:""}.woms-chart-section-node{position:relative;min-height:58px;padding:.65rem .75rem;background:linear-gradient(135deg,#ee8d05,#f59e0b);color:#172033;box-shadow:0 4px 12px rgba(245,158,11,.16)}.woms-chart-section-node::before{position:absolute;top:26px;left:-14px;width:14px;height:2px;background:#f59e0b;content:""}.woms-chart-section-node strong{font-size:.74rem}.woms-chart-section-node small{font-size:.6rem}.woms-chart-empty{padding:.65rem;border:1px dashed #cbd5e1;border-radius:.65rem;background:#fff;color:#64748b;font-size:.7rem;text-align:center}.woms-chart-empty-state{display:grid;width:420px;min-height:180px;margin:auto;place-items:center;border:1px dashed #cbd5e1;border-radius:1rem;background:#fff;color:#64748b}.woms-chart-empty-state i{font-size:2rem}.woms-chart-canvas[data-mode="departments"] .woms-chart-units{display:none}.woms-chart-canvas[data-mode="units"] .woms-chart-sections{display:none}.woms-chart-modal-footer{display:flex;justify-content:space-between;padding:.75rem 1.25rem;border-color:#e2e8f0}.woms-chart-modal-footer span{display:flex;align-items:center;gap:.4rem;color:#64748b;font-size:.72rem}@media(max-width:991.98px){.woms-chart-dialog{width:100%;height:100%;margin:0}.woms-chart-modal-content{border-radius:0}.woms-chart-toolbar{align-items:stretch;flex-direction:column}.woms-chart-levels,.woms-chart-controls{flex-wrap:wrap}.woms-chart-modal-footer span{display:none}}@media(max-width:575.98px){.woms-chart-levels>span,.woms-chart-controls>span{width:100%}.woms-chart-levels button{flex:1}.woms-chart-controls strong{min-width:48px}.woms-chart-modal-body{padding:.7rem}}
     </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('womsOrganizationChartModal');
+            if (!modal) return;
+
+            const viewport = modal.querySelector('[data-woms-chart-viewport]');
+            const stage = modal.querySelector('[data-woms-chart-stage]');
+            const canvas = modal.querySelector('[data-woms-chart-canvas]');
+            const zoomLabel = modal.querySelector('[data-woms-chart-zoom-label]');
+            const zoomOut = modal.querySelector('[data-woms-chart-zoom-out]');
+            const zoomIn = modal.querySelector('[data-woms-chart-zoom-in]');
+            const modeButtons = [...modal.querySelectorAll('[data-woms-chart-mode]')];
+            const initialZoom = 0.5;
+            const minimumZoom = 0.3;
+            const maximumZoom = 1;
+            const zoomStep = 0.1;
+            let zoom = initialZoom;
+            let dragState = null;
+
+            const applyZoom = (center = false) => {
+                canvas.style.transform = `scale(${zoom})`;
+                zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+                zoomOut.disabled = zoom <= minimumZoom;
+                zoomIn.disabled = zoom >= maximumZoom;
+
+                requestAnimationFrame(() => {
+                    const scaledWidth = canvas.scrollWidth * zoom;
+                    const scaledHeight = canvas.scrollHeight * zoom;
+                    stage.style.width = `${Math.max(viewport.clientWidth, scaledWidth)}px`;
+                    stage.style.height = `${Math.max(viewport.clientHeight, scaledHeight)}px`;
+
+                    if (center) {
+                        viewport.scrollLeft = Math.max(0, (scaledWidth - viewport.clientWidth) / 2);
+                        viewport.scrollTop = 0;
+                    }
+                });
+            };
+
+            zoomOut.addEventListener('click', () => {
+                zoom = Math.max(minimumZoom, Number((zoom - zoomStep).toFixed(1)));
+                applyZoom();
+            });
+
+            zoomIn.addEventListener('click', () => {
+                zoom = Math.min(maximumZoom, Number((zoom + zoomStep).toFixed(1)));
+                applyZoom();
+            });
+
+            modal.querySelector('[data-woms-chart-reset]').addEventListener('click', () => {
+                zoom = initialZoom;
+                canvas.dataset.mode = 'all';
+                modeButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.womsChartMode === 'all'));
+                applyZoom(true);
+            });
+
+            modeButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    canvas.dataset.mode = button.dataset.womsChartMode;
+                    modeButtons.forEach((item) => item.classList.toggle('is-active', item === button));
+                    applyZoom(true);
+                });
+            });
+
+            modal.querySelector('[data-woms-chart-left]').addEventListener('click', () => {
+                viewport.scrollBy({ left: -420, behavior: 'smooth' });
+            });
+
+            modal.querySelector('[data-woms-chart-right]').addEventListener('click', () => {
+                viewport.scrollBy({ left: 420, behavior: 'smooth' });
+            });
+
+            viewport.addEventListener('pointerdown', (event) => {
+                dragState = {
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    scrollLeft: viewport.scrollLeft,
+                    scrollTop: viewport.scrollTop,
+                };
+                viewport.setPointerCapture(event.pointerId);
+                viewport.classList.add('is-dragging');
+            });
+
+            viewport.addEventListener('pointermove', (event) => {
+                if (!dragState || dragState.pointerId !== event.pointerId) return;
+                viewport.scrollLeft = dragState.scrollLeft - (event.clientX - dragState.startX);
+                viewport.scrollTop = dragState.scrollTop - (event.clientY - dragState.startY);
+            });
+
+            const stopDragging = (event) => {
+                if (!dragState || dragState.pointerId !== event.pointerId) return;
+                dragState = null;
+                viewport.classList.remove('is-dragging');
+            };
+
+            viewport.addEventListener('pointerup', stopDragging);
+            viewport.addEventListener('pointercancel', stopDragging);
+            modal.addEventListener('shown.bs.modal', () => applyZoom(true));
+            window.addEventListener('resize', () => {
+                if (modal.classList.contains('show')) applyZoom();
+            });
+        });
+    </script>
 @endpush

@@ -29,6 +29,7 @@ class WomsOrganizationCutoverTest extends TestCase
     public function test_woms_organization_page_uses_the_new_label_and_hides_the_legacy_menu(): void
     {
         config()->set('services.woms_organization.legacy_read_only', true);
+        $this->createWomsHierarchy();
         $admin = User::factory()->create(['usertype' => 'admin', 'role' => 'admin']);
 
         $this->actingAs($admin)
@@ -48,6 +49,11 @@ class WomsOrganizationCutoverTest extends TestCase
             ->assertSee('Informasi Sinkronisasi')
             ->assertSee('womsSyncInfoModal')
             ->assertSee('Riwayat Sinkronisasi')
+            ->assertSee('Bagan Struktur Organisasi')
+            ->assertSee('womsOrganizationChartModal')
+            ->assertSee('Clinker Production')
+            ->assertSee('Kiln Operation')
+            ->assertSee('50%')
             ->assertDontSee('WOMS ID')
             ->assertSee('btn-outline-danger')
             ->assertSee('woms-status-icon is-disconnected');
