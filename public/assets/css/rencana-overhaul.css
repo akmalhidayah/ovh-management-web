@@ -1,0 +1,145 @@
+/* Halaman Rencana Overhaul & Pengadaan. Semua selector diawali .rop agar tidak bocor ke halaman lain. */
+.rop {
+    --rop-navy: #0f1f4b;
+    --rop-teal: #0a9a8a;
+    --rop-border: #d9e2ea;
+    color: var(--rop-navy);
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+}
+
+.rop-hero {
+    border-radius: .5rem;
+    min-height: 5rem;
+    padding: .9rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: #fff;
+    background:
+        linear-gradient(90deg, var(--rop-navy) 0%, var(--rop-navy) 45%, rgba(15, 31, 75, .15) 100%),
+        var(--rop-hero-image) right center / cover no-repeat;
+}
+.rop-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 700; }
+.rop-hero p { margin: 0; font-size: 1.1rem; font-weight: 600; }
+
+/* Tab */
+.rop-tabs { display: flex; flex-wrap: wrap; gap: .5rem 2rem; align-items: center; padding: .6rem 1rem; background: #e3eef3; border: 1px solid var(--rop-border); border-radius: .5rem; }
+.rop-tab { border: 0; background: transparent; padding: .3rem 1.1rem; border-radius: 999px; font-size: .75rem; font-weight: 500; color: var(--rop-navy); }
+.rop-tab.is-active { background: var(--rop-navy); color: #fff; }
+.rop-tab:focus-visible, .rop-btn:focus-visible, .rop-year select:focus-visible, .rop-chip:focus-visible { outline: 2px solid var(--rop-teal); outline-offset: 2px; }
+.rop-empty { min-height: 12rem; }
+
+/* Tahun + Buat Baru */
+.rop-yearbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem 1rem; background: #e3eef3; border: 1px solid var(--rop-border); border-radius: .5rem; }
+.rop-year { display: flex; align-items: center; gap: .75rem; margin: 0; font-size: .8rem; font-weight: 500; }
+.rop-year select { min-width: 6.5rem; padding: .25rem .6rem; border: 1px solid #c5d2dc; border-radius: .35rem; background: #fff; color: var(--rop-navy); font-weight: 600; }
+
+.rop-btn { border: 0; border-radius: .3rem; padding: .45rem 1.1rem; font-size: .75rem; font-weight: 600; color: #fff; }
+.rop-btn--navy { background: var(--rop-navy); }
+.rop-btn--green { background: #0f9d6e; }
+.rop-btn--pink { background: #fbd0d8; color: #c8143c; }
+
+.rop-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.rop-heading h2 { margin: 0; font-size: .95rem; font-weight: 800; line-height: 1.25; }
+.rop-export { display: flex; gap: .75rem; flex-wrap: wrap; }
+.rop-export .rop-btn { min-width: 8rem; padding: .55rem 1rem; }
+
+/* Gantt */
+.rop-gantt-card { background: #fff; border: 1px solid var(--rop-border); border-radius: .4rem; padding: .5rem; min-width: 0; }
+.rop-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .4rem; margin-bottom: .5rem; font-size: .6rem; }
+.rop-chip { border: 1px solid #c5d2dc; background: #fff; border-radius: .2rem; padding: .15rem .5rem; font-size: .6rem; color: var(--rop-navy); }
+.rop-chip b { margin-left: .4rem; padding: 0 .3rem; border: 1px solid #c5d2dc; }
+.rop-chip--teal { border-color: #7fd6cc; color: var(--rop-teal); }
+.rop-chip--navy { background: var(--rop-navy); border-color: var(--rop-navy); color: #fff; }
+.rop-range { border: 1px solid #c5d2dc; padding: .15rem .6rem; border-radius: .2rem; min-width: 10rem; text-align: center; }
+.rop-view button { border: 1px solid #c5d2dc; background: #fff; padding: .15rem .5rem; font-size: .6rem; color: #64748b; }
+.rop-view button.is-on { background: #e5e7eb; color: var(--rop-navy); }
+
+.rop-gantt-scroll { overflow-x: auto; }
+.rop-gantt { border-collapse: collapse; width: 100%; min-width: 64rem; font-size: .55rem; table-layout: fixed; }
+.rop-gantt th, .rop-gantt td { border: 1px solid #cfd8e0; padding: 0; text-align: center; }
+.rop-gantt thead th { background: var(--rop-navy); color: #fff; font-weight: 700; padding: .25rem .2rem; border-color: #3a4a78; }
+.rop-gantt thead .rop-year-head { background: var(--rop-navy); font-size: .55rem; padding: .1rem; }
+.rop-gantt thead .rop-month { background: var(--rop-teal); border-color: #fff; font-size: .5rem; }
+.rop-gantt thead .rop-week { background: #fff; color: var(--rop-navy); font-size: .4rem; font-weight: 500; padding: .1rem 0; border-color: #cfd8e0; }
+.rop-gantt .c-no { width: 2.2rem; }
+.rop-gantt .c-plant { width: 4.2rem; font-weight: 700; }
+.rop-gantt .c-area { width: 7.5rem; font-weight: 700; padding: .2rem .3rem; }
+.rop-gantt .c-pa { width: 1.4rem; font-weight: 700; color: #fff; }
+.rop-gantt .c-pa.is-plan { background: var(--rop-teal); }
+.rop-gantt .c-pa.is-actual { background: var(--rop-navy); }
+.rop-gantt thead .c-pa { background: var(--rop-navy); }
+.rop-gantt .c-total { width: 2.6rem; font-weight: 700; }
+.rop-gantt .c-note { width: 2.6rem; }
+.rop-gantt tbody .rop-cell { height: .95rem; }
+.rop-gantt tbody .rop-cell.is-month-start { border-left-color: #94a3b8; }
+.rop-bar-cell { padding: 1px !important; }
+.rop-bar { display: block; height: .8rem; background: var(--rop-teal); }
+
+/* Panel tab */
+.rop-panel { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
+.rop-panel[hidden] { display: none; }
+
+/* Timeline pengadaan (Barang & Jasa) */
+.rop-proc { min-width: 70rem; }
+.rop-proc .c-no { width: 1.8rem; }
+.rop-proc .c-desc { width: 11rem; text-align: left; font-weight: 500; font-size: .5rem; padding: .3rem .4rem; }
+.rop-proc .c-pic { width: 4rem; font-size: .5rem; }
+.rop-proc .c-total { width: 2.4rem; }
+.rop-proc .c-total.is-days { background: #9ff0e3; color: var(--rop-navy); font-size: .6rem; }
+.rop-proc .c-note { width: 2.2rem; }
+.rop-proc thead .rop-month--sm { background: var(--rop-navy); color: #fff; font-size: .45rem; border-color: #3a4a78; padding: .15rem 0; }
+.rop-proc tbody .rop-cell { height: 1.1rem; }
+.rop-proc .rop-bar-cell { position: relative; }
+.rop-bar--light { background: #9ff0e3; position: static; }
+.rop-bar--light em { position: absolute; left: .35rem; top: 50%; transform: translateY(-50%); font-style: normal; font-weight: 700; font-size: .45rem; white-space: nowrap; color: var(--rop-navy); }
+
+/* Kalender (ringkasan multi-tahun) */
+.rop-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
+.rop-summary > div { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .8rem; background: #fff; border: 1px solid var(--rop-border); border-left: 4px solid var(--rop-teal); border-radius: .4rem; }
+.rop-summary span { font-size: .65rem; color: #64748b; }
+.rop-summary strong { font-size: 1.15rem; font-weight: 800; }
+.rop-summary small { font-size: .6rem; font-weight: 600; color: #64748b; }
+.rop-chip--soft { background: #8fd3cc; border-color: #8fd3cc; color: #fff; }
+.rop-cal { min-width: 56rem; }
+.rop-cal .c-pa { width: 2.6rem; font-size: .5rem; }
+.rop-cal thead .rop-month { background: var(--rop-teal); color: #fff; font-size: .55rem; padding: .25rem 0; }
+.rop-cal .rop-val { height: 1.5rem; font-size: .5rem; color: var(--rop-navy); }
+.rop-cal .rop-val b { font-size: .75rem; }
+.rop-cal .rop-val small { font-size: .4rem; font-weight: 700; }
+.rop-cal .rop-val.is-plan { background: #19c3b0; color: #fff; }
+.rop-cal .rop-val.is-plan.is-empty { background: #e7f6f4; }
+.rop-cal .rop-val.is-actual { background: #fff; text-align: left; padding-left: .4rem; }
+.rop-total-row th { background: var(--rop-navy); color: #fff; font-size: .55rem; text-align: left; padding: .35rem .6rem; border: 1px solid #3a4a78; }
+.rop-total-row td { background: #eef5f8; font-size: .5rem; padding: .3rem 0; }
+.rop-total-row td b { font-size: .7rem; }
+
+/* Bagian bawah */
+.rop-bottom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.rop-program, .rop-notes { position: relative; border-radius: .5rem; padding: .75rem .9rem 1.6rem; font-size: .68rem; min-width: 0; }
+.rop-program { background: #d6ece9; border: 1px solid #b8dcd8; }
+.rop-notes { background: #dfe6eb; border: 1px solid #c8d3db; }
+.rop-program h3, .rop-notes h3 { margin: 0 0 .5rem; font-size: .75rem; font-weight: 800; }
+.rop-program h3 { color: var(--rop-teal); }
+.rop-program-head, .rop-program-body { display: grid; grid-template-columns: 5rem 7rem 1fr; gap: .5rem; }
+.rop-program-head { background: var(--rop-teal); color: #fff; font-weight: 700; padding: .3rem .6rem; border-radius: .25rem; }
+.rop-program-body { padding: .5rem .6rem 0; }
+.rop-program-area, .rop-program-list { margin: 0; padding: 0; }
+.rop-program-area { list-style: none; }
+.rop-program-list { padding-left: 1.1rem; }
+.rop-notes ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .4rem; }
+.rop-detail { position: absolute; right: .9rem; bottom: .5rem; font-size: .65rem; font-weight: 700; font-style: italic; color: var(--rop-navy); text-decoration: none; }
+.rop-detail:hover { text-decoration: underline; }
+
+@media (max-width: 991.98px) {
+    .rop-bottom { grid-template-columns: 1fr; }
+    .rop-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+    .rop-tabs { gap: .5rem; }
+    .rop-toolbar { justify-content: flex-start; }
+    .rop-program-head, .rop-program-body { grid-template-columns: 4rem 5rem 1fr; }
+    .rop-export, .rop-export .rop-btn { width: 100%; }
+}

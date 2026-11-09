@@ -42,7 +42,7 @@ class AdminMenuPermissions
             'planning' => [
                 'label' => 'Planning',
                 'children' => [
-                    'planning.kalender-overhaul' => 'Kalender Overhaul',
+                    'planning.kalender-overhaul' => 'Rencana Overhaul & Pengadaan',
                     'planning.schedule' => 'Rencana Kerja',
                 ],
             ],

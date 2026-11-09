@@ -17,7 +17,7 @@
         ],
         [
             'key' => 'planning.kalender-overhaul',
-            'label' => 'Kalender Overhaul',
+            'label' => 'Rencana Overhaul & Pengadaan',
             'icon' => 'bi-calendar3',
             'route' => "{$role}.kalender-overhaul",
         ],

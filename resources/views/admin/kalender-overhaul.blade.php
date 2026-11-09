@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
-@section('title', 'Kalender Overhaul')
-@section('page_title', 'Kalender Overhaul')
+@section('title', 'Rencana Overhaul & Pengadaan')
+@section('page_title', 'Rencana Overhaul & Pengadaan')
 @section('content')
     @include('modules.kalender-overhaul-content')
 @endsection
