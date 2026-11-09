@@ -49,11 +49,6 @@
 @endpush
 
 <div class="rop" data-rop>
-    <section class="rop-hero" style="--rop-hero-image: url('{{ asset('assets/images/illustrations/bg-login.jpg') }}')">
-        <h1>Selamat Datang</h1>
-        <p>Rencana Overhaul &amp; Pengadaan</p>
-    </section>
-
     <div class="rop-tabs" role="tablist" aria-label="Rencana overhaul dan pengadaan">
         @foreach ($tabs as $key => $label)
             <button type="button" role="tab" id="rop-tab-{{ $key }}" class="rop-tab {{ $loop->first ? 'is-active' : '' }}"
