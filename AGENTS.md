@@ -32,6 +32,7 @@ Jangan klaim lulus bila PHP/Composer/Node/`vendor/` tidak tersedia; laporkan gap
 | Template form | `Support/QcTemplates/` (`FixedQcTemplate`, `QcTemplateRegistry`, `TemplateBuilder`, `PresetBlocks`), `Support/Commissioning/FixedCommissioningTemplate`, `Support/TemplateSnapshot` |
 | PDF | `resources/views/pdf/` (Dompdf, CSS konservatif), `Services/QcPdfAttachmentMerger`, `Support/Pdf/SignatureImage` |
 | Organisasi/WOMS | `Services/WomsOrganizationResolver`, `Services/Integrations/`, `Support/OrganizationSections`, `docs/integrations/woms-organization-sync.md` |
+| Rencana Kerja (frontend dummy, 3 modul mandiri, jangan saling berbagi file) | `resources/views/modules/schedule-{barang,jasa,capex}/`, `Support/Schedule{Barang,Jasa,Capex}PageData`, `public/assets/{css,js}/schedule-{barang,jasa,capex}.*` (prefix `sb-`/`sj-`/`sc-`); pintu masuk `modules/schedule-content` |
 | Notifikasi | `Support/AdminTopbarNotifications`, `Support/UserTopbarNotifications` |
 | Data halaman | `Support/UserRoleUiData.php` (±1280 baris, berdampak besar), `AdminInspectionSubmissionPageData`, `QcSubmissionPageData`, `AdminMenuPermissions` |
 | View | `resources/views/{admin,user,modules,partials,pdf,approvals,auth}` |
