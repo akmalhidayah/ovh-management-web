@@ -74,7 +74,7 @@ class CheckAdminMenuPermission
             return 'planning.kalender-overhaul';
         }
 
-        if ($routeName === 'admin.schedule' || $routeName === 'admin.schedule.overview') {
+        if ($routeName === 'admin.schedule') {
             return 'planning.schedule';
         }
 
